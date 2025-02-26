@@ -1,0 +1,8 @@
+-optimizationpasses 10
+-dontskipnonpubliclibraryclasses
+-dontskipnonpubliclibraryclassmembers
+-dontpreverify
+-optimizations *
+-allowaccessmodification
+-repackageclasses
+-verbose
