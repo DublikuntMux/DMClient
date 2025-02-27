@@ -21,7 +21,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
-import coil3.request.crossfade
 
 @Composable
 fun GalleryPageCard(imageUrl: String, pageNumber: Int, onClick: () -> Unit) {
@@ -38,7 +37,6 @@ fun GalleryPageCard(imageUrl: String, pageNumber: Int, onClick: () -> Unit) {
             AsyncImage(
                 model = ImageRequest.Builder(context)
                     .data(imageUrl)
-                    .crossfade(true)
                     .build(),
                 contentDescription = "Page $pageNumber",
                 modifier = Modifier.fillMaxWidth(),

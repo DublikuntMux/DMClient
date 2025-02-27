@@ -17,4 +17,7 @@ interface GalleryHistoryDao {
 
     @Delete
     suspend fun deleteHistory(galleryHistory: GalleryHistory)
+
+    @Query("DELETE FROM gallery_history")
+    suspend fun deleteAllHistory()
 }

@@ -12,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,10 +20,11 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
-import coil3.request.crossfade
 
 @Composable
 fun GalleryPageViewer(
@@ -38,6 +40,33 @@ fun GalleryPageViewer(
     var offset by remember { mutableStateOf(Offset(0f, 0f)) }
     val maxScale = 5f
     val minScale = 0.2f
+    val screenWidth = LocalDensity.current.density * LocalConfiguration.current.screenWidthDp
+
+    val tapGesturesHandler = rememberUpdatedState { tapOffset: Offset ->
+        when {
+            tapOffset.x < screenWidth * 0.3f -> {
+                if (pageIndex > 1) {
+                    scale = 1f
+                    offset = Offset(0f, 0f)
+                    onPreviousPage()
+                }
+            }
+
+            tapOffset.x > screenWidth * 0.7f -> {
+                if (pageIndex < totalPages) {
+                    scale = 1f
+                    offset = Offset(0f, 0f)
+                    onNextPage()
+                }
+            }
+
+            else -> {
+                scale = 1f
+                offset = Offset(0f, 0f)
+                onClose()
+            }
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -45,30 +74,7 @@ fun GalleryPageViewer(
             .background(MaterialTheme.colorScheme.background)
             .pointerInput(pageIndex) {
                 detectTapGestures { tapOffset ->
-                    val screenWidth = size.width
-                    when {
-                        tapOffset.x < screenWidth * 0.3f -> {
-                            if (pageIndex > 1) {
-                                scale = 1f
-                                offset = Offset(0f, 0f)
-                                onPreviousPage()
-                            }
-                        }
-
-                        tapOffset.x > screenWidth * 0.7f -> {
-                            if (pageIndex < totalPages) {
-                                scale = 1f
-                                offset = Offset(0f, 0f)
-                                onNextPage()
-                            }
-                        }
-
-                        else -> {
-                            scale = 1f
-                            offset = Offset(0f, 0f)
-                            onClose()
-                        }
-                    }
+                    tapGesturesHandler.value(tapOffset)
                 }
             },
         contentAlignment = Alignment.Center
@@ -76,7 +82,6 @@ fun GalleryPageViewer(
         AsyncImage(
             model = ImageRequest.Builder(context)
                 .data(imageUrl)
-                .crossfade(true)
                 .build(),
             contentDescription = "Fullscreen Page $pageIndex",
             modifier = Modifier

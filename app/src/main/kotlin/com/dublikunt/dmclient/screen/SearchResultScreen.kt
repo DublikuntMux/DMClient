@@ -44,7 +44,7 @@ class SearchResultViewModel(application: Application) : AndroidViewModel(applica
     var isLoading by mutableStateOf(false)
     private var errorCount by mutableIntStateOf(0)
     var showNothingFoundMessage by mutableStateOf(false)
-    var firstLoaded by mutableStateOf(false)
+    private var firstLoaded by mutableStateOf(false)
 
     private val db = AppDatabase.getDatabase(application)
     private val historyDao = db.galleryHistoryDao()
@@ -88,10 +88,8 @@ class SearchResultViewModel(application: Application) : AndroidViewModel(applica
 
     private fun fetchStatuses(ids: List<Int>) {
         viewModelScope.launch(Dispatchers.IO) {
-            ids.forEach { id ->
-                val status = statusDao.getStatus(id)
-                statusMap[id] = status
-            }
+            val statuses = statusDao.getStatuses(ids)
+            statuses.forEach { statusMap[it.id] = it }
         }
     }
 }
@@ -103,18 +101,16 @@ fun SearchResultScreen(
     viewModel: SearchResultViewModel = viewModel()
 ) {
     val scope = rememberCoroutineScope()
-
     val scrollState = rememberLazyGridState()
 
-    if (viewModel.stateList.isEmpty() && !viewModel.showNothingFoundMessage) {
-        LaunchedEffect(Unit) {
+    LaunchedEffect(query) {
+        if (viewModel.stateList.isEmpty() && !viewModel.showNothingFoundMessage) {
             viewModel.fetchNextPage(scope, query)
         }
     }
 
-    if (viewModel.showNothingFoundMessage && !viewModel.firstLoaded) {
-        Box(modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center) {
+    if (viewModel.showNothingFoundMessage) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("Nothing found", style = MaterialTheme.typography.headlineLarge)
         }
     } else {
@@ -146,4 +142,3 @@ fun SearchResultScreen(
         }
     }
 }
-

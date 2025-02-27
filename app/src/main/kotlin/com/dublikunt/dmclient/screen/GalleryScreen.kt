@@ -4,11 +4,13 @@ import android.app.Application
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -44,7 +46,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
-import coil3.request.crossfade
 import com.dublikunt.dmclient.component.GalleryPageCard
 import com.dublikunt.dmclient.component.GalleryPageViewer
 import com.dublikunt.dmclient.database.AppDatabase
@@ -71,10 +72,18 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _status = MutableStateFlow<GalleryStatus?>(null)
     val status: StateFlow<GalleryStatus?> = _status
 
+    private val _errorState = MutableStateFlow<String?>(null)
+    val errorState: StateFlow<String?> = _errorState
+
     fun fetchGallery(id: Int) {
         viewModelScope.launch(Dispatchers.IO) {
-            _gallery.value = NHentaiApi.fetchGallery(id)
-            _status.value = statusDao.getStatus(id)
+            try {
+                _gallery.value = NHentaiApi.fetchGallery(id)
+                _status.value = statusDao.getStatus(id)
+                _errorState.value = null
+            } catch (e: Exception) {
+                _errorState.value = "Failed to load gallery. Please try again."
+            }
         }
     }
 
@@ -97,12 +106,28 @@ fun GalleryScreen(id: Int, viewModel: GalleryViewModel = viewModel()) {
     val gallery by viewModel.gallery.collectAsState()
     val selectedPage by viewModel.selectedPage.collectAsState()
     val status by viewModel.status.collectAsState()
+    val errorState by viewModel.errorState.collectAsState()
 
     LaunchedEffect(id) {
         viewModel.fetchGallery(id)
     }
 
-    if (gallery == null) {
+    if (errorState != null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = errorState ?: "",
+                    color = Color.Red,
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(16.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(onClick = { viewModel.fetchGallery(id) }) {
+                    Text(text = "Retry")
+                }
+            }
+        }
+    } else if (gallery == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
@@ -113,7 +138,6 @@ fun GalleryScreen(id: Int, viewModel: GalleryViewModel = viewModel()) {
                     AsyncImage(
                         model = ImageRequest.Builder(context)
                             .data(gallery!!.thumb)
-                            .crossfade(true)
                             .build(),
                         contentDescription = gallery!!.name,
                         modifier = Modifier
@@ -149,8 +173,7 @@ fun GalleryScreen(id: Int, viewModel: GalleryViewModel = viewModel()) {
                 }
 
                 items(gallery!!.pages) { pageIndex ->
-                    val imageUrl = when (gallery!!.imageType)
-                    {
+                    val imageUrl = when (gallery!!.imageType) {
                         ImageType.Jpg -> "https://i1.nhentai.net/galleries/${gallery!!.pagesId}/${pageIndex + 1}.jpg"
                         ImageType.Webp -> "https://i4.nhentai.net/galleries/${gallery!!.pagesId}/${pageIndex + 1}.webp"
                     }
@@ -162,8 +185,7 @@ fun GalleryScreen(id: Int, viewModel: GalleryViewModel = viewModel()) {
             }
 
             selectedPage?.let { currentPage ->
-                val imageUrl = when (gallery!!.imageType)
-                {
+                val imageUrl = when (gallery!!.imageType) {
                     ImageType.Jpg -> "https://i1.nhentai.net/galleries/${gallery!!.pagesId}/${currentPage}.jpg"
                     ImageType.Webp -> "https://i4.nhentai.net/galleries/${gallery!!.pagesId}/${currentPage}.webp"
                 }

@@ -21,6 +21,13 @@ object PreferenceHelper {
         }
     }
 
+    suspend fun deleteTokens(context: Context) {
+        context.dataStore.edit { preferences ->
+            preferences.remove(SESSION_AFFINITY_KEY)
+            preferences.remove(CSRF_TOKEN_KEY)
+        }
+    }
+
     fun getSessionAffinity(context: Context): Flow<String?> {
         return context.dataStore.data.map { preferences ->
             preferences[SESSION_AFFINITY_KEY]

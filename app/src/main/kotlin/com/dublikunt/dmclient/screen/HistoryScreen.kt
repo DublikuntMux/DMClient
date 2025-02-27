@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -19,7 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -43,7 +44,7 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
     private val statusDao = db.galleryStatusDao()
 
     val historyList: LiveData<List<GalleryHistory>> = historyDao.getHistory().asLiveData()
-    val statusMap = mutableStateMapOf<Int, GalleryStatus?>()
+    val statusMap = mutableStateOf<Map<Int, GalleryStatus?>>(emptyMap())
 
     fun removeGalleryFromHistory(gallery: GalleryHistory) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -53,10 +54,8 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
 
     fun fetchStatuses(ids: List<GalleryHistory>) {
         viewModelScope.launch(Dispatchers.IO) {
-            ids.forEach { id ->
-                val status = statusDao.getStatus(id.id)
-                statusMap[id.id] = status
-            }
+            val statuses = statusDao.getStatuses(ids.map { it.id })
+            statusMap.value = statuses.associateBy { it.id }
         }
     }
 }
@@ -77,33 +76,31 @@ fun HistoryScreen(navController: NavHostController, viewModel: HistoryViewModel 
         columns = GridCells.Adaptive(minSize = 128.dp),
         state = scrollState,
     ) {
-        historyList.reversed().forEach { galleryHistory ->
-            item {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    GalleryCard(
-                        GallerySimpleInfo(
-                            galleryHistory.id,
-                            galleryHistory.coverUrl,
-                            galleryHistory.name
-                        ),
-                        navController,
-                        viewModel.statusMap[galleryHistory.id]?.status,
-                        viewModel.statusMap[galleryHistory.id]?.favorite ?: false
-                    )
+        items(historyList.reversed(), key = { it.id }) { galleryHistory ->
+            Box(modifier = Modifier.fillMaxSize()) {
+                GalleryCard(
+                    GallerySimpleInfo(
+                        galleryHistory.id,
+                        galleryHistory.coverUrl,
+                        galleryHistory.name
+                    ),
+                    navController,
+                    viewModel.statusMap.value[galleryHistory.id]?.status,
+                    viewModel.statusMap.value[galleryHistory.id]?.favorite ?: false
+                )
 
-                    Column(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .background(
-                                color = MaterialTheme.colorScheme.background.copy(alpha = 0.6f),
-                                shape = RoundedCornerShape(8.dp)
-                            )
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .background(
+                            color = MaterialTheme.colorScheme.background.copy(alpha = 0.6f),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                ) {
+                    IconButton(
+                        onClick = { viewModel.removeGalleryFromHistory(galleryHistory) }
                     ) {
-                        IconButton(
-                            onClick = { viewModel.removeGalleryFromHistory(galleryHistory) }
-                        ) {
-                            Icon(Icons.Rounded.Delete, contentDescription = "Delete")
-                        }
+                        Icon(Icons.Rounded.Delete, contentDescription = "Delete")
                     }
                 }
             }

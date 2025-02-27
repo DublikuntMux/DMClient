@@ -27,7 +27,6 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
-import coil3.request.crossfade
 import com.dublikunt.dmclient.database.status.Status
 import com.dublikunt.dmclient.scrapper.GallerySimpleInfo
 
@@ -55,7 +54,6 @@ fun GalleryCard(
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(gallery.thumb)
-                    .crossfade(true)
                     .build(),
                 contentDescription = gallery.name,
                 contentScale = ContentScale.Crop,

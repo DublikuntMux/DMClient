@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -49,9 +50,9 @@ import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 enum class FetchStatus {
     Check,
@@ -64,6 +65,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     val stateList = mutableStateListOf<GallerySimpleInfo>()
     private var currentPage by mutableIntStateOf(1)
     var isLoading by mutableStateOf(false)
+    var isError by mutableStateOf(false)
 
     private val db = AppDatabase.getDatabase(application)
     private val historyDao = db.galleryHistoryDao()
@@ -74,14 +76,23 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     fun fetchNextPage(scope: CoroutineScope) {
         if (isLoading) return
         isLoading = true
+        isError = false
+
         scope.launch {
-            val fetched = NHentaiApi.fetchMainPage(currentPage)
-            if (fetched.isNotEmpty()) {
-                stateList.addAll(fetched)
-                currentPage++
-                fetchStatuses(fetched.map { it.id })
+            try {
+                val fetched = withContext(Dispatchers.IO) {
+                    NHentaiApi.fetchMainPage(currentPage)
+                }
+                if (fetched.isNotEmpty()) {
+                    stateList.addAll(fetched)
+                    currentPage++
+                    fetchStatuses(fetched.map { it.id })
+                }
+                isLoading = false
+            } catch (e: Exception) {
+                isError = true
+                isLoading = false
             }
-            isLoading = false
         }
     }
 
@@ -99,6 +110,14 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+
+    fun saveTokensAndFetch(session: String, token: String) {
+        viewModelScope.launch {
+            PreferenceHelper.saveTokens(getApplication(), session, token)
+            NHentaiApi.setTokens(session, token)
+            tokenFetched = FetchStatus.Fetched
+        }
+    }
 }
 
 @OptIn(ExperimentalPermissionsApi::class)
@@ -112,17 +131,11 @@ fun HomeScreen(navController: NavHostController, viewModel: HomeViewModel = view
 
     val scrollState = rememberLazyGridState()
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(viewModel.tokenFetched) {
         if (viewModel.tokenFetched == FetchStatus.Check) {
-            val languageDeferred =
-                async { PreferenceHelper.getPreferredLanguage(context).firstOrNull() }
-            val sessionDeferred =
-                async { PreferenceHelper.getSessionAffinity(context).firstOrNull() }
-            val tokenDeferred = async { PreferenceHelper.getCsrfToken(context).firstOrNull() }
-
-            val session = sessionDeferred.await()
-            val token = tokenDeferred.await()
-            val language = languageDeferred.await() ?: "all"
+            val language = PreferenceHelper.getPreferredLanguage(context).firstOrNull() ?: "all"
+            val session = PreferenceHelper.getSessionAffinity(context).firstOrNull()
+            val token = PreferenceHelper.getCsrfToken(context).firstOrNull()
 
             NHentaiApi.setLanguage(language)
 
@@ -138,18 +151,12 @@ fun HomeScreen(navController: NavHostController, viewModel: HomeViewModel = view
     if (isPermissionGranted) {
         when (viewModel.tokenFetched) {
             FetchStatus.NotFetched -> NHentaiWebView { session, token ->
-                scope.launch {
-                    PreferenceHelper.saveTokens(context, session, token)
-                    NHentaiApi.setTokens(session, token)
-                    viewModel.tokenFetched = FetchStatus.Fetched
-                }
+                viewModel.saveTokensAndFetch(session, token)
             }
 
             FetchStatus.Fetched -> {
-                if (viewModel.stateList.isEmpty()) {
-                    LaunchedEffect(Unit) {
-                        viewModel.fetchNextPage(scope)
-                    }
+                if (viewModel.stateList.isEmpty() && !viewModel.isLoading) {
+                    viewModel.fetchNextPage(scope)
                 }
 
                 LazyVerticalGrid(
@@ -159,9 +166,11 @@ fun HomeScreen(navController: NavHostController, viewModel: HomeViewModel = view
                     columns = GridCells.Adaptive(minSize = 128.dp),
                     state = scrollState
                 ) {
-                    items(viewModel.stateList) { galleryItem ->
+                    items(viewModel.stateList, key = { it.id }) { galleryItem ->
                         GalleryCard(
-                            galleryItem, navController, viewModel.statusMap[galleryItem.id]?.status,
+                            galleryItem,
+                            navController,
+                            viewModel.statusMap[galleryItem.id]?.status,
                             viewModel.statusMap[galleryItem.id]?.favorite ?: false
                         ) {
                             viewModel.addGalleryToHistory(galleryItem)
@@ -170,7 +179,18 @@ fun HomeScreen(navController: NavHostController, viewModel: HomeViewModel = view
 
                     item {
                         if (viewModel.isLoading) {
-                            CircularProgressIndicator()
+                            CircularProgressIndicator(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp)
+                            )
+                        } else if (viewModel.isError) {
+                            Text(
+                                "Failed to load data. Please try again.",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp)
+                            )
                         } else {
                             LaunchedEffect(Unit) {
                                 viewModel.fetchNextPage(scope)

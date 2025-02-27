@@ -49,16 +49,16 @@ import java.io.File
 
 class SearchViewModel(application: Application) : AndroidViewModel(application) {
     private val json = Json { ignoreUnknownKeys = true }
-    var tags = mutableStateListOf<String>()
-    var isLoading = mutableStateOf(true)
+    val tags = mutableStateListOf<String>()
+    val isLoading = mutableStateOf(true)
 
     fun loadTags(filesDir: File) {
         viewModelScope.launch {
             isLoading.value = true
             val tagsFile = File(filesDir, "tags.json")
             if (tagsFile.exists()) {
-                val fetchedTags = loadTagsFromFile(tagsFile)
-                tags.addAll(fetchedTags)
+                tags.clear()
+                tags.addAll(loadTagsFromFile(tagsFile))
             } else {
                 fetchAndSaveTags(filesDir)
             }
@@ -66,18 +66,18 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private suspend fun loadTagsFromFile(file: File): List<String> {
-        return withContext(Dispatchers.IO) {
-            val jsonString = file.readText()
-            json.decodeFromString<List<String>>(jsonString)
-        }
+    private suspend fun loadTagsFromFile(file: File): List<String> = withContext(Dispatchers.IO) {
+        val jsonString = file.readText()
+        json.decodeFromString<List<String>>(jsonString)
     }
 
     private suspend fun fetchAndSaveTags(filesDir: File) {
-        val fetchedTags = NHentaiApi.getAllTags()
+        val fetchedTags = withContext(Dispatchers.IO) {
+            NHentaiApi.getAllTags()
+        }
         val tagsFile = File(filesDir, "tags.json")
         saveTagsToFile(fetchedTags, tagsFile)
-
+        tags.clear()
         tags.addAll(fetchedTags)
     }
 
@@ -153,7 +153,7 @@ fun SearchScreen(navController: NavHostController, viewModel: SearchViewModel = 
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         CircularProgressIndicator()
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(text = "Loading tags...")
+                        Text(text = "Loading tags its can take a while...")
                     }
                 }
             } else {
@@ -168,7 +168,12 @@ fun SearchScreen(navController: NavHostController, viewModel: SearchViewModel = 
                         TagButton(tag, selectedTags)
                     }
 
-                    viewModel.tags.filter { it.contains(tagSearchQuery.value, ignoreCase = true) && !selectedTags.contains(it) }
+                    viewModel.tags.filter {
+                        it.contains(
+                            tagSearchQuery.value,
+                            ignoreCase = true
+                        ) && !selectedTags.contains(it)
+                    }
                         .forEach { tag ->
                             item {
                                 TagButton(tag, selectedTags)
