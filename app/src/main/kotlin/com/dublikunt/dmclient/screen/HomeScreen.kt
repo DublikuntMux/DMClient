@@ -40,6 +40,7 @@ import com.dublikunt.dmclient.database.AppDatabase
 import com.dublikunt.dmclient.database.PreferenceHelper
 import com.dublikunt.dmclient.database.history.GalleryHistory
 import com.dublikunt.dmclient.database.status.GalleryStatus
+import com.dublikunt.dmclient.modifier.verticalScrollbar
 import com.dublikunt.dmclient.scrapper.GallerySimpleInfo
 import com.dublikunt.dmclient.scrapper.NHentaiApi
 import com.dublikunt.dmclient.scrapper.NHentaiWebView
@@ -162,11 +163,12 @@ fun HomeScreen(navController: NavHostController, viewModel: HomeViewModel = view
                 LazyVerticalGrid(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp),
+                        .padding(16.dp)
+                        .verticalScrollbar(scrollState),
                     columns = GridCells.Adaptive(minSize = 128.dp),
                     state = scrollState
                 ) {
-                    items(viewModel.stateList, key = { it.id }) { galleryItem ->
+                    items(viewModel.stateList) { galleryItem ->
                         GalleryCard(
                             galleryItem,
                             navController,

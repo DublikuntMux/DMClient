@@ -34,6 +34,7 @@ import com.dublikunt.dmclient.component.GalleryCard
 import com.dublikunt.dmclient.database.AppDatabase
 import com.dublikunt.dmclient.database.history.GalleryHistory
 import com.dublikunt.dmclient.database.status.GalleryStatus
+import com.dublikunt.dmclient.modifier.verticalScrollbar
 import com.dublikunt.dmclient.scrapper.GallerySimpleInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -72,11 +73,12 @@ fun HistoryScreen(navController: NavHostController, viewModel: HistoryViewModel 
     LazyVerticalGrid(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(16.dp)
+            .verticalScrollbar(scrollState),
         columns = GridCells.Adaptive(minSize = 128.dp),
         state = scrollState,
     ) {
-        items(historyList.reversed(), key = { it.id }) { galleryHistory ->
+        items(historyList.reversed()) { galleryHistory ->
             Box(modifier = Modifier.fillMaxSize()) {
                 GalleryCard(
                     GallerySimpleInfo(

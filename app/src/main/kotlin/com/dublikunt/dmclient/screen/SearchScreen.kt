@@ -39,6 +39,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import com.dublikunt.dmclient.modifier.verticalScrollbar
 import com.dublikunt.dmclient.scrapper.NHentaiApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -95,7 +96,7 @@ fun SearchScreen(navController: NavHostController, viewModel: SearchViewModel = 
     val selectedTags = remember { mutableStateListOf<String>() }
     val searchQuery = remember { mutableStateOf("") }
     val tagSearchQuery = remember { mutableStateOf("") }
-    val listState = rememberLazyGridState()
+    val scrollState = rememberLazyGridState()
 
     LaunchedEffect(Unit) {
         viewModel.loadTags(context.filesDir)
@@ -158,11 +159,12 @@ fun SearchScreen(navController: NavHostController, viewModel: SearchViewModel = 
                 }
             } else {
                 LazyVerticalGrid(
-                    state = listState,
+                    state = scrollState,
                     columns = GridCells.Adaptive(minSize = 100.dp),
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(10.dp)
+                        .verticalScrollbar(scrollState)
                 ) {
                     items(selectedTags) { tag ->
                         TagButton(tag, selectedTags)
