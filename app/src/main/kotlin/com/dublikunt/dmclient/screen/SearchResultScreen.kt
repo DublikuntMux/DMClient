@@ -31,6 +31,7 @@ import com.dublikunt.dmclient.component.GalleryCard
 import com.dublikunt.dmclient.database.AppDatabase
 import com.dublikunt.dmclient.database.history.GalleryHistory
 import com.dublikunt.dmclient.database.status.GalleryStatus
+import com.dublikunt.dmclient.modifier.verticalScrollbar
 import com.dublikunt.dmclient.scrapper.GallerySimpleInfo
 import com.dublikunt.dmclient.scrapper.NHentaiApi
 import kotlinx.coroutines.CoroutineScope
@@ -120,7 +121,8 @@ fun SearchResultScreen(
         LazyVerticalGrid(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(16.dp)
+                .verticalScrollbar(scrollState),
             columns = GridCells.Adaptive(minSize = 128.dp),
             state = scrollState
         ) {

@@ -15,8 +15,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.rounded.Star
@@ -55,6 +56,7 @@ import com.dublikunt.dmclient.component.GalleryPageViewer
 import com.dublikunt.dmclient.database.AppDatabase
 import com.dublikunt.dmclient.database.status.GalleryStatus
 import com.dublikunt.dmclient.database.status.Status
+import com.dublikunt.dmclient.modifier.verticalColumnScrollbar
 import com.dublikunt.dmclient.scrapper.GalleryFullInfo
 import com.dublikunt.dmclient.scrapper.ImageType
 import com.dublikunt.dmclient.scrapper.NHentaiApi
@@ -120,6 +122,7 @@ fun GalleryScreen(
 ) {
     val context = LocalContext.current
     val galleryState by viewModel.galleryState.collectAsState()
+    val scrollState = rememberScrollState()
 
     LaunchedEffect(id) {
         viewModel.fetchGallery(id)
@@ -154,110 +157,104 @@ fun GalleryScreen(
             val selectedPage = state.selectedPage
             val status = state.status
 
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scrollState)
+                    .verticalColumnScrollbar(scrollState)
+                    .padding(vertical = 16.dp),
                 verticalArrangement = Arrangement.Top
             ) {
-                item {
-                    Column(
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.Top
+                ) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(gallery.thumb)
+                            .build(),
+                        contentDescription = gallery.name,
                         modifier = Modifier
-                            .padding(16.dp)
-                            .fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(gallery.thumb)
-                                .build(),
-                            contentDescription = gallery.name,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(200.dp)
-                                .clip(RoundedCornerShape(12.dp)),
-                            contentScale = ContentScale.Crop
-                        )
+                            .fillMaxWidth()
+                            .height(200.dp)
+                            .clip(RoundedCornerShape(12.dp)),
+                        contentScale = ContentScale.Crop
+                    )
 
-                        Text(
-                            text = gallery.name,
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold
-                        )
+                    Text(
+                        text = gallery.name,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
 
+                    Text(
+                        text = "Tags:",
+                        style = MaterialTheme.typography.headlineSmall,
+                    )
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        gallery.tags.forEach {
+                            Text(
+                                text = it,
+                                modifier = Modifier.clickable {
+                                    val formatted = it.replace(" ", "+")
+                                    navController.navigate("search?query=${formatted}")
+                                },
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                        }
+                    }
+
+                    if (gallery.characters.isNotEmpty()) {
                         Text(
-                            text = "Tags:",
+                            text = "Characters:",
                             style = MaterialTheme.typography.headlineSmall,
                         )
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            gallery.tags.forEach {
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            gallery.characters.forEach {
                                 Text(
                                     text = it,
-                                    modifier = Modifier
-                                        .clickable {
-                                            val formatted = it.replace(" ", "+")
-                                            navController.navigate("search?query=${formatted}")
-                                        },
+                                    modifier = Modifier.clickable {
+                                        val formatted = it.replace(" ", "+")
+                                        navController.navigate("search?query=${formatted}")
+                                    },
                                     style = MaterialTheme.typography.bodyLarge,
                                 )
                             }
                         }
-
-                        if (gallery.characters.isNotEmpty()) {
-                            Text(
-                                text = "Characters:",
-                                style = MaterialTheme.typography.headlineSmall,
-                            )
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                gallery.characters.forEach {
-                                    Text(
-                                        text = it,
-                                        modifier = Modifier
-                                            .clickable {
-                                                val formatted = it.replace(" ", "+")
-                                                navController.navigate("search?query=${formatted}")
-                                            },
-                                        style = MaterialTheme.typography.bodyLarge,
-                                    )
-                                }
-                            }
-                        }
-
-                        if (gallery.artists.isNotEmpty()) {
-                            Text(
-                                text = "Artists:",
-                                style = MaterialTheme.typography.headlineSmall,
-                            )
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                gallery.artists.forEach {
-                                    Text(
-                                        text = it,
-                                        modifier = Modifier
-                                            .clickable {
-                                                val formatted = it.replace(" ", "+")
-                                                navController.navigate("search?query=${formatted}")
-                                            },
-                                        style = MaterialTheme.typography.bodyLarge,
-                                    )
-                                }
-                            }
-                        }
-
-                        Text(
-                            text = "Pages: ${gallery.pages}",
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        StatusControls(status, onUpdateStatus = { newStatus, isFav ->
-                            viewModel.updateStatus(id, newStatus, isFav)
-                        })
                     }
+
+                    if (gallery.artists.isNotEmpty()) {
+                        Text(
+                            text = "Artists:",
+                            style = MaterialTheme.typography.headlineSmall,
+                        )
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            gallery.artists.forEach {
+                                Text(
+                                    text = it,
+                                    modifier = Modifier.clickable {
+                                        val formatted = it.replace(" ", "+")
+                                        navController.navigate("search?query=${formatted}")
+                                    },
+                                    style = MaterialTheme.typography.bodyLarge,
+                                )
+                            }
+                        }
+                    }
+
+                    Text(
+                        text = "Pages: ${gallery.pages}",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+
+                    StatusControls(status, onUpdateStatus = { newStatus, isFav ->
+                        viewModel.updateStatus(id, newStatus, isFav)
+                    })
                 }
 
-                items(gallery.pages) { pageIndex ->
+                for (pageIndex in 0 until gallery.pages) {
                     val imageUrl = when (gallery.imageType) {
                         ImageType.Jpg -> "https://i1.nhentai.net/galleries/${gallery.pagesId}/${pageIndex + 1}.jpg"
                         ImageType.Webp -> "https://i4.nhentai.net/galleries/${gallery.pagesId}/${pageIndex + 1}.webp"
