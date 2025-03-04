@@ -73,7 +73,7 @@ class MainActivity : ComponentActivity() {
                     .crossfade(true)
                     .memoryCache {
                         MemoryCache.Builder()
-                            .maxSizePercent(context, 0.5)
+                            .maxSizePercent(context, 0.2)
                             .build()
                     }
                     .diskCache {
@@ -174,7 +174,7 @@ fun AppNavHost(navController: NavHostController) {
             )
         ) { backStackEntry ->
             val id = backStackEntry.arguments?.getInt("id")!!
-            GalleryScreen(id)
+            GalleryScreen(id, navController)
         }
         composable(
             route = "search?query={query}",

@@ -2,9 +2,12 @@ package com.dublikunt.dmclient.screen
 
 import android.app.Application
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -44,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import com.dublikunt.dmclient.component.GalleryPageCard
@@ -63,26 +67,18 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val db = AppDatabase.getDatabase(application)
     private val statusDao = db.galleryStatusDao()
 
-    private val _gallery = MutableStateFlow<GalleryFullInfo?>(null)
-    val gallery: StateFlow<GalleryFullInfo?> = _gallery
-
-    private val _selectedPage = MutableStateFlow<Int?>(null)
-    val selectedPage: StateFlow<Int?> = _selectedPage
-
-    private val _status = MutableStateFlow<GalleryStatus?>(null)
-    val status: StateFlow<GalleryStatus?> = _status
-
-    private val _errorState = MutableStateFlow<String?>(null)
-    val errorState: StateFlow<String?> = _errorState
+    private val _galleryState = MutableStateFlow<GalleryState>(GalleryState.Loading)
+    val galleryState: StateFlow<GalleryState> = _galleryState
 
     fun fetchGallery(id: Int) {
         viewModelScope.launch(Dispatchers.IO) {
-            try {
-                _gallery.value = NHentaiApi.fetchGallery(id)
-                _status.value = statusDao.getStatus(id)
-                _errorState.value = null
-            } catch (e: Exception) {
-                _errorState.value = "Failed to load gallery. Please try again."
+            val gallery = NHentaiApi.fetchGallery(id)
+            if (gallery != null) {
+                val status = statusDao.getStatus(id)
+                _galleryState.value = GalleryState.Success(gallery, status)
+            } else {
+                _galleryState.value =
+                    GalleryState.Error("Failed to load gallery. Please try again.")
             }
         }
     }
@@ -91,93 +87,181 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch(Dispatchers.IO) {
             val updatedStatus = GalleryStatus(id, newStatus, isFavorite)
             statusDao.insertStatus(updatedStatus)
-            _status.value = updatedStatus
+            _galleryState.value =
+                (_galleryState.value as? GalleryState.Success)?.copy(status = updatedStatus)
+                    ?: _galleryState.value
         }
     }
 
     fun selectPage(page: Int?) {
-        _selectedPage.value = page
+        _galleryState.value =
+            (_galleryState.value as? GalleryState.Success)?.copy(selectedPage = page)
+                ?: _galleryState.value
     }
 }
 
+sealed class GalleryState {
+    data object Loading : GalleryState()
+    data class Success(
+        val gallery: GalleryFullInfo,
+        val status: GalleryStatus?,
+        val selectedPage: Int? = null
+    ) : GalleryState()
+
+    data class Error(val message: String) : GalleryState()
+}
+
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun GalleryScreen(id: Int, viewModel: GalleryViewModel = viewModel()) {
+fun GalleryScreen(
+    id: Int,
+    navController: NavHostController,
+    viewModel: GalleryViewModel = viewModel()
+) {
     val context = LocalContext.current
-    val gallery by viewModel.gallery.collectAsState()
-    val selectedPage by viewModel.selectedPage.collectAsState()
-    val status by viewModel.status.collectAsState()
-    val errorState by viewModel.errorState.collectAsState()
+    val galleryState by viewModel.galleryState.collectAsState()
 
     LaunchedEffect(id) {
         viewModel.fetchGallery(id)
     }
 
-    if (errorState != null) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = errorState ?: "",
-                    color = Color.Red,
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(16.dp)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(onClick = { viewModel.fetchGallery(id) }) {
-                    Text(text = "Retry")
+    when (val state = galleryState) {
+        is GalleryState.Loading -> {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
+
+        is GalleryState.Error -> {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = state.message,
+                        color = Color.Red,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(onClick = { viewModel.fetchGallery(id) }) {
+                        Text(text = "Retry")
+                    }
                 }
             }
         }
-    } else if (gallery == null) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
-    } else {
-        Box(modifier = Modifier.fillMaxSize()) {
-            LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Top) {
+
+        is GalleryState.Success -> {
+            val gallery = state.gallery
+            val selectedPage = state.selectedPage
+            val status = state.status
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.Top
+            ) {
                 item {
-                    AsyncImage(
-                        model = ImageRequest.Builder(context)
-                            .data(gallery!!.thumb)
-                            .build(),
-                        contentDescription = gallery!!.name,
+                    Column(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp)
-                            .clip(RoundedCornerShape(12.dp)),
-                        contentScale = ContentScale.Crop
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        text = gallery!!.name,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            .padding(16.dp)
+                            .fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Spacer(modifier = Modifier.height(16.dp))
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(gallery.thumb)
+                                .build(),
+                            contentDescription = gallery.name,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp)
+                                .clip(RoundedCornerShape(12.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+
                         Text(
-                            text = "Pages: ${gallery!!.pages}",
+                            text = gallery.name,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Text(
+                            text = "Tags:",
+                            style = MaterialTheme.typography.headlineSmall,
+                        )
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            gallery.tags.forEach {
+                                Text(
+                                    text = it,
+                                    modifier = Modifier
+                                        .clickable {
+                                            val formatted = it.replace(" ", "+")
+                                            navController.navigate("search?query=${formatted}")
+                                        },
+                                    style = MaterialTheme.typography.bodyLarge,
+                                )
+                            }
+                        }
+
+                        if (gallery.characters.isNotEmpty()) {
+                            Text(
+                                text = "Characters:",
+                                style = MaterialTheme.typography.headlineSmall,
+                            )
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                gallery.characters.forEach {
+                                    Text(
+                                        text = it,
+                                        modifier = Modifier
+                                            .clickable {
+                                                val formatted = it.replace(" ", "+")
+                                                navController.navigate("search?query=${formatted}")
+                                            },
+                                        style = MaterialTheme.typography.bodyLarge,
+                                    )
+                                }
+                            }
+                        }
+
+                        if (gallery.artists.isNotEmpty()) {
+                            Text(
+                                text = "Artists:",
+                                style = MaterialTheme.typography.headlineSmall,
+                            )
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                gallery.artists.forEach {
+                                    Text(
+                                        text = it,
+                                        modifier = Modifier
+                                            .clickable {
+                                                val formatted = it.replace(" ", "+")
+                                                navController.navigate("search?query=${formatted}")
+                                            },
+                                        style = MaterialTheme.typography.bodyLarge,
+                                    )
+                                }
+                            }
+                        }
+
+                        Text(
+                            text = "Pages: ${gallery.pages}",
                             style = MaterialTheme.typography.bodyMedium,
                         )
                         StatusControls(status, onUpdateStatus = { newStatus, isFav ->
                             viewModel.updateStatus(id, newStatus, isFav)
                         })
                     }
-
-                    Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                items(gallery!!.pages) { pageIndex ->
-                    val imageUrl = when (gallery!!.imageType) {
-                        ImageType.Jpg -> "https://i1.nhentai.net/galleries/${gallery!!.pagesId}/${pageIndex + 1}.jpg"
-                        ImageType.Webp -> "https://i4.nhentai.net/galleries/${gallery!!.pagesId}/${pageIndex + 1}.webp"
+                items(gallery.pages) { pageIndex ->
+                    val imageUrl = when (gallery.imageType) {
+                        ImageType.Jpg -> "https://i1.nhentai.net/galleries/${gallery.pagesId}/${pageIndex + 1}.jpg"
+                        ImageType.Webp -> "https://i4.nhentai.net/galleries/${gallery.pagesId}/${pageIndex + 1}.webp"
                     }
-
                     GalleryPageCard(imageUrl, pageIndex + 1) {
                         viewModel.selectPage(pageIndex + 1)
                     }
@@ -185,9 +269,9 @@ fun GalleryScreen(id: Int, viewModel: GalleryViewModel = viewModel()) {
             }
 
             selectedPage?.let { currentPage ->
-                val imageUrl = when (gallery!!.imageType) {
-                    ImageType.Jpg -> "https://i1.nhentai.net/galleries/${gallery!!.pagesId}/${currentPage}.jpg"
-                    ImageType.Webp -> "https://i4.nhentai.net/galleries/${gallery!!.pagesId}/${currentPage}.webp"
+                val imageUrl = when (gallery.imageType) {
+                    ImageType.Jpg -> "https://i1.nhentai.net/galleries/${gallery.pagesId}/${currentPage}.jpg"
+                    ImageType.Webp -> "https://i4.nhentai.net/galleries/${gallery.pagesId}/${currentPage}.webp"
                 }
 
                 BackHandler { viewModel.selectPage(null) }
@@ -195,10 +279,10 @@ fun GalleryScreen(id: Int, viewModel: GalleryViewModel = viewModel()) {
                 GalleryPageViewer(
                     imageUrl = imageUrl,
                     pageIndex = currentPage,
-                    totalPages = gallery!!.pages,
+                    totalPages = gallery.pages,
                     onClose = { viewModel.selectPage(null) },
                     onNextPage = {
-                        if (currentPage < gallery!!.pages) viewModel.selectPage(currentPage + 1)
+                        if (currentPage < gallery.pages) viewModel.selectPage(currentPage + 1)
                     },
                     onPreviousPage = {
                         if (currentPage > 1) viewModel.selectPage(currentPage - 1)
