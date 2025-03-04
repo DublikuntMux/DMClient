@@ -36,6 +36,7 @@ import com.dublikunt.dmclient.scrapper.NHentaiApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 
 class SearchResultViewModel(application: Application) : AndroidViewModel(application) {
@@ -57,7 +58,9 @@ class SearchResultViewModel(application: Application) : AndroidViewModel(applica
         isLoading = true
         scope.launch {
             try {
-                val fetched = NHentaiApi.search(query, currentPage)
+                val fetched = withContext(Dispatchers.IO) {
+                    NHentaiApi.search(query, currentPage)
+                }
                 if (fetched.isNotEmpty()) {
                     stateList.addAll(fetched)
                     currentPage++

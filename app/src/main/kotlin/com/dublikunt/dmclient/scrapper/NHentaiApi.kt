@@ -115,7 +115,32 @@ object NHentaiApi {
             else -> return null
         }
 
-        return GalleryFullInfo(id, cover, name, pages, galleryId, imageType)
+        val tags = mutableListOf<String>()
+        doc.select("div.tag-container:contains(Tags) .tags a span.name").forEach {
+            tags.add(it.text())
+        }
+
+        val artists = mutableListOf<String>()
+        doc.select("div.tag-container:contains(Artists) .tags a span.name").forEach {
+            artists.add(it.text())
+        }
+
+        val characters = mutableListOf<String>()
+        doc.select("div.tag-container:contains(Characters) .tags a span.name").forEach {
+            characters.add(it.text())
+        }
+
+        return GalleryFullInfo(
+            id,
+            cover,
+            name,
+            tags,
+            artists,
+            characters,
+            pages,
+            galleryId,
+            imageType
+        )
     }
 
     fun getAllTags(): List<String> {

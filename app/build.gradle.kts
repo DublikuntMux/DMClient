@@ -35,26 +35,24 @@ android {
                 "proguard-rules.pro"
             )
 
-            packaging {
-                excludes += setOf(
-                    "DebugProbesKt.bin",
-                    "kotlin-tooling-metadata.json",
-                    "META-INF/*.txt",
-                    "META-INF/*.md",
-                    "META-INF/*.version",
-                    "META-INF/*.textproto",
-                    "META-INF/DEPENDENCIES",
-                    "META-INF/LICENSE",
-                    "META-INF/LICENSE.txt",
-                    "META-INF/androidx/annotation/annotation/LICENSE.txt",
-                    "okhttp3/internal/publicsuffix/NOTICE",
-                    "META-INF/license.html",
-                    "META-INF/NOTICE",
-                    "META-INF/NOTICE.txt",
-                    "META-INF/notice.html",
-                    "META-INF/ASL2.0"
-                )
-            }
+            packaging.resources.excludes += setOf(
+                "DebugProbesKt.bin",
+                "kotlin-tooling-metadata.json",
+                "META-INF/*.txt",
+                "META-INF/*.md",
+                "META-INF/*.version",
+                "META-INF/*.textproto",
+                "META-INF/DEPENDENCIES",
+                "META-INF/LICENSE",
+                "META-INF/LICENSE.txt",
+                "META-INF/androidx/annotation/annotation/LICENSE.txt",
+                "okhttp3/internal/publicsuffix/NOTICE",
+                "META-INF/license.html",
+                "META-INF/NOTICE",
+                "META-INF/NOTICE.txt",
+                "META-INF/notice.html",
+                "META-INF/ASL2.0"
+            )
         }
         debug {
             applicationIdSuffix = ".debug"
