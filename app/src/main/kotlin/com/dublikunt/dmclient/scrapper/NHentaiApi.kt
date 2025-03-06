@@ -143,26 +143,28 @@ object NHentaiApi {
         )
     }
 
-    fun getAllTags(): List<String> {
-        val tags = mutableListOf<String>()
-        var maxPages = 1
-        val countResponse = fetchData("$BASE_URL/tags") ?: return emptyList()
-
+    private fun fetchAllEntries(endpoint: String): List<String> {
+        val entries = mutableListOf<String>()
+        val countResponse = fetchData("$BASE_URL/$endpoint") ?: return emptyList()
         val countDoc = Jsoup.parse(countResponse)
-        countDoc.select(".alphabetical-pagination li a").forEach {
-            if (it.text() == "Z") {
-                val url = it.attr("href")
-                maxPages = url.removePrefix("/tags/?page=").removeSuffix("#Z").toInt()
+        val maxPages = countDoc.select(".alphabetical-pagination li a")
+            .find { it.text() == "Z" }
+            ?.attr("href")
+            ?.removePrefix("/$endpoint/?page=")
+            ?.removeSuffix("#Z")
+            ?.toIntOrNull() ?: 1
+
+        for (i in 0..maxPages) {
+            fetchData("$BASE_URL/$endpoint?page=$i")?.let {
+                Jsoup.parse(it).select("span.name").forEach { span -> entries.add(span.text()) }
             }
         }
-
-        for (i in 0 until maxPages + 1) {
-            val pageResponse = fetchData("$BASE_URL/tags?page=${i}") ?: continue
-            val pageDoc = Jsoup.parse(pageResponse)
-            pageDoc.select("span.name").forEach { tags.add(it.text()) }
-        }
-        return tags.distinct()
+        return entries.distinct()
     }
+
+    fun getAllTags(): List<String> = fetchAllEntries("tags")
+    fun getAllArtists(): List<String> = fetchAllEntries("artists")
+    fun getAllCharacters(): List<String> = fetchAllEntries("characters")
 
     fun search(query: String, page: Int? = null): List<GallerySimpleInfo> {
         var url = "${BASE_URL}/search/?q=${query}"
