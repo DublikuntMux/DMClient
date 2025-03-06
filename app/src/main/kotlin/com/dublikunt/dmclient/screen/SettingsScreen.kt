@@ -48,7 +48,7 @@ fun SettingsScreen() {
     var showDeleteTokenDialog by remember { mutableStateOf(false) }
     var showClearHistoryDialog by remember { mutableStateOf(false) }
     var showClearImageCacheDialog by remember { mutableStateOf(false) }
-    var showClearTagsCacheDialog by remember { mutableStateOf(false) }
+    var showClearSearchCacheDialog by remember { mutableStateOf(false) }
     var showSnackbarMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
@@ -101,8 +101,8 @@ fun SettingsScreen() {
                 SettingsButton("Clear Image Cache", "Clear") {
                     showClearImageCacheDialog = true
                 }
-                SettingsButton("Clear Tags Cache", "Delete") {
-                    showClearTagsCacheDialog = true
+                SettingsButton("Clear Search Cache", "Delete") {
+                    showClearSearchCacheDialog = true
                 }
             }
         }
@@ -188,32 +188,34 @@ fun SettingsScreen() {
         )
     }
 
-    if (showClearTagsCacheDialog) {
+    if (showClearSearchCacheDialog) {
         AlertDialog(
-            onDismissRequest = { showClearTagsCacheDialog = false },
+            onDismissRequest = { showClearSearchCacheDialog = false },
             title = { Text("Confirm Delete") },
-            text = { Text("Are you sure you want to clear tags cache? This may remove stored images.") },
+            text = { Text("Are you sure you want to clear search cache?") },
             confirmButton = {
                 TextButton(onClick = {
-                    showClearTagsCacheDialog = false
+                    showClearSearchCacheDialog = false
                     scope.launch {
-                        val status = withContext(Dispatchers.IO) {
+                         withContext(Dispatchers.IO) {
+                            val artists = File(context.filesDir, "artists.json")
+                            val characters = File(context.filesDir, "characters.json")
                             val tags = File(context.filesDir, "tags.json")
-                            if (tags.exists()) {
+
+                            if (artists.exists())
+                                artists.delete()
+                            if (characters.exists())
+                                characters.delete()
+                            if (tags.exists())
                                 tags.delete()
-                            } else {
-                                true
-                            }
                         }
-                        showSnackbarMessage =
-                            if (status) "Cache cleared successfully." else "Error when clear cache!"
                     }
                 }) {
                     Text("Confirm")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showClearTagsCacheDialog = false }) {
+                TextButton(onClick = { showClearSearchCacheDialog = false }) {
                     Text("Cancel")
                 }
             }
