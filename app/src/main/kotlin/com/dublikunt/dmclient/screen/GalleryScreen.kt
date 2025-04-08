@@ -166,7 +166,7 @@ fun GalleryScreen(
                 state = scrollState
             ) {
 
-                item{
+                item {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -257,7 +257,7 @@ fun GalleryScreen(
                     }
                 }
 
-                items(gallery.pages) {pageIndex ->
+                items(gallery.pages) { pageIndex ->
                     val imageUrl = when (gallery.imageType) {
                         ImageType.Jpg -> "https://i1.nhentai.net/galleries/${gallery.pagesId}/${pageIndex + 1}.jpg"
                         ImageType.Webp -> "https://i4.nhentai.net/galleries/${gallery.pagesId}/${pageIndex + 1}.webp"

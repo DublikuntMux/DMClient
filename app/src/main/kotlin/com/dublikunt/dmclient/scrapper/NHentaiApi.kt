@@ -6,13 +6,6 @@ import okhttp3.Request
 import okio.IOException
 import org.jsoup.Jsoup
 
-enum class ContentLanguage {
-    All,
-    English,
-    Japanese,
-    Chinese,
-}
-
 object NHentaiApi {
     const val BASE_URL = "https://nhentai.net"
     const val USER_AGENT =
