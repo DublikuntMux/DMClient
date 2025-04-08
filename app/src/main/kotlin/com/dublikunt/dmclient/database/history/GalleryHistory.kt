@@ -8,4 +8,5 @@ data class GalleryHistory(
     @PrimaryKey val id: Int,
     val coverUrl: String,
     val name: String,
+    val timestamp: Long = System.currentTimeMillis()
 )

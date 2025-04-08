@@ -39,7 +39,7 @@ import com.dublikunt.dmclient.scrapper.GallerySimpleInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-class HistoryViewModel(application: Application) : AndroidViewModel(application) {
+class StatusesViewModel(application: Application) : AndroidViewModel(application) {
     private val db = AppDatabase.getDatabase(application)
     private val historyDao = db.galleryHistoryDao()
     private val statusDao = db.galleryStatusDao()
@@ -62,7 +62,7 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
 }
 
 @Composable
-fun HistoryScreen(navController: NavHostController, viewModel: HistoryViewModel = viewModel()) {
+fun StatusesScreen(navController: NavHostController, viewModel: StatusesViewModel = viewModel()) {
     val historyList by viewModel.historyList.observeAsState(emptyList())
     val scrollState = rememberLazyGridState()
 
@@ -79,30 +79,32 @@ fun HistoryScreen(navController: NavHostController, viewModel: HistoryViewModel 
         state = scrollState,
     ) {
         items(historyList) { galleryHistory ->
-            Box(modifier = Modifier.fillMaxSize()) {
-                GalleryCard(
-                    GallerySimpleInfo(
-                        galleryHistory.id,
-                        galleryHistory.coverUrl,
-                        galleryHistory.name
-                    ),
-                    navController,
-                    viewModel.statusMap.value[galleryHistory.id]?.status,
-                    viewModel.statusMap.value[galleryHistory.id]?.favorite ?: false
-                )
+            if (viewModel.statusMap.value[galleryHistory.id] != null) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    GalleryCard(
+                        GallerySimpleInfo(
+                            galleryHistory.id,
+                            galleryHistory.coverUrl,
+                            galleryHistory.name
+                        ),
+                        navController,
+                        viewModel.statusMap.value[galleryHistory.id]?.status,
+                        viewModel.statusMap.value[galleryHistory.id]?.favorite ?: false
+                    )
 
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .background(
-                            color = MaterialTheme.colorScheme.background.copy(alpha = 0.6f),
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                ) {
-                    IconButton(
-                        onClick = { viewModel.removeGalleryFromHistory(galleryHistory) }
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .background(
+                                color = MaterialTheme.colorScheme.background.copy(alpha = 0.6f),
+                                shape = RoundedCornerShape(8.dp)
+                            )
                     ) {
-                        Icon(Icons.Rounded.Delete, contentDescription = "Delete")
+                        IconButton(
+                            onClick = { viewModel.removeGalleryFromHistory(galleryHistory) }
+                        ) {
+                            Icon(Icons.Rounded.Delete, contentDescription = "Delete")
+                        }
                     }
                 }
             }

@@ -92,7 +92,7 @@ fun Modifier.verticalListScrollbar(
             val visibleItemsCount = state.layoutInfo.visibleItemsInfo.size
 
             val scrollbarOffsetY =
-                (firstVisibleElementIndex.toFloat() / totalItemsCount) * size.height
+                (firstVisibleElementIndex / totalItemsCount) * size.height
             val calculatedHeight = (visibleItemsCount.toFloat() / totalItemsCount) * size.height
             val scrollbarHeight = maxOf(calculatedHeight, minHeightPx)
 

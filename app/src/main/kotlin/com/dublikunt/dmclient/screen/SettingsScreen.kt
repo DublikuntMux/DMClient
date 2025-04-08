@@ -197,7 +197,7 @@ fun SettingsScreen() {
                 TextButton(onClick = {
                     showClearSearchCacheDialog = false
                     scope.launch {
-                         withContext(Dispatchers.IO) {
+                        withContext(Dispatchers.IO) {
                             val artists = File(context.filesDir, "artists.json")
                             val characters = File(context.filesDir, "characters.json")
                             val tags = File(context.filesDir, "tags.json")

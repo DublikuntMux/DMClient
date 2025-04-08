@@ -18,6 +18,7 @@ import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -59,6 +60,7 @@ import com.dublikunt.dmclient.screen.HomeScreen
 import com.dublikunt.dmclient.screen.SearchResultScreen
 import com.dublikunt.dmclient.screen.SearchScreen
 import com.dublikunt.dmclient.screen.SettingsScreen
+import com.dublikunt.dmclient.screen.StatusesScreen
 import com.dublikunt.dmclient.ui.theme.DMClientTheme
 import kotlinx.coroutines.launch
 
@@ -96,6 +98,7 @@ enum class Screen(val route: String, val title: String, val icon: ImageVector) {
     Home("home", "Home", Icons.Rounded.Home),
     Search("search", "Search", Icons.Rounded.Search),
     History("history", "History", Icons.Rounded.Menu),
+    Statuses("statuses", "Statuses", Icons.Rounded.Star),
     Settings("settings", "Settings", Icons.Rounded.Settings),
 }
 
@@ -162,6 +165,7 @@ fun AppNavHost(navController: NavHostController) {
     NavHost(navController, startDestination = Screen.Home.route) {
         composable(Screen.Home.route) { HomeScreen(navController) }
         composable(Screen.History.route) { HistoryScreen(navController) }
+        composable(Screen.Statuses.route) { StatusesScreen(navController) }
         composable(Screen.Search.route) { SearchScreen(navController) }
         composable(Screen.Settings.route) { SettingsScreen() }
         composable(

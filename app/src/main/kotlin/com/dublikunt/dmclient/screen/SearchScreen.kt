@@ -150,111 +150,116 @@ fun SearchScreen(navController: NavHostController, viewModel: SearchViewModel = 
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
-            ) {
-                Text(text = "Search:", style = MaterialTheme.typography.headlineMedium)
-                Spacer(modifier = Modifier.height(8.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
+            Text(text = "Search:", style = MaterialTheme.typography.headlineMedium)
+            Spacer(modifier = Modifier.height(8.dp))
 
-                OutlinedTextField(
-                    singleLine = true,
-                    value = searchQuery.value,
-                    onValueChange = { searchQuery.value = it },
-                    label = { Text("Query") },
-                    modifier = Modifier.fillMaxWidth(),
-                    trailingIcon = {
-                        IconButton(onClick = {
-                            val query = concatenateStrings(
-                                searchQuery.value,
-                                selectedTags,
-                                selectedArtists,
-                                selectedCharacters
-                            )
-                            navController.navigate("search?query=${query}")
-                        }) {
-                            Icon(Icons.Rounded.Search, contentDescription = "Search")
-                        }
-                    }
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                TabRow(selectedTabIndex = selectedTab) {
-                    Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) {
-                        Text("Tags")
-                    }
-                    Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }) {
-                        Text("Artists")
-                    }
-                    Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }) {
-                        Text("Characters")
-                    }
-                    Tab(selected = selectedTab == 3, onClick = { selectedTab = 3 }) {
-                        Text("Selected")
+            OutlinedTextField(
+                singleLine = true,
+                value = searchQuery.value,
+                onValueChange = { searchQuery.value = it },
+                label = { Text("Query") },
+                modifier = Modifier.fillMaxWidth(),
+                trailingIcon = {
+                    IconButton(onClick = {
+                        val query = concatenateStrings(
+                            searchQuery.value,
+                            selectedTags,
+                            selectedArtists,
+                            selectedCharacters
+                        )
+                        navController.navigate("search?query=${query}")
+                    }) {
+                        Icon(Icons.Rounded.Search, contentDescription = "Search")
                     }
                 }
+            )
 
-                Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-                when (selectedTab) {
-                    0 -> {
-                        OutlinedTextField(
-                            singleLine = true,
-                            value = tagSearchQuery.value,
-                            onValueChange = { tagSearchQuery.value = it },
-                            label = { Text("Search Tags") },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        TagGrid(selectedTags, viewModel.tags, tagSearchQuery.value, scrollState)
-                    }
-
-                    1 -> {
-                        OutlinedTextField(
-                            singleLine = true,
-                            value = artistSearchQuery.value,
-                            onValueChange = { artistSearchQuery.value = it },
-                            label = { Text("Search Artists") },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        TagGrid(
-                            selectedArtists,
-                            viewModel.artists,
-                            artistSearchQuery.value,
-                            scrollState
-                        )
-                    }
-
-                    2 -> {
-                        OutlinedTextField(
-                            singleLine = true,
-                            value = characterSearchQuery.value,
-                            onValueChange = { characterSearchQuery.value = it },
-                            label = { Text("Search Characters") },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        TagGrid(
-                            selectedCharacters,
-                            viewModel.characters,
-                            characterSearchQuery.value,
-                            scrollState
-                        )
-                    }
-
-                    3 -> {
-                        SelectedItemsGrid(selectedTags, selectedArtists, selectedCharacters)
-                    }
+            TabRow(selectedTabIndex = selectedTab) {
+                Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) {
+                    Text("Tags")
+                }
+                Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }) {
+                    Text("Artists")
+                }
+                Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }) {
+                    Text("Characters")
+                }
+                Tab(selected = selectedTab == 3, onClick = { selectedTab = 3 }) {
+                    Text("Selected")
                 }
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            when (selectedTab) {
+                0 -> {
+                    OutlinedTextField(
+                        singleLine = true,
+                        value = tagSearchQuery.value,
+                        onValueChange = { tagSearchQuery.value = it },
+                        label = { Text("Search Tags") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TagGrid(selectedTags, viewModel.tags, tagSearchQuery.value, scrollState)
+                }
+
+                1 -> {
+                    OutlinedTextField(
+                        singleLine = true,
+                        value = artistSearchQuery.value,
+                        onValueChange = { artistSearchQuery.value = it },
+                        label = { Text("Search Artists") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TagGrid(
+                        selectedArtists,
+                        viewModel.artists,
+                        artistSearchQuery.value,
+                        scrollState
+                    )
+                }
+
+                2 -> {
+                    OutlinedTextField(
+                        singleLine = true,
+                        value = characterSearchQuery.value,
+                        onValueChange = { characterSearchQuery.value = it },
+                        label = { Text("Search Characters") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TagGrid(
+                        selectedCharacters,
+                        viewModel.characters,
+                        characterSearchQuery.value,
+                        scrollState
+                    )
+                }
+
+                3 -> {
+                    SelectedItemsGrid(selectedTags, selectedArtists, selectedCharacters)
+                }
+            }
+        }
     }
 }
 
 @Composable
-fun TagGrid(selectedItems: MutableList<String>, items: List<String>, searchQuery: String, scrollState: LazyGridState) {
+fun TagGrid(
+    selectedItems: MutableList<String>,
+    items: List<String>,
+    searchQuery: String,
+    scrollState: LazyGridState
+) {
     LazyVerticalGrid(
         state = scrollState,
         columns = GridCells.Adaptive(minSize = 100.dp),
@@ -278,7 +283,11 @@ fun TagGrid(selectedItems: MutableList<String>, items: List<String>, searchQuery
 }
 
 @Composable
-fun SelectedItemsGrid(selectedTags: List<String>, selectedArtists: List<String>, selectedCharacters: List<String>) {
+fun SelectedItemsGrid(
+    selectedTags: List<String>,
+    selectedArtists: List<String>,
+    selectedCharacters: List<String>
+) {
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 100.dp),
         modifier = Modifier
@@ -320,7 +329,12 @@ fun TagButton(tag: String, selectedTags: MutableList<String>) {
     }
 }
 
-fun concatenateStrings(inputString: String, tags: List<String>, artists: List<String>, characters: List<String>): String {
+fun concatenateStrings(
+    inputString: String,
+    tags: List<String>,
+    artists: List<String>,
+    characters: List<String>
+): String {
     val formattedInput = inputString.takeIf { it.isNotEmpty() }?.replace(" ", "+") ?: ""
 
     val formattedTags = tags.filter { it.isNotEmpty() }
