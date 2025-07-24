@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 buildscript {
     repositories {
         google()
@@ -13,16 +15,23 @@ plugins {
     alias(libs.plugins.androidx.room)
 }
 
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_11)
+        javaParameters.set(true)
+    }
+}
+
 android {
     namespace = "com.dublikunt.dmclient"
     compileSdk = 36
 
     defaultConfig {
         applicationId = "com.dublikunt.dmclient"
-        minSdk = 24
+        minSdk = 28
         targetSdk = 36
-        versionCode = 4
-        versionName = "0.4.0"
+        versionCode = 5
+        versionName = "0.5.0"
         multiDexEnabled = true
     }
 
@@ -63,10 +72,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
-    }
-
-    kotlinOptions {
-        jvmTarget = "11"
     }
 
     buildFeatures {
