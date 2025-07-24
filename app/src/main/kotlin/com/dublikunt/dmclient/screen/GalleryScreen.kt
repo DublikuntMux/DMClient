@@ -56,7 +56,6 @@ import com.dublikunt.dmclient.component.GalleryPageViewer
 import com.dublikunt.dmclient.database.AppDatabase
 import com.dublikunt.dmclient.database.status.GalleryStatus
 import com.dublikunt.dmclient.database.status.Status
-import com.dublikunt.dmclient.modifier.verticalListScrollbar
 import com.dublikunt.dmclient.scrapper.GalleryFullInfo
 import com.dublikunt.dmclient.scrapper.ImageType
 import com.dublikunt.dmclient.scrapper.NHentaiApi
@@ -160,7 +159,6 @@ fun GalleryScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalListScrollbar(scrollState)
                     .padding(vertical = 16.dp),
                 verticalArrangement = Arrangement.Top,
                 state = scrollState

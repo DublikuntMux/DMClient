@@ -13,6 +13,7 @@ object PreferenceHelper {
     private val SESSION_AFFINITY_KEY = stringPreferencesKey("session_affinity")
     private val CSRF_TOKEN_KEY = stringPreferencesKey("csrftoken")
     private val PREFERRED_LANGUAGE_KEY = stringPreferencesKey("preferred_language")
+    private val PIN_CODE_KEY = stringPreferencesKey("pin_code")
 
     suspend fun saveTokens(context: Context, session: String, token: String) {
         context.dataStore.edit { preferences ->
@@ -49,6 +50,18 @@ object PreferenceHelper {
     fun getPreferredLanguage(context: Context): Flow<String?> {
         return context.dataStore.data.map { preferences ->
             preferences[PREFERRED_LANGUAGE_KEY]
+        }
+    }
+
+    suspend fun savePinCode(context: Context, pin: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PIN_CODE_KEY] = pin
+        }
+    }
+
+    fun getPinCode(context: Context): Flow<String?> {
+        return context.dataStore.data.map { preferences ->
+            preferences[PIN_CODE_KEY]
         }
     }
 }

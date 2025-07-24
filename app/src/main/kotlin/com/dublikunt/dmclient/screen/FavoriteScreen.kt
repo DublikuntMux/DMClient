@@ -34,7 +34,6 @@ import com.dublikunt.dmclient.component.GalleryCard
 import com.dublikunt.dmclient.database.AppDatabase
 import com.dublikunt.dmclient.database.history.GalleryHistory
 import com.dublikunt.dmclient.database.status.GalleryStatus
-import com.dublikunt.dmclient.modifier.verticalGridScrollbar
 import com.dublikunt.dmclient.scrapper.GallerySimpleInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -73,8 +72,7 @@ fun StatusesScreen(navController: NavHostController, viewModel: StatusesViewMode
     LazyVerticalGrid(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
-            .verticalGridScrollbar(scrollState),
+            .padding(16.dp),
         columns = GridCells.Adaptive(minSize = 128.dp),
         state = scrollState,
     ) {
