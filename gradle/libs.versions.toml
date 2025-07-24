@@ -1,26 +1,28 @@
 [versions]
-agp = "8.9.1"
-kotlin = "2.1.20"
-kotlin-serialization = "1.8.1"
-ksp = "2.1.10-1.0.30"
-coreKtx = "1.15.0"
-lifecycleKtx = "2.8.7"
+agp = "8.11.1"
+biometric = "1.4.0-alpha04"
+kotlin = "2.2.0"
+kotlin-serialization = "1.9.0"
+ksp = "2.2.0-2.0.2"
+coreKtx = "1.16.0"
+lifecycleKtx = "2.9.2"
 activityCompose = "1.10.1"
-composeBom = "2025.03.01"
-permissions = "0.37.2"
-navigation = "2.8.9"
+composeBom = "2025.07.00"
+permissions = "0.37.3"
+navigation = "2.9.2"
 okhttp = "2.7.5"
-coil = "3.1.0"
-datastore = "1.1.4"
-jsoup = "1.18.3"
-room = "2.6.1"
-runtimeLivedata = "1.7.8"
+coil = "3.3.0"
+datastore = "1.1.7"
+jsoup = "1.21.1"
+room = "2.7.2"
+runtimeLivedata = "1.8.3"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleKtx" }
 androidx-lifecycle-livedata-ktx = { group = "androidx.lifecycle", name = "lifecycle-livedata-ktx", version.ref = "lifecycleKtx" }
 androidx-runtime-livedata = { group = "androidx.compose.runtime", name = "runtime-livedata", version.ref = "runtimeLivedata" }
+androidx-biometric = { module = "androidx.biometric:biometric", version.ref = "biometric" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-ui = { group = "androidx.compose.ui", name = "ui" }

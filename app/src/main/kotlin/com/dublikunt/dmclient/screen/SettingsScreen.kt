@@ -1,6 +1,7 @@
 package com.dublikunt.dmclient.screen
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -49,7 +51,12 @@ fun SettingsScreen() {
     var showClearHistoryDialog by remember { mutableStateOf(false) }
     var showClearImageCacheDialog by remember { mutableStateOf(false) }
     var showClearSearchCacheDialog by remember { mutableStateOf(false) }
+    var showPinDialog by remember { mutableStateOf(false) }
+
     var showSnackbarMessage by remember { mutableStateOf<String?>(null) }
+
+    var pinInput by remember { mutableStateOf("") }
+    var pinInputError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         val languageDeferred =
@@ -88,6 +95,14 @@ fun SettingsScreen() {
                     scope.launch {
                         PreferenceHelper.savePreferredLanguage(context, newLanguage)
                     }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                SettingsSectionHeader("Security")
+                SettingsButton("Set or Change PIN Code", "Set") {
+                    pinInput = ""
+                    pinInputError = null
+                    showPinDialog = true
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -216,6 +231,51 @@ fun SettingsScreen() {
             },
             dismissButton = {
                 TextButton(onClick = { showClearSearchCacheDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showPinDialog) {
+        AlertDialog(
+            onDismissRequest = { showPinDialog = false },
+            title = { Text("Set PIN Code") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = pinInput,
+                        onValueChange = {
+                            pinInput = it.filter { ch -> ch.isDigit() }
+                        },
+                        label = { Text("Enter PIN (4–15 digits)") },
+                        isError = pinInputError != null,
+                        singleLine = true
+                    )
+                    pinInputError?.let { error ->
+                        Text(error, color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val length = pinInput.length
+                    if (length < 4 || length > 15) {
+                        pinInputError = "PIN must be between 4 and 15 digits"
+                        return@TextButton
+                    }
+
+                    scope.launch {
+                        PreferenceHelper.savePinCode(context, pinInput)
+                        showSnackbarMessage = "PIN code set successfully."
+                    }
+                    showPinDialog = false
+                }) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPinDialog = false }) {
                     Text("Cancel")
                 }
             }

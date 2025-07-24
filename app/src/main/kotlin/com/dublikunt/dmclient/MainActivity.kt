@@ -1,7 +1,6 @@
 package com.dublikunt.dmclient
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
@@ -33,7 +32,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -41,6 +45,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.fragment.app.FragmentActivity
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -54,9 +59,11 @@ import coil3.disk.DiskCache
 import coil3.disk.directory
 import coil3.memory.MemoryCache
 import coil3.request.crossfade
+import com.dublikunt.dmclient.database.PreferenceHelper
 import com.dublikunt.dmclient.screen.GalleryScreen
 import com.dublikunt.dmclient.screen.HistoryScreen
 import com.dublikunt.dmclient.screen.HomeScreen
+import com.dublikunt.dmclient.screen.LockScreen
 import com.dublikunt.dmclient.screen.SearchResultScreen
 import com.dublikunt.dmclient.screen.SearchScreen
 import com.dublikunt.dmclient.screen.SettingsScreen
@@ -64,31 +71,52 @@ import com.dublikunt.dmclient.screen.StatusesScreen
 import com.dublikunt.dmclient.ui.theme.DMClientTheme
 import kotlinx.coroutines.launch
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
         setContent {
-            setSingletonImageLoaderFactory { context ->
-                ImageLoader.Builder(context)
-                    .crossfade(true)
-                    .memoryCache {
-                        MemoryCache.Builder()
-                            .maxSizePercent(context, 0.2)
-                            .build()
-                    }
-                    .diskCache {
-                        DiskCache.Builder()
-                            .directory(cacheDir.resolve("image_cache"))
-                            .maxSizeBytes(1 * 1024 * 1024 * 1024)
-                            .build()
-                    }
-                    .build()
-            }
-
             DMClientTheme {
-                MainScreen()
+                var isUnlocked by remember { mutableStateOf(false) }
+                var pinCode by remember { mutableStateOf<String?>(null) }
+
+                LaunchedEffect(Unit) {
+                    PreferenceHelper.getPinCode(this@MainActivity).collect {
+                        if (it == null) {
+                            isUnlocked = true
+                        } else {
+                            pinCode = it
+                        }
+                    }
+                }
+
+                if (isUnlocked) {
+                    setSingletonImageLoaderFactory { context ->
+                        ImageLoader.Builder(context)
+                            .crossfade(true)
+                            .memoryCache {
+                                MemoryCache.Builder()
+                                    .maxSizePercent(context, 0.2)
+                                    .build()
+                            }
+                            .diskCache {
+                                DiskCache.Builder()
+                                    .directory(cacheDir.resolve("image_cache"))
+                                    .maxSizeBytes(1 * 1024 * 1024 * 1024)
+                                    .build()
+                            }
+                            .build()
+                    }
+                    MainScreen()
+                } else {
+                    if (pinCode != null) {
+                        LockScreen(
+                            { isUnlocked = true },
+                            pinCode!!
+                        )
+                    }
+                }
             }
         }
     }
