@@ -81,7 +81,7 @@ object NHentaiApi {
                 ?: return@mapNotNull null
             val imgUrl = a.selectFirst("img.lazyload")?.attr("data-src") ?: return@mapNotNull null
             val name = a.selectFirst("div.caption")?.text().orEmpty()
-            GallerySimpleInfo(id, imgUrl, name)
+            GallerySimpleInfo(id, "https:$imgUrl", name)
         }
     }
 
@@ -90,7 +90,8 @@ object NHentaiApi {
         val info = doc.getElementById("info") ?: return null
 
         val cover =
-            doc.getElementById("cover")?.selectFirst("a img.lazyload")?.attr("data-src").orEmpty()
+            "https:" + doc.getElementById("cover")?.selectFirst("a img.lazyload")?.attr("data-src")
+                .orEmpty()
         val name =
             info.selectFirst("h1.title")?.select("span")?.joinToString(" ") { it.text() }.orEmpty()
         val pages =
