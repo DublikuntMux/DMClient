@@ -1,8 +1,6 @@
 package com.dublikunt.dmclient.screen
 
-import android.annotation.SuppressLint
 import android.content.Context
-import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import androidx.biometric.BiometricPrompt
@@ -44,7 +42,6 @@ import androidx.fragment.app.FragmentActivity
 import com.dublikunt.dmclient.R
 import kotlin.system.exitProcess
 
-@SuppressLint("ServiceCast")
 @Composable
 fun LockScreen(onSuccess: () -> Unit, correctPin: String) {
     val context = LocalContext.current
@@ -157,17 +154,12 @@ fun LockScreen(onSuccess: () -> Unit, correctPin: String) {
                                                 errorMessage =
                                                     "Incorrect PIN. ${maxAttempts - attempts} attempt(s) left."
 
-                                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                                    vibrationService.vibrate(
-                                                        VibrationEffect.createOneShot(
-                                                            300,
-                                                            VibrationEffect.DEFAULT_AMPLITUDE
-                                                        )
+                                                vibrationService.vibrate(
+                                                    VibrationEffect.createOneShot(
+                                                        300,
+                                                        VibrationEffect.DEFAULT_AMPLITUDE
                                                     )
-                                                } else {
-                                                    @Suppress("DEPRECATION")
-                                                    vibrationService.vibrate(300)
-                                                }
+                                                )
                                             }
                                         }
                                     }
@@ -210,7 +202,6 @@ fun MorphingButton(
     }
 }
 
-@SuppressLint("ContextCastToActivity")
 fun authenticateWithBiometrics(
     context: Context,
     onSuccess: () -> Unit,

@@ -149,7 +149,6 @@ fun SearchScreen(navController: NavHostController, viewModel: SearchViewModel = 
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (viewModel.isLoading.value) {
-            // Show loading indicator
             androidx.compose.material3.CircularProgressIndicator(
                 modifier = Modifier
                     .fillMaxSize()
