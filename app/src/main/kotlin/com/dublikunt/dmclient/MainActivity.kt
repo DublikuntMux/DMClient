@@ -59,6 +59,7 @@ import coil3.disk.DiskCache
 import coil3.disk.directory
 import coil3.memory.MemoryCache
 import coil3.request.crossfade
+import com.dublikunt.dmclient.component.AppUpdateChecker
 import com.dublikunt.dmclient.database.PreferenceHelper
 import com.dublikunt.dmclient.screen.GalleryScreen
 import com.dublikunt.dmclient.screen.HistoryScreen
@@ -228,6 +229,8 @@ fun MainScreen() {
     val navController = rememberNavController()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+
+    AppUpdateChecker()
 
     ModalNavigationDrawer(
         drawerState = drawerState,
