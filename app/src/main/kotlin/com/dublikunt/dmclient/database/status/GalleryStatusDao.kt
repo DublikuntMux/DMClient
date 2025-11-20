@@ -11,6 +11,12 @@ interface GalleryStatusDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertStatus(status: GalleryStatus)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertStatuses(statuses: List<GalleryStatus>)
+
+    @Query("SELECT * FROM gallery_status")
+    suspend fun getAllStatuses(): List<GalleryStatus>
+
     @Query("SELECT * FROM gallery_status WHERE id IN (:ids)")
     suspend fun getStatuses(ids: List<Int>): List<GalleryStatus>
 

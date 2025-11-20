@@ -1,5 +1,7 @@
 package com.dublikunt.dmclient.screen
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -29,12 +31,23 @@ import com.dublikunt.dmclient.component.settings.SettingsButton
 import com.dublikunt.dmclient.component.settings.SettingsDropdownButton
 import com.dublikunt.dmclient.database.AppDatabase
 import com.dublikunt.dmclient.database.PreferenceHelper
+import com.dublikunt.dmclient.database.history.GalleryHistory
+import com.dublikunt.dmclient.database.status.GalleryStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import java.io.File
+
+@Serializable
+data class BackupData(
+    val history: List<GalleryHistory>,
+    val status: List<GalleryStatus>
+)
 
 @Composable
 fun SettingsScreen() {
@@ -44,6 +57,7 @@ fun SettingsScreen() {
 
     val db = AppDatabase.getDatabase(context)
     val historyDao = db.galleryHistoryDao()
+    val statusDao = db.galleryStatusDao()
 
     var selectedLanguage by remember { mutableStateOf("all") }
 
@@ -57,6 +71,55 @@ fun SettingsScreen() {
 
     var pinInput by remember { mutableStateOf("") }
     var pinInputError by remember { mutableStateOf<String?>(null) }
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        uri?.let {
+            scope.launch(Dispatchers.IO) {
+                try {
+                    val history = historyDao.getAllHistory()
+                    val statuses = statusDao.getAllStatuses()
+                    val backup = BackupData(history, statuses)
+                    val json = Json.encodeToString(backup)
+
+                    context.contentResolver.openOutputStream(it)?.use { output ->
+                        output.write(json.toByteArray())
+                    }
+                    showSnackbarMessage = "Export successful"
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    showSnackbarMessage = "Export failed: ${e.message}"
+                }
+            }
+        }
+    }
+
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            scope.launch(Dispatchers.IO) {
+                try {
+                    context.contentResolver.openInputStream(it)?.use { input ->
+                        val json = input.bufferedReader().readText()
+                        val backup = Json.decodeFromString<BackupData>(json)
+
+                        if (backup.history.isNotEmpty()) {
+                            historyDao.insertHistories(backup.history)
+                        }
+                        if (backup.status.isNotEmpty()) {
+                            statusDao.insertStatuses(backup.status)
+                        }
+                    }
+                    showSnackbarMessage = "Import successful"
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    showSnackbarMessage = "Import failed: ${e.message}"
+                }
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         val languageDeferred =
@@ -103,6 +166,15 @@ fun SettingsScreen() {
                     pinInput = ""
                     pinInputError = null
                     showPinDialog = true
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                SettingsSectionHeader("Data")
+                SettingsButton("Export Data", "Export") {
+                    exportLauncher.launch("dmclient_backup.json")
+                }
+                SettingsButton("Import Data", "Import") {
+                    importLauncher.launch(arrayOf("application/json"))
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))

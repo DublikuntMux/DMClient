@@ -98,7 +98,7 @@ class MainActivity : FragmentActivity() {
                             .crossfade(true)
                             .memoryCache {
                                 MemoryCache.Builder()
-                                    .maxSizePercent(context, 0.2)
+                                    .maxSizePercent(context, 0.3)
                                     .build()
                             }
                             .diskCache {
