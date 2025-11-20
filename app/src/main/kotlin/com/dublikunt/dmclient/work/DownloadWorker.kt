@@ -62,6 +62,7 @@ class DownloadWorker(
             val baseUrl =
                 if (gallery.imageType == ImageType.Jpg) "https://i1.nhentai.net/galleries/${gallery.pagesId}" else "https://i4.nhentai.net/galleries/${gallery.pagesId}"
 
+            var lastUpdateTime = 0L
             for (i in 1..gallery.pages) {
                 if (isStopped) break
 
@@ -75,8 +76,19 @@ class DownloadWorker(
                     }
                 }
 
-                setProgress(workDataOf(KEY_PROGRESS to i))
-                setForeground(createForegroundInfo(notificationId, gallery.name, i, gallery.pages))
+                val currentTime = System.currentTimeMillis()
+                if (currentTime - lastUpdateTime > 1000 || i == gallery.pages) {
+                    setProgress(workDataOf(KEY_PROGRESS to i))
+                    setForeground(
+                        createForegroundInfo(
+                            notificationId,
+                            gallery.name,
+                            i,
+                            gallery.pages
+                        )
+                    )
+                    lastUpdateTime = currentTime
+                }
             }
 
             if (isStopped) {

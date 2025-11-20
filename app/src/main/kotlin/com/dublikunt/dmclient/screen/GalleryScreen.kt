@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Save
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -67,6 +68,7 @@ import com.dublikunt.dmclient.database.status.Status
 import com.dublikunt.dmclient.scrapper.GalleryFullInfo
 import com.dublikunt.dmclient.scrapper.ImageType
 import com.dublikunt.dmclient.scrapper.NHentaiApi
+import com.dublikunt.dmclient.work.ArchiveWorker
 import com.dublikunt.dmclient.work.DownloadWorker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -88,6 +90,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch(Dispatchers.IO) {
             val downloaded = downloadDao.getById(id)
             val workInfos = workManager.getWorkInfosForUniqueWorkLiveData("download_$id")
+            val archiveInfos = workManager.getWorkInfosForUniqueWorkLiveData("archive_$id")
 
             if (downloaded != null) {
                 val status = statusDao.getStatus(id)
@@ -103,6 +106,16 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                     imageType = if (downloaded.imageType == "Jpg") ImageType.Jpg else ImageType.Webp
                 )
                 _galleryState.value = GalleryState.Success(gallery, status, isDownloaded = true)
+
+                launch(Dispatchers.Main) {
+                    archiveInfos.asFlow().collect { infos ->
+                        val info = infos.firstOrNull()
+                        val isArchiving = info != null && !info.state.isFinished
+                        _galleryState.value =
+                            (_galleryState.value as? GalleryState.Success)?.copy(isArchiving = isArchiving)
+                                ?: _galleryState.value
+                    }
+                }
             } else {
                 val gallery = NHentaiApi.fetchGallery(id)
                 if (gallery != null) {
@@ -142,6 +155,34 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         _galleryState.value =
             (_galleryState.value as? GalleryState.Success)?.copy(selectedPage = page)
                 ?: _galleryState.value
+    }
+
+    fun archiveGallery(gallery: GalleryFullInfo) {
+        val galleryJson = Json.encodeToString(gallery)
+        val workRequest = OneTimeWorkRequestBuilder<ArchiveWorker>()
+            .setInputData(workDataOf(ArchiveWorker.KEY_GALLERY_JSON to galleryJson))
+            .addTag("archive_${gallery.id}")
+            .build()
+
+        workManager.enqueueUniqueWork(
+            "archive_${gallery.id}",
+            androidx.work.ExistingWorkPolicy.KEEP,
+            workRequest
+        )
+
+        _galleryState.value =
+            (_galleryState.value as? GalleryState.Success)?.copy(isArchiving = true)
+                ?: return
+
+        viewModelScope.launch(Dispatchers.Main) {
+            workManager.getWorkInfoByIdLiveData(workRequest.id).asFlow().collect { info ->
+                if (info != null && info.state.isFinished) {
+                    _galleryState.value = (_galleryState.value as? GalleryState.Success)?.copy(
+                        isArchiving = false
+                    ) ?: _galleryState.value
+                }
+            }
+        }
     }
 
     fun downloadGallery(gallery: GalleryFullInfo) {
@@ -211,7 +252,8 @@ sealed class GalleryState {
         val status: GalleryStatus?,
         val selectedPage: Int? = null,
         val isDownloaded: Boolean = false,
-        val isDownloading: Boolean = false
+        val isDownloading: Boolean = false,
+        val isArchiving: Boolean = false
     ) : GalleryState()
 
     data class Error(val message: String) : GalleryState()
@@ -275,6 +317,7 @@ fun GalleryScreen(
             val status = state.status
             val isDownloaded = state.isDownloaded
             val isDownloading = state.isDownloading
+            val isArchiving = state.isArchiving
 
             LazyColumn(
                 modifier = Modifier
@@ -381,20 +424,41 @@ fun GalleryScreen(
                             if (isDownloading) {
                                 CircularProgressIndicator()
                             } else {
-                                IconButton(
-                                    onClick = {
-                                        if (isDownloaded) {
-                                            viewModel.deleteGallery(gallery.id)
+                                Row {
+                                    if (isDownloaded) {
+                                        if (isArchiving) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier
+                                                    .size(48.dp)
+                                                    .padding(8.dp)
+                                            )
                                         } else {
-                                            viewModel.downloadGallery(gallery)
+                                            IconButton(
+                                                onClick = { viewModel.archiveGallery(gallery) },
+                                                modifier = Modifier.size(48.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Rounded.Save,
+                                                    contentDescription = "Archive"
+                                                )
+                                            }
                                         }
-                                    },
-                                    modifier = Modifier.size(48.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = if (isDownloaded) Icons.Rounded.Delete else Icons.Rounded.Download,
-                                        contentDescription = if (isDownloaded) "Delete" else "Download"
-                                    )
+                                    }
+                                    IconButton(
+                                        onClick = {
+                                            if (isDownloaded) {
+                                                viewModel.deleteGallery(gallery.id)
+                                            } else {
+                                                viewModel.downloadGallery(gallery)
+                                            }
+                                        },
+                                        modifier = Modifier.size(48.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isDownloaded) Icons.Rounded.Delete else Icons.Rounded.Download,
+                                            contentDescription = if (isDownloaded) "Delete" else "Download"
+                                        )
+                                    }
                                 }
                             }
                         }
