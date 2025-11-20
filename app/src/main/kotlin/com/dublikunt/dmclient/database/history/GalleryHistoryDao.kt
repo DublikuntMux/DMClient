@@ -12,8 +12,14 @@ interface GalleryHistoryDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertHistory(history: GalleryHistory)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertHistories(histories: List<GalleryHistory>)
+
     @Query("SELECT * FROM gallery_history ORDER BY timestamp DESC")
     fun getHistory(): Flow<List<GalleryHistory>>
+
+    @Query("SELECT * FROM gallery_history")
+    suspend fun getAllHistory(): List<GalleryHistory>
 
     @Delete
     suspend fun deleteHistory(galleryHistory: GalleryHistory)
