@@ -13,6 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.Search
@@ -61,6 +62,7 @@ import coil3.memory.MemoryCache
 import coil3.request.crossfade
 import com.dublikunt.dmclient.component.AppUpdateChecker
 import com.dublikunt.dmclient.database.PreferenceHelper
+import com.dublikunt.dmclient.screen.DownloadScreen
 import com.dublikunt.dmclient.screen.GalleryScreen
 import com.dublikunt.dmclient.screen.HistoryScreen
 import com.dublikunt.dmclient.screen.HomeScreen
@@ -128,6 +130,7 @@ enum class Screen(val route: String, val title: String, val icon: ImageVector) {
     Search("search", "Search", Icons.Rounded.Search),
     History("history", "History", Icons.Rounded.Menu),
     Statuses("statuses", "Statuses", Icons.Rounded.Star),
+    Downloads("downloads", "Downloads", Icons.Rounded.Download),
     Settings("settings", "Settings", Icons.Rounded.Settings),
 }
 
@@ -195,6 +198,7 @@ fun AppNavHost(navController: NavHostController) {
         composable(Screen.Home.route) { HomeScreen(navController) }
         composable(Screen.History.route) { HistoryScreen(navController) }
         composable(Screen.Statuses.route) { StatusesScreen(navController) }
+        composable(Screen.Downloads.route) { DownloadScreen(navController) }
         composable(Screen.Search.route) { SearchScreen(navController) }
         composable(Screen.Settings.route) { SettingsScreen() }
         composable(

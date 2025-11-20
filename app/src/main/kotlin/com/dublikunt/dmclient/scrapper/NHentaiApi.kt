@@ -5,6 +5,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okio.IOException
 import org.jsoup.Jsoup
+import java.io.InputStream
 
 object NHentaiApi {
     const val BASE_URL = "https://nhentai.net"
@@ -37,6 +38,18 @@ object NHentaiApi {
                 if (!response.isSuccessful) throw IOException("HTTP Error: ${response.code}")
                 response.body?.string()
             }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    fun downloadImage(url: String): InputStream? {
+        return try {
+            val request = Request.Builder().url(url).apply { setupHeaders(this) }.build()
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) return null
+            response.body?.byteStream()
         } catch (e: Exception) {
             e.printStackTrace()
             null

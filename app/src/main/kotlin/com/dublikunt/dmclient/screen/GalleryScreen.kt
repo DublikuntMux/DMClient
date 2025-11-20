@@ -20,6 +20,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -44,11 +46,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.asFlow
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
+import androidx.work.workDataOf
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import com.dublikunt.dmclient.component.GalleryPageCard
@@ -59,27 +67,63 @@ import com.dublikunt.dmclient.database.status.Status
 import com.dublikunt.dmclient.scrapper.GalleryFullInfo
 import com.dublikunt.dmclient.scrapper.ImageType
 import com.dublikunt.dmclient.scrapper.NHentaiApi
+import com.dublikunt.dmclient.work.DownloadWorker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
+import java.io.File
 
 class GalleryViewModel(application: Application) : AndroidViewModel(application) {
     private val db = AppDatabase.getDatabase(application)
     private val statusDao = db.galleryStatusDao()
+    private val downloadDao = db.downloadedGalleryDao()
+    private val workManager = WorkManager.getInstance(application)
 
     private val _galleryState = MutableStateFlow<GalleryState>(GalleryState.Loading)
     val galleryState: StateFlow<GalleryState> = _galleryState
 
     fun fetchGallery(id: Int) {
         viewModelScope.launch(Dispatchers.IO) {
-            val gallery = NHentaiApi.fetchGallery(id)
-            if (gallery != null) {
+            val downloaded = downloadDao.getById(id)
+            val workInfos = workManager.getWorkInfosForUniqueWorkLiveData("download_$id")
+
+            if (downloaded != null) {
                 val status = statusDao.getStatus(id)
-                _galleryState.value = GalleryState.Success(gallery, status)
+                val gallery = GalleryFullInfo(
+                    id = downloaded.id,
+                    thumb = downloaded.coverPath,
+                    name = downloaded.title,
+                    tags = downloaded.tags,
+                    artists = downloaded.artists,
+                    characters = downloaded.characters,
+                    pages = downloaded.totalPages,
+                    pagesId = downloaded.pagesId,
+                    imageType = if (downloaded.imageType == "Jpg") ImageType.Jpg else ImageType.Webp
+                )
+                _galleryState.value = GalleryState.Success(gallery, status, isDownloaded = true)
             } else {
-                _galleryState.value =
-                    GalleryState.Error("Failed to load gallery. Please try again.")
+                val gallery = NHentaiApi.fetchGallery(id)
+                if (gallery != null) {
+                    val status = statusDao.getStatus(id)
+                    _galleryState.value =
+                        GalleryState.Success(gallery, status, isDownloaded = false)
+
+                    // Check if downloading
+                    launch(Dispatchers.Main) {
+                        workInfos.asFlow().collect { infos ->
+                            val info = infos.firstOrNull()
+                            val isDownloading = info != null && !info.state.isFinished
+                            _galleryState.value =
+                                (_galleryState.value as? GalleryState.Success)?.copy(isDownloading = isDownloading)
+                                    ?: _galleryState.value
+                        }
+                    }
+                } else {
+                    _galleryState.value =
+                        GalleryState.Error("Failed to load gallery. Please try again.")
+                }
             }
         }
     }
@@ -99,6 +143,65 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             (_galleryState.value as? GalleryState.Success)?.copy(selectedPage = page)
                 ?: _galleryState.value
     }
+
+    fun downloadGallery(gallery: GalleryFullInfo) {
+        val galleryJson = Json.encodeToString(gallery)
+        val workRequest = OneTimeWorkRequestBuilder<DownloadWorker>()
+            .setInputData(workDataOf(DownloadWorker.KEY_GALLERY_JSON to galleryJson))
+            .addTag("download_${gallery.id}")
+            .build()
+
+        workManager.enqueueUniqueWork(
+            "download_${gallery.id}",
+            androidx.work.ExistingWorkPolicy.KEEP,
+            workRequest
+        )
+
+        _galleryState.value =
+            (_galleryState.value as? GalleryState.Success)?.copy(isDownloading = true)
+                ?: return
+
+        viewModelScope.launch(Dispatchers.Main) {
+            workManager.getWorkInfoByIdLiveData(workRequest.id).asFlow().collect { info ->
+                if (info != null && info.state == WorkInfo.State.SUCCEEDED) {
+                    _galleryState.value = (_galleryState.value as? GalleryState.Success)?.copy(
+                        isDownloading = false,
+                        isDownloaded = true
+                    ) ?: _galleryState.value
+                } else if (info != null && info.state == WorkInfo.State.FAILED) {
+                    _galleryState.value = (_galleryState.value as? GalleryState.Success)?.copy(
+                        isDownloading = false
+                    ) ?: _galleryState.value
+                }
+            }
+        }
+    }
+
+    fun deleteGallery(id: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _galleryState.value =
+                (_galleryState.value as? GalleryState.Success)?.copy(isDownloading = true)
+                    ?: return@launch
+
+            workManager.cancelUniqueWork("download_$id")
+
+            val context = getApplication<Application>()
+            val galleryDir = File(context.filesDir, "galleries/$id")
+            if (galleryDir.exists()) {
+                galleryDir.deleteRecursively()
+            }
+
+            val downloaded = downloadDao.getById(id)
+            if (downloaded != null) {
+                downloadDao.delete(downloaded)
+            }
+
+            _galleryState.value = (_galleryState.value as? GalleryState.Success)?.copy(
+                isDownloading = false,
+                isDownloaded = false
+            ) ?: _galleryState.value
+        }
+    }
 }
 
 sealed class GalleryState {
@@ -106,7 +209,9 @@ sealed class GalleryState {
     data class Success(
         val gallery: GalleryFullInfo,
         val status: GalleryStatus?,
-        val selectedPage: Int? = null
+        val selectedPage: Int? = null,
+        val isDownloaded: Boolean = false,
+        val isDownloading: Boolean = false
     ) : GalleryState()
 
     data class Error(val message: String) : GalleryState()
@@ -129,8 +234,21 @@ fun GalleryScreen(
 
     when (val state = galleryState) {
         is GalleryState.Loading -> {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+            Box(
+                modifier = Modifier
+                    .fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .height(48.dp)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text("Loading...", textAlign = TextAlign.Center)
+                }
             }
         }
 
@@ -155,6 +273,8 @@ fun GalleryScreen(
             val gallery = state.gallery
             val selectedPage = state.selectedPage
             val status = state.status
+            val isDownloaded = state.isDownloaded
+            val isDownloading = state.isDownloading
 
             LazyColumn(
                 modifier = Modifier
@@ -249,17 +369,52 @@ fun GalleryScreen(
                             style = MaterialTheme.typography.bodyMedium,
                         )
 
-                        StatusControls(status, onUpdateStatus = { newStatus, isFav ->
-                            viewModel.updateStatus(id, newStatus, isFav)
-                        })
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            StatusControls(status, onUpdateStatus = { newStatus, isFav ->
+                                viewModel.updateStatus(id, newStatus, isFav)
+                            })
+
+                            if (isDownloading) {
+                                CircularProgressIndicator()
+                            } else {
+                                IconButton(
+                                    onClick = {
+                                        if (isDownloaded) {
+                                            viewModel.deleteGallery(gallery.id)
+                                        } else {
+                                            viewModel.downloadGallery(gallery)
+                                        }
+                                    },
+                                    modifier = Modifier.size(48.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (isDownloaded) Icons.Rounded.Delete else Icons.Rounded.Download,
+                                        contentDescription = if (isDownloaded) "Delete" else "Download"
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 
                 items(gallery.pages) { pageIndex ->
-                    val imageUrl = when (gallery.imageType) {
-                        ImageType.Jpg -> "https://i1.nhentai.net/galleries/${gallery.pagesId}/${pageIndex + 1}.jpg"
-                        ImageType.Webp -> "https://i4.nhentai.net/galleries/${gallery.pagesId}/${pageIndex + 1}.webp"
+                    val imageUrl = if (isDownloaded) {
+                        val ext = if (gallery.imageType == ImageType.Jpg) "jpg" else "webp"
+                        File(
+                            context.filesDir,
+                            "galleries/${gallery.id}/${pageIndex + 1}.$ext"
+                        ).absolutePath
+                    } else {
+                        when (gallery.imageType) {
+                            ImageType.Jpg -> "https://i1.nhentai.net/galleries/${gallery.pagesId}/${pageIndex + 1}.jpg"
+                            ImageType.Webp -> "https://i4.nhentai.net/galleries/${gallery.pagesId}/${pageIndex + 1}.webp"
+                        }
                     }
+
                     GalleryPageCard(imageUrl, pageIndex + 1) {
                         viewModel.selectPage(pageIndex + 1)
                     }
@@ -267,9 +422,17 @@ fun GalleryScreen(
             }
 
             selectedPage?.let { currentPage ->
-                val imageUrl = when (gallery.imageType) {
-                    ImageType.Jpg -> "https://i1.nhentai.net/galleries/${gallery.pagesId}/${currentPage}.jpg"
-                    ImageType.Webp -> "https://i4.nhentai.net/galleries/${gallery.pagesId}/${currentPage}.webp"
+                val imageUrl = if (isDownloaded) {
+                    val ext = if (gallery.imageType == ImageType.Jpg) "jpg" else "webp"
+                    File(
+                        context.filesDir,
+                        "galleries/${gallery.id}/$currentPage.$ext"
+                    ).absolutePath
+                } else {
+                    when (gallery.imageType) {
+                        ImageType.Jpg -> "https://i1.nhentai.net/galleries/${gallery.pagesId}/${currentPage}.jpg"
+                        ImageType.Webp -> "https://i4.nhentai.net/galleries/${gallery.pagesId}/${currentPage}.webp"
+                    }
                 }
 
                 BackHandler { viewModel.selectPage(null) }
