@@ -39,7 +39,6 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
 
@@ -332,8 +331,7 @@ fun SettingsScreen() {
             confirmButton = {
                 TextButton(onClick = {
                     val length = pinInput.length
-                    if (length < 4 || length > 15) {
-                        pinInputError = "PIN must be between 4 and 15 digits"
+                    if (length !in 4..15) {
                         return@TextButton
                     }
 

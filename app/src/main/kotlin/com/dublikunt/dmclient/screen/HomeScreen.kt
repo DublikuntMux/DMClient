@@ -89,7 +89,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                     fetchStatuses(fetched.map { it.id })
                 }
                 isLoading = false
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 isError = true
                 isLoading = false
             }
@@ -159,41 +159,54 @@ fun HomeScreen(navController: NavHostController, viewModel: HomeViewModel = view
                     viewModel.fetchNextPage(scope)
                 }
 
-                LazyVerticalGrid(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    columns = GridCells.Adaptive(minSize = 128.dp),
-                    state = scrollState
-                ) {
-                    items(viewModel.stateList) { galleryItem ->
-                        GalleryCard(
-                            galleryItem,
-                            navController,
-                            viewModel.statusMap[galleryItem.id]?.status,
-                            viewModel.statusMap[galleryItem.id]?.favorite ?: false
+                if (viewModel.isLoading) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            viewModel.addGalleryToHistory(galleryItem)
-                        }
-                    }
-
-                    item {
-                        if (viewModel.isLoading) {
                             CircularProgressIndicator(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp)
+                                    .height(48.dp)
                             )
-                        } else if (viewModel.isError) {
-                            Text(
-                                "Failed to load data. Please try again.",
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp)
-                            )
-                        } else {
-                            LaunchedEffect(Unit) {
-                                viewModel.fetchNextPage(scope)
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text("Loading...", textAlign = TextAlign.Center)
+                        }
+                    }
+                } else {
+                    LazyVerticalGrid(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        columns = GridCells.Adaptive(minSize = 128.dp),
+                        state = scrollState
+                    ) {
+                        items(viewModel.stateList) { galleryItem ->
+                            GalleryCard(
+                                galleryItem,
+                                navController,
+                                viewModel.statusMap[galleryItem.id]?.status,
+                                viewModel.statusMap[galleryItem.id]?.favorite ?: false
+                            ) {
+                                viewModel.addGalleryToHistory(galleryItem)
+                            }
+                        }
+
+                        item {
+                            if (viewModel.isError) {
+                                Text(
+                                    "Failed to load data. Please try again.",
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp)
+                                )
+                            } else {
+                                LaunchedEffect(Unit) {
+                                    viewModel.fetchNextPage(scope)
+                                }
                             }
                         }
                     }

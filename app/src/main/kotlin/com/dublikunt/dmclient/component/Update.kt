@@ -24,6 +24,7 @@ import androidx.core.net.toUri
 import com.dublikunt.dmclient.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
@@ -36,7 +37,8 @@ private const val RELEASE_INFO_URL =
 @Serializable
 data class ReleaseInfo(
     val name: String,
-    val html_url: String,
+    @SerialName("html_url")
+    val htmlUrl: String,
     val body: String? = null
 )
 
@@ -138,7 +140,7 @@ fun AppUpdateChecker() {
             onUpdateClick = {
                 showDialog = false
                 try {
-                    val intent = Intent(Intent.ACTION_VIEW, latestReleaseInfo!!.html_url.toUri())
+                    val intent = Intent(Intent.ACTION_VIEW, latestReleaseInfo!!.htmlUrl.toUri())
                     context.startActivity(intent)
                 } catch (e: Exception) {
                     e.printStackTrace()

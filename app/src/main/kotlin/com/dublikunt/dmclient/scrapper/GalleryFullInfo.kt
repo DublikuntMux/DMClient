@@ -1,10 +1,14 @@
 package com.dublikunt.dmclient.scrapper
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 enum class ImageType {
     Jpg,
     Webp
 }
 
+@Serializable
 data class GalleryFullInfo(
     val id: Int,
     val thumb: String,
