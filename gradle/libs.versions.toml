@@ -1,22 +1,22 @@
 [versions]
-agp = "8.13.1"
-biometric = "1.4.0-alpha04"
-kotlin = "2.2.21"
+agp = "8.13.2"
+biometric = "1.4.0-alpha05"
+kotlin = "2.3.0"
 kotlin-serialization = "1.9.0"
-ksp = "2.2.20-2.0.3"
+ksp = "2.3.4"
 coreKtx = "1.17.0"
 lifecycleKtx = "2.10.0"
-activityCompose = "1.12.0"
-composeBom = "2025.11.01"
+activityCompose = "1.12.2"
+composeBom = "2025.12.01"
 permissions = "0.37.3"
 navigation = "2.9.6"
 okhttp = "2.7.5"
 coil = "3.3.0"
 datastore = "1.2.0"
-jsoup = "1.21.2"
+jsoup = "1.22.1"
 room = "2.8.4"
 work = "2.11.0"
-runtimeLivedata = "1.9.5"
+runtimeLivedata = "1.10.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -28,7 +28,6 @@ androidx-activity-compose = { group = "androidx.activity", name = "activity-comp
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
-androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
 androidx-icons = { group = "androidx.compose.material", name = "material-icons-extended" }
 androidx-navigation = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation" }

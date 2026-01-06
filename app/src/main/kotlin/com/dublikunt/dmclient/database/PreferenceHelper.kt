@@ -14,6 +14,7 @@ object PreferenceHelper {
     private val CSRF_TOKEN_KEY = stringPreferencesKey("csrftoken")
     private val PREFERRED_LANGUAGE_KEY = stringPreferencesKey("preferred_language")
     private val PIN_CODE_KEY = stringPreferencesKey("pin_code")
+    private val MAX_IMAGE_CACHE_SIZE_KEY = stringPreferencesKey("max_image_cache_size")
 
     suspend fun saveTokens(context: Context, session: String, token: String) {
         context.dataStore.edit { preferences ->
@@ -62,6 +63,18 @@ object PreferenceHelper {
     fun getPinCode(context: Context): Flow<String?> {
         return context.dataStore.data.map { preferences ->
             preferences[PIN_CODE_KEY]
+        }
+    }
+
+    suspend fun saveMaxImageCacheSize(context: Context, size: Long) {
+        context.dataStore.edit { preferences ->
+            preferences[MAX_IMAGE_CACHE_SIZE_KEY] = size.toString()
+        }
+    }
+
+    fun getMaxImageCacheSize(context: Context): Flow<Long?> {
+        return context.dataStore.data.map { preferences ->
+            preferences[MAX_IMAGE_CACHE_SIZE_KEY]?.toLongOrNull()
         }
     }
 }

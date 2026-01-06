@@ -20,4 +20,7 @@ interface DownloadedGalleryDao {
 
     @Delete
     suspend fun delete(gallery: DownloadedGallery)
+
+    @Query("DELETE FROM downloaded_galleries")
+    suspend fun deleteAll()
 }

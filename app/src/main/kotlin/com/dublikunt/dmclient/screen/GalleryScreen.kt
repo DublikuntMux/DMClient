@@ -123,7 +123,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                     _galleryState.value =
                         GalleryState.Success(gallery, status, isDownloaded = false)
 
-                    // Check if downloading
                     launch(Dispatchers.Main) {
                         workInfos.asFlow().collect { infos ->
                             val info = infos.firstOrNull()

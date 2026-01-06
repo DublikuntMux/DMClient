@@ -27,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import com.dublikunt.dmclient.component.settings.SettingsButton
 import com.dublikunt.dmclient.component.settings.SettingsDropdownButton
 import com.dublikunt.dmclient.database.AppDatabase
@@ -49,7 +50,7 @@ data class BackupData(
 )
 
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(navController: NavController) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -61,8 +62,6 @@ fun SettingsScreen() {
     var selectedLanguage by remember { mutableStateOf("all") }
 
     var showDeleteTokenDialog by remember { mutableStateOf(false) }
-    var showClearHistoryDialog by remember { mutableStateOf(false) }
-    var showClearImageCacheDialog by remember { mutableStateOf(false) }
     var showClearSearchCacheDialog by remember { mutableStateOf(false) }
     var showPinDialog by remember { mutableStateOf(false) }
 
@@ -169,6 +168,9 @@ fun SettingsScreen() {
 
                 Spacer(modifier = Modifier.height(16.dp))
                 SettingsSectionHeader("Data")
+                SettingsButton("Storage Management", "Open") {
+                    navController.navigate("storage")
+                }
                 SettingsButton("Export Data", "Export") {
                     exportLauncher.launch("dmclient_backup.json")
                 }
@@ -180,12 +182,6 @@ fun SettingsScreen() {
                 SettingsSectionHeader("Danger Zone")
                 SettingsButton("Delete Token", "Delete") {
                     showDeleteTokenDialog = true
-                }
-                SettingsButton("Clear History", "Clear") {
-                    showClearHistoryDialog = true
-                }
-                SettingsButton("Clear Image Cache", "Clear") {
-                    showClearImageCacheDialog = true
                 }
                 SettingsButton("Clear Search Cache", "Delete") {
                     showClearSearchCacheDialog = true
@@ -220,59 +216,6 @@ fun SettingsScreen() {
         )
     }
 
-    if (showClearHistoryDialog) {
-        AlertDialog(
-            onDismissRequest = { showClearHistoryDialog = false },
-            title = { Text("Confirm Delete") },
-            text = { Text("Are you sure you want to clear your history? This action cannot be undone.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showClearHistoryDialog = false
-                    scope.launch {
-                        withContext(Dispatchers.IO) {
-                            historyDao.deleteAllHistory()
-                        }
-                        showSnackbarMessage = "History cleared successfully."
-                    }
-                }) {
-                    Text("Confirm")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showClearHistoryDialog = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
-
-    if (showClearImageCacheDialog) {
-        AlertDialog(
-            onDismissRequest = { showClearImageCacheDialog = false },
-            title = { Text("Confirm Delete") },
-            text = { Text("Are you sure you want to clear image cache? This may remove stored images.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showClearImageCacheDialog = false
-                    scope.launch {
-                        val status = withContext(Dispatchers.IO) {
-                            val cacheDir = context.cacheDir.resolve("image_cache")
-                            cacheDir.deleteRecursively()
-                        }
-                        showSnackbarMessage =
-                            if (status) "Cache cleared successfully." else "Error when clear cache!"
-                    }
-                }) {
-                    Text("Confirm")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showClearImageCacheDialog = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
 
     if (showClearSearchCacheDialog) {
         AlertDialog(

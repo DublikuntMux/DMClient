@@ -14,6 +14,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.FileCopy
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.Search
@@ -71,6 +72,7 @@ import com.dublikunt.dmclient.screen.SearchResultScreen
 import com.dublikunt.dmclient.screen.SearchScreen
 import com.dublikunt.dmclient.screen.SettingsScreen
 import com.dublikunt.dmclient.screen.StatusesScreen
+import com.dublikunt.dmclient.screen.StorageScreen
 import com.dublikunt.dmclient.ui.theme.DMClientTheme
 import kotlinx.coroutines.launch
 
@@ -95,18 +97,29 @@ class MainActivity : FragmentActivity() {
                 }
 
                 if (isUnlocked) {
-                    setSingletonImageLoaderFactory { context ->
-                        ImageLoader.Builder(context)
+                    val context = this@MainActivity
+                    var maxCacheSize by remember { mutableStateOf(1024L * 1024 * 1024) }
+
+                    LaunchedEffect(Unit) {
+                        PreferenceHelper.getMaxImageCacheSize(context).collect {
+                            if (it != null) {
+                                maxCacheSize = it
+                            }
+                        }
+                    }
+
+                    setSingletonImageLoaderFactory { ctx ->
+                        ImageLoader.Builder(ctx)
                             .crossfade(true)
                             .memoryCache {
                                 MemoryCache.Builder()
-                                    .maxSizePercent(context, 0.3)
+                                    .maxSizePercent(ctx, 0.3)
                                     .build()
                             }
                             .diskCache {
                                 DiskCache.Builder()
                                     .directory(cacheDir.resolve("image_cache"))
-                                    .maxSizeBytes(1 * 1024 * 1024 * 1024)
+                                    .maxSizeBytes(maxCacheSize)
                                     .build()
                             }
                             .build()
@@ -131,6 +144,7 @@ enum class Screen(val route: String, val title: String, val icon: ImageVector) {
     History("history", "History", Icons.Rounded.Menu),
     Statuses("statuses", "Statuses", Icons.Rounded.Star),
     Downloads("downloads", "Downloads", Icons.Rounded.Download),
+    Storage("storage", "Storage", Icons.Rounded.FileCopy),
     Settings("settings", "Settings", Icons.Rounded.Settings),
 }
 
@@ -200,7 +214,8 @@ fun AppNavHost(navController: NavHostController) {
         composable(Screen.Statuses.route) { StatusesScreen(navController) }
         composable(Screen.Downloads.route) { DownloadScreen(navController) }
         composable(Screen.Search.route) { SearchScreen(navController) }
-        composable(Screen.Settings.route) { SettingsScreen() }
+        composable(Screen.Settings.route) { SettingsScreen(navController) }
+        composable(Screen.Storage.route) { StorageScreen() }
         composable(
             route = "gallery?id={id}",
             arguments = listOf(
