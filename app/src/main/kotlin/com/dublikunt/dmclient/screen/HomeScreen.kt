@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -170,7 +171,7 @@ fun HomeScreen(navController: NavHostController, viewModel: HomeViewModel = view
                         ) {
                             CircularProgressIndicator(
                                 modifier = Modifier
-                                    .height(48.dp)
+                                    .size(48.dp)
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             Text("Loading...", textAlign = TextAlign.Center)

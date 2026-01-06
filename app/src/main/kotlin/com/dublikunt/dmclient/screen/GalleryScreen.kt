@@ -285,7 +285,7 @@ fun GalleryScreen(
                 ) {
                     CircularProgressIndicator(
                         modifier = Modifier
-                            .height(48.dp)
+                            .size(48.dp)
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text("Loading...", textAlign = TextAlign.Center)

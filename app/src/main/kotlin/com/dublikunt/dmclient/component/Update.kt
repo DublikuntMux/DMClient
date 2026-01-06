@@ -53,7 +53,7 @@ suspend fun fetchLatestReleaseInfo(): ReleaseInfo? {
                 if (!response.isSuccessful) {
                     throw IOException("Unexpected code $response")
                 }
-                response.body?.string()?.let {
+                response.body.string().let {
                     jsonParser.decodeFromString<ReleaseInfo>(it)
                 }
             }

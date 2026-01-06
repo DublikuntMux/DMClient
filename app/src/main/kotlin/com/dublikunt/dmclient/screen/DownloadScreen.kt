@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -47,7 +48,7 @@ fun DownloadScreen(navController: NavHostController, viewModel: DownloadViewMode
             ) {
                 CircularProgressIndicator(
                     modifier = Modifier
-                        .height(48.dp)
+                        .size(48.dp)
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Text("Loading...", textAlign = TextAlign.Center)
