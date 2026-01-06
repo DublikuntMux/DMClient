@@ -21,6 +21,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -69,6 +70,10 @@ fun StatusesScreen(navController: NavHostController, viewModel: StatusesViewMode
         viewModel.fetchStatuses(historyList)
     }
 
+    val statusesOnly = remember(historyList, viewModel.statusMap.value) {
+        historyList.filter { viewModel.statusMap.value[it.id] != null }
+    }
+
     LazyVerticalGrid(
         modifier = Modifier
             .fillMaxSize()
@@ -76,33 +81,31 @@ fun StatusesScreen(navController: NavHostController, viewModel: StatusesViewMode
         columns = GridCells.Adaptive(minSize = 128.dp),
         state = scrollState,
     ) {
-        items(historyList) { galleryHistory ->
-            if (viewModel.statusMap.value[galleryHistory.id] != null) {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    GalleryCard(
-                        GallerySimpleInfo(
-                            galleryHistory.id,
-                            galleryHistory.coverUrl,
-                            galleryHistory.name
-                        ),
-                        navController,
-                        viewModel.statusMap.value[galleryHistory.id]?.status,
-                        viewModel.statusMap.value[galleryHistory.id]?.favorite ?: false
-                    )
+        items(statusesOnly) { galleryHistory ->
+            Box(modifier = Modifier.fillMaxSize()) {
+                GalleryCard(
+                    GallerySimpleInfo(
+                        galleryHistory.id,
+                        galleryHistory.coverUrl,
+                        galleryHistory.name
+                    ),
+                    navController,
+                    viewModel.statusMap.value[galleryHistory.id]?.status,
+                    viewModel.statusMap.value[galleryHistory.id]?.favorite ?: false
+                )
 
-                    Column(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .background(
-                                color = MaterialTheme.colorScheme.background.copy(alpha = 0.6f),
-                                shape = RoundedCornerShape(8.dp)
-                            )
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .background(
+                            color = MaterialTheme.colorScheme.background.copy(alpha = 0.6f),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                ) {
+                    IconButton(
+                        onClick = { viewModel.removeGalleryFromHistory(galleryHistory) }
                     ) {
-                        IconButton(
-                            onClick = { viewModel.removeGalleryFromHistory(galleryHistory) }
-                        ) {
-                            Icon(Icons.Rounded.Delete, contentDescription = "Delete")
-                        }
+                        Icon(Icons.Rounded.Delete, contentDescription = "Delete")
                     }
                 }
             }
