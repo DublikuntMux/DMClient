@@ -180,7 +180,7 @@ fun AppDrawer(navController: NavController, closeDrawer: () -> Unit) {
                         navController.navigate(screen.route) {
                             popUpTo(navController.graph.startDestinationId) { saveState = true }
                             launchSingleTop = true
-                            restoreState = true
+                            restoreState = screen != Screen.Settings
                         }
                         closeDrawer()
                     },

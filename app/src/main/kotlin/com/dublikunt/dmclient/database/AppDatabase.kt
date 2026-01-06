@@ -14,7 +14,7 @@ import com.dublikunt.dmclient.database.status.GalleryStatusDao
 
 @Database(
     entities = [GalleryHistory::class, GalleryStatus::class, DownloadedGallery::class],
-    version = 2
+    version = 3
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {

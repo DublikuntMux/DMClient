@@ -48,7 +48,7 @@ class DownloadWorker(
         try {
             val coverFile = File(
                 galleryDir,
-                "cover.${if (gallery.imageType == ImageType.Jpg) "jpg" else "webp"}"
+                "cover.${gallery.thumb.split(".").last()}"
             )
             if (!coverFile.exists()) {
                 NHentaiApi.downloadImage(gallery.thumb)?.use { input ->
@@ -58,13 +58,19 @@ class DownloadWorker(
                 }
             }
 
-            val ext = if (gallery.imageType == ImageType.Jpg) "jpg" else "webp"
-            val baseUrl =
-                if (gallery.imageType == ImageType.Jpg) "https://i1.nhentai.net/galleries/${gallery.pagesId}" else "https://i4.nhentai.net/galleries/${gallery.pagesId}"
-
             var lastUpdateTime = 0L
             for (i in 1..gallery.pages) {
                 if (isStopped) break
+
+                val imageType = gallery.images[i - 1]
+                val ext = when (imageType) {
+                    ImageType.Jpg -> "jpg"
+                    ImageType.Webp -> "webp"
+                }
+                val baseUrl = when (imageType) {
+                    ImageType.Jpg -> "https://i1.nhentai.net/galleries/${gallery.pagesId}"
+                    ImageType.Webp -> "https://i1.nhentai.net/galleries/${gallery.pagesId}"
+                }
 
                 val pageFile = File(galleryDir, "$i.$ext")
                 if (!pageFile.exists()) {
@@ -101,7 +107,7 @@ class DownloadWorker(
                 coverPath = coverFile.absolutePath,
                 totalPages = gallery.pages,
                 pagesId = gallery.pagesId,
-                imageType = if (gallery.imageType == ImageType.Jpg) "Jpg" else "Webp",
+                imageTypes = gallery.images,
                 tags = gallery.tags,
                 artists = gallery.artists,
                 characters = gallery.characters

@@ -107,19 +107,29 @@ object NHentaiApi {
                 .orEmpty()
         val name =
             info.selectFirst("h1.title")?.select("span")?.joinToString(" ") { it.text() }.orEmpty()
-        val pages =
+        val pagesCount =
             doc.select("div.tag-container:contains(Pages) .tags a span.name").text().toIntOrNull()
                 ?: return null
-        val imageUrl = doc.getElementById("thumbnail-container")?.select("img[data-src]")
-            ?.firstNotNullOfOrNull { it.attr("data-src").split("/") } ?: return null
 
-        val galleryId = imageUrl.getOrNull(4)?.toIntOrNull() ?: return null
-        val imageTypeString = imageUrl.getOrNull(5) ?: return null
+        val thumbnails = doc.getElementById("thumbnail-container")?.select("img[data-src]")
+            ?: return null
 
-        val imageType = when {
-            imageTypeString.endsWith(".webp") -> ImageType.Webp
-            imageTypeString.endsWith(".jpg") -> ImageType.Jpg
-            else -> return null
+        val galleryId = thumbnails.firstNotNullOfOrNull {
+            it.attr("data-src").split("/").getOrNull(4)?.toIntOrNull()
+        } ?: return null
+
+        val imagesList = thumbnails.mapNotNull { thumb ->
+            val src = thumb.attr("data-src")
+            when {
+                src.endsWith(".jpg.webp") -> ImageType.Jpg
+                src.endsWith(".webp") -> ImageType.Webp
+                src.endsWith(".jpg") -> ImageType.Jpg
+                else -> null
+            }
+        }
+
+        if (imagesList.size != pagesCount) {
+            if (imagesList.isEmpty()) return null
         }
 
         val tags = mutableListOf<String>()
@@ -144,9 +154,9 @@ object NHentaiApi {
             tags,
             artists,
             characters,
-            pages,
+            pagesCount,
             galleryId,
-            imageType
+            imagesList
         )
     }
 

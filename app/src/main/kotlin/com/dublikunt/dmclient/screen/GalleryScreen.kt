@@ -103,7 +103,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                     characters = downloaded.characters,
                     pages = downloaded.totalPages,
                     pagesId = downloaded.pagesId,
-                    imageType = if (downloaded.imageType == "Jpg") ImageType.Jpg else ImageType.Webp
+                    images = downloaded.imageTypes
                 )
                 _galleryState.value = GalleryState.Success(gallery, status, isDownloaded = true)
 
@@ -466,15 +466,20 @@ fun GalleryScreen(
 
                 items(gallery.pages) { pageIndex ->
                     val imageUrl = if (isDownloaded) {
-                        val ext = if (gallery.imageType == ImageType.Jpg) "jpg" else "webp"
+                        val imageType = gallery.images[pageIndex]
+                        val ext = when (imageType) {
+                            ImageType.Jpg -> "jpg"
+                            ImageType.Webp -> "webp"
+                        }
                         File(
                             context.filesDir,
                             "galleries/${gallery.id}/${pageIndex + 1}.$ext"
                         ).absolutePath
                     } else {
-                        when (gallery.imageType) {
+                        val imageType = gallery.images[pageIndex]
+                        when (imageType) {
                             ImageType.Jpg -> "https://i1.nhentai.net/galleries/${gallery.pagesId}/${pageIndex + 1}.jpg"
-                            ImageType.Webp -> "https://i4.nhentai.net/galleries/${gallery.pagesId}/${pageIndex + 1}.webp"
+                            ImageType.Webp -> "https://i1.nhentai.net/galleries/${gallery.pagesId}/${pageIndex + 1}.webp"
                         }
                     }
 
@@ -486,15 +491,20 @@ fun GalleryScreen(
 
             selectedPage?.let { currentPage ->
                 val imageUrl = if (isDownloaded) {
-                    val ext = if (gallery.imageType == ImageType.Jpg) "jpg" else "webp"
+                    val imageType = gallery.images[currentPage - 1]
+                    val ext = when (imageType) {
+                        ImageType.Jpg -> "jpg"
+                        ImageType.Webp -> "webp"
+                    }
                     File(
                         context.filesDir,
                         "galleries/${gallery.id}/$currentPage.$ext"
                     ).absolutePath
                 } else {
-                    when (gallery.imageType) {
+                    val imageType = gallery.images[currentPage - 1]
+                    when (imageType) {
                         ImageType.Jpg -> "https://i1.nhentai.net/galleries/${gallery.pagesId}/${currentPage}.jpg"
-                        ImageType.Webp -> "https://i4.nhentai.net/galleries/${gallery.pagesId}/${currentPage}.webp"
+                        ImageType.Webp -> "https://i1.nhentai.net/galleries/${gallery.pagesId}/${currentPage}.webp"
                     }
                 }
 

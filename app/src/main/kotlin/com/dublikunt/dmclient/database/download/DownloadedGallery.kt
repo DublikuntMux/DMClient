@@ -2,6 +2,7 @@ package com.dublikunt.dmclient.database.download
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.dublikunt.dmclient.scrapper.ImageType
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -12,7 +13,7 @@ data class DownloadedGallery(
     val coverPath: String,
     val totalPages: Int,
     val pagesId: Int,
-    val imageType: String,
+    val imageTypes: List<ImageType>,
     val tags: List<String>,
     val artists: List<String>,
     val characters: List<String>,
