@@ -31,29 +31,67 @@ object NHentaiApi {
         }
     }
 
-    private fun fetchData(url: String): String? {
-        return try {
-            val request = Request.Builder().url(url).apply { setupHeaders(this) }.build()
-            client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) throw IOException("HTTP Error: ${response.code}")
-                response.body?.string()
+    private fun fetchData(url: String, retryCount: Int = 4): String? {
+        var currentRetry = 0
+        while (currentRetry < retryCount) {
+            try {
+                val request = Request.Builder().url(url).apply { setupHeaders(this) }.build()
+                client.newCall(request).execute().use { response ->
+                    if (response.code == 429) {
+                        currentRetry++
+                        val waitTime = 1000L * currentRetry
+                        println("Rate limit exceeded. Waiting for $waitTime ms...")
+                        Thread.sleep(waitTime)
+                        return@use
+                    }
+                    if (!response.isSuccessful) throw IOException("HTTP Error: ${response.code}")
+                    return response.body.string()
+                }
+            } catch (e: Exception) {
+                if (currentRetry >= retryCount - 1) {
+                    e.printStackTrace()
+                    return null
+                }
+                currentRetry++
+                val waitTime = 1000L * currentRetry
+                println("Exception occurred. Waiting for $waitTime ms...")
+                Thread.sleep(waitTime)
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
         }
+        return null
     }
 
-    fun downloadImage(url: String): InputStream? {
-        return try {
-            val request = Request.Builder().url(url).apply { setupHeaders(this) }.build()
-            val response = client.newCall(request).execute()
-            if (!response.isSuccessful) return null
-            response.body?.byteStream()
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
+    fun downloadImage(url: String, retryCount: Int = 4): InputStream? {
+        var currentRetry = 0
+        while (currentRetry < retryCount) {
+            try {
+                val request = Request.Builder().url(url).apply { setupHeaders(this) }.build()
+                val response = client.newCall(request).execute()
+                if (response.code == 429) {
+                    response.close()
+                    currentRetry++
+                    val waitTime = 1000L * currentRetry
+                    println("Rate limit exceeded. Waiting for $waitTime ms...")
+                    Thread.sleep(waitTime)
+                    continue
+                }
+                if (!response.isSuccessful) {
+                    response.close()
+                    return null
+                }
+                return response.body.byteStream()
+            } catch (e: Exception) {
+                if (currentRetry >= retryCount - 1) {
+                    e.printStackTrace()
+                    return null
+                }
+                currentRetry++
+                val waitTime = 1000L * currentRetry
+                println("Exception occurred. Waiting for $waitTime ms...")
+                Thread.sleep(waitTime)
+            }
         }
+        return null
     }
 
     fun fetchMainPage(page: Int? = null): List<GallerySimpleInfo> {
