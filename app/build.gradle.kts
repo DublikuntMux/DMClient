@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 
 buildscript {
     repositories {
@@ -8,7 +9,6 @@ buildscript {
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.ksp)
@@ -17,7 +17,8 @@ plugins {
 
 kotlin {
     compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_1_8)
+        languageVersion = KotlinVersion.KOTLIN_2_3
+        jvmTarget.set(JvmTarget.JVM_11)
         javaParameters.set(true)
     }
 }
@@ -47,20 +48,6 @@ android {
             packaging.resources.excludes += setOf(
                 "DebugProbesKt.bin",
                 "kotlin-tooling-metadata.json",
-                "META-INF/*.txt",
-                "META-INF/*.md",
-                "META-INF/*.version",
-                "META-INF/*.textproto",
-                "META-INF/DEPENDENCIES",
-                "META-INF/LICENSE",
-                "META-INF/LICENSE.txt",
-                "META-INF/androidx/annotation/annotation/LICENSE.txt",
-                "okhttp3/internal/publicsuffix/NOTICE",
-                "META-INF/license.html",
-                "META-INF/NOTICE",
-                "META-INF/NOTICE.txt",
-                "META-INF/notice.html",
-                "META-INF/ASL2.0"
             )
         }
         debug {
@@ -70,8 +57,8 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
 
     buildFeatures {

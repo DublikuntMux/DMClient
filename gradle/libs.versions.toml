@@ -1,13 +1,13 @@
 [versions]
-agp = "8.13.2"
+agp = "9.0.0"
 biometric = "1.4.0-alpha05"
 kotlin = "2.3.0"
-kotlin-serialization = "1.9.0"
+kotlin-serialization = "1.10.0"
 ksp = "2.3.4"
 coreKtx = "1.17.0"
 lifecycleKtx = "2.10.0"
 activityCompose = "1.12.2"
-composeBom = "2025.12.01"
+composeBom = "2026.01.00"
 permissions = "0.37.3"
 navigation = "2.9.6"
 okhttp = "5.3.2"
@@ -16,7 +16,7 @@ datastore = "1.2.0"
 jsoup = "1.22.1"
 room = "2.8.4"
 work = "2.11.0"
-runtimeLivedata = "1.10.0"
+runtimeLivedata = "1.10.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -45,7 +45,6 @@ jsoup = { group = "org.jsoup", name = "jsoup", version.ref = "jsoup" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 kotlin-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
