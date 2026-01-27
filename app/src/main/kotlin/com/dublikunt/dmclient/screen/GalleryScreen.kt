@@ -1,8 +1,8 @@
 package com.dublikunt.dmclient.screen
 
 import android.app.Application
+import android.content.Context
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +33,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -54,6 +55,7 @@ import androidx.lifecycle.asFlow
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
@@ -86,6 +88,13 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _galleryState = MutableStateFlow<GalleryState>(GalleryState.Loading)
     val galleryState: StateFlow<GalleryState> = _galleryState
 
+    private fun updateSuccessState(update: (GalleryState.Success) -> GalleryState.Success) {
+        val current = _galleryState.value
+        if (current is GalleryState.Success) {
+            _galleryState.value = update(current)
+        }
+    }
+
     fun fetchGallery(id: Int) {
         viewModelScope.launch(Dispatchers.IO) {
             val downloaded = downloadDao.getById(id)
@@ -109,11 +118,8 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
                 launch(Dispatchers.Main) {
                     archiveInfos.asFlow().collect { infos ->
-                        val info = infos.firstOrNull()
-                        val isArchiving = info != null && !info.state.isFinished
-                        _galleryState.value =
-                            (_galleryState.value as? GalleryState.Success)?.copy(isArchiving = isArchiving)
-                                ?: _galleryState.value
+                        val isArchiving = infos.firstOrNull()?.let { !it.state.isFinished } ?: false
+                        updateSuccessState { it.copy(isArchiving = isArchiving) }
                     }
                 }
             } else {
@@ -125,11 +131,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
                     launch(Dispatchers.Main) {
                         workInfos.asFlow().collect { infos ->
-                            val info = infos.firstOrNull()
-                            val isDownloading = info != null && !info.state.isFinished
-                            _galleryState.value =
-                                (_galleryState.value as? GalleryState.Success)?.copy(isDownloading = isDownloading)
-                                    ?: _galleryState.value
+                            val isDownloading =
+                                infos.firstOrNull()?.let { !it.state.isFinished } ?: false
+                            updateSuccessState { it.copy(isDownloading = isDownloading) }
                         }
                     }
                 } else {
@@ -144,16 +148,12 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch(Dispatchers.IO) {
             val updatedStatus = GalleryStatus(id, newStatus, isFavorite)
             statusDao.insertStatus(updatedStatus)
-            _galleryState.value =
-                (_galleryState.value as? GalleryState.Success)?.copy(status = updatedStatus)
-                    ?: _galleryState.value
+            updateSuccessState { it.copy(status = updatedStatus) }
         }
     }
 
     fun selectPage(page: Int?) {
-        _galleryState.value =
-            (_galleryState.value as? GalleryState.Success)?.copy(selectedPage = page)
-                ?: _galleryState.value
+        updateSuccessState { it.copy(selectedPage = page) }
     }
 
     fun archiveGallery(gallery: GalleryFullInfo) {
@@ -163,22 +163,14 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             .addTag("archive_${gallery.id}")
             .build()
 
-        workManager.enqueueUniqueWork(
-            "archive_${gallery.id}",
-            androidx.work.ExistingWorkPolicy.KEEP,
-            workRequest
-        )
+        workManager.enqueueUniqueWork("archive_${gallery.id}", ExistingWorkPolicy.KEEP, workRequest)
 
-        _galleryState.value =
-            (_galleryState.value as? GalleryState.Success)?.copy(isArchiving = true)
-                ?: return
+        updateSuccessState { it.copy(isArchiving = true) }
 
         viewModelScope.launch(Dispatchers.Main) {
             workManager.getWorkInfoByIdLiveData(workRequest.id).asFlow().collect { info ->
-                if (info != null && info.state.isFinished) {
-                    _galleryState.value = (_galleryState.value as? GalleryState.Success)?.copy(
-                        isArchiving = false
-                    ) ?: _galleryState.value
+                if (info?.state?.isFinished == true) {
+                    updateSuccessState { it.copy(isArchiving = false) }
                 }
             }
         }
@@ -193,25 +185,24 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
         workManager.enqueueUniqueWork(
             "download_${gallery.id}",
-            androidx.work.ExistingWorkPolicy.KEEP,
+            ExistingWorkPolicy.KEEP,
             workRequest
         )
 
-        _galleryState.value =
-            (_galleryState.value as? GalleryState.Success)?.copy(isDownloading = true)
-                ?: return
+        updateSuccessState { it.copy(isDownloading = true) }
 
         viewModelScope.launch(Dispatchers.Main) {
             workManager.getWorkInfoByIdLiveData(workRequest.id).asFlow().collect { info ->
-                if (info != null && info.state == WorkInfo.State.SUCCEEDED) {
-                    _galleryState.value = (_galleryState.value as? GalleryState.Success)?.copy(
-                        isDownloading = false,
-                        isDownloaded = true
-                    ) ?: _galleryState.value
-                } else if (info != null && info.state == WorkInfo.State.FAILED) {
-                    _galleryState.value = (_galleryState.value as? GalleryState.Success)?.copy(
-                        isDownloading = false
-                    ) ?: _galleryState.value
+                when (info?.state) {
+                    WorkInfo.State.SUCCEEDED -> {
+                        updateSuccessState { it.copy(isDownloading = false, isDownloaded = true) }
+                    }
+
+                    WorkInfo.State.FAILED -> {
+                        updateSuccessState { it.copy(isDownloading = false) }
+                    }
+
+                    else -> {}
                 }
             }
         }
@@ -219,9 +210,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     fun deleteGallery(id: Int) {
         viewModelScope.launch(Dispatchers.IO) {
-            _galleryState.value =
-                (_galleryState.value as? GalleryState.Success)?.copy(isDownloading = true)
-                    ?: return@launch
+            updateSuccessState { it.copy(isDownloading = true) }
 
             workManager.cancelUniqueWork("download_$id")
 
@@ -231,15 +220,8 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 galleryDir.deleteRecursively()
             }
 
-            val downloaded = downloadDao.getById(id)
-            if (downloaded != null) {
-                downloadDao.delete(downloaded)
-            }
-
-            _galleryState.value = (_galleryState.value as? GalleryState.Success)?.copy(
-                isDownloading = false,
-                isDownloaded = false
-            ) ?: _galleryState.value
+            downloadDao.getById(id)?.let { downloadDao.delete(it) }
+            updateSuccessState { it.copy(isDownloading = false, isDownloaded = false) }
         }
     }
 }
@@ -258,7 +240,6 @@ sealed class GalleryState {
     data class Error(val message: String) : GalleryState()
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun GalleryScreen(
     id: Int,
@@ -269,220 +250,53 @@ fun GalleryScreen(
     val galleryState by viewModel.galleryState.collectAsState()
     val scrollState = rememberLazyListState()
 
+    val onTagClick: (String) -> Unit = remember(navController) {
+        { name ->
+            val formatted = name.replace(" ", "+")
+            navController.navigate("search?query=${formatted}")
+        }
+    }
+
     LaunchedEffect(id) {
         viewModel.fetchGallery(id)
     }
 
     when (val state = galleryState) {
-        is GalleryState.Loading -> {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier
-                            .size(48.dp)
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text("Loading...", textAlign = TextAlign.Center)
-                }
-            }
-        }
-
-        is GalleryState.Error -> {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = state.message,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Button(onClick = { viewModel.fetchGallery(id) }) {
-                        Text(text = "Retry")
-                    }
-                }
-            }
-        }
-
+        is GalleryState.Loading -> LoadingScreen()
+        is GalleryState.Error -> ErrorScreen(state.message) { viewModel.fetchGallery(id) }
         is GalleryState.Success -> {
             val gallery = state.gallery
             val selectedPage = state.selectedPage
-            val status = state.status
-            val isDownloaded = state.isDownloaded
-            val isDownloading = state.isDownloading
-            val isArchiving = state.isArchiving
 
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(vertical = 16.dp),
-                verticalArrangement = Arrangement.Top,
                 state = scrollState
             ) {
-
                 item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.Top
-                    ) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(gallery.thumb)
-                                .build(),
-                            contentDescription = gallery.name,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(200.dp)
-                                .clip(RoundedCornerShape(12.dp)),
-                            contentScale = ContentScale.Crop
-                        )
-
-                        Text(
-                            text = gallery.name,
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        Text(
-                            text = "Tags:",
-                            style = MaterialTheme.typography.headlineSmall,
-                        )
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            gallery.tags.forEach {
-                                Text(
-                                    text = it,
-                                    modifier = Modifier.clickable {
-                                        val formatted = it.replace(" ", "+")
-                                        navController.navigate("search?query=${formatted}")
-                                    },
-                                    style = MaterialTheme.typography.bodyLarge,
-                                )
-                            }
-                        }
-
-                        if (gallery.characters.isNotEmpty()) {
-                            Text(
-                                text = "Characters:",
-                                style = MaterialTheme.typography.headlineSmall,
+                    GalleryHeader(
+                        state = state,
+                        onUpdateStatus = { newStatus, isFav ->
+                            viewModel.updateStatus(
+                                id,
+                                newStatus,
+                                isFav
                             )
-                            FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                gallery.characters.forEach {
-                                    Text(
-                                        text = it,
-                                        modifier = Modifier.clickable {
-                                            val formatted = it.replace(" ", "+")
-                                            navController.navigate("search?query=${formatted}")
-                                        },
-                                        style = MaterialTheme.typography.bodyLarge,
-                                    )
-                                }
-                            }
-                        }
-
-                        if (gallery.artists.isNotEmpty()) {
-                            Text(
-                                text = "Artists:",
-                                style = MaterialTheme.typography.headlineSmall,
-                            )
-                            FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                gallery.artists.forEach {
-                                    Text(
-                                        text = it,
-                                        modifier = Modifier.clickable {
-                                            val formatted = it.replace(" ", "+")
-                                            navController.navigate("search?query=${formatted}")
-                                        },
-                                        style = MaterialTheme.typography.bodyLarge,
-                                    )
-                                }
-                            }
-                        }
-
-                        Text(
-                            text = "Pages: ${gallery.pages}",
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            StatusControls(status, onUpdateStatus = { newStatus, isFav ->
-                                viewModel.updateStatus(id, newStatus, isFav)
-                            })
-
-                            if (isDownloading) {
-                                CircularProgressIndicator()
-                            } else {
-                                Row {
-                                    if (isDownloaded) {
-                                        if (isArchiving) {
-                                            CircularProgressIndicator(
-                                                modifier = Modifier
-                                                    .size(48.dp)
-                                                    .padding(8.dp)
-                                            )
-                                        } else {
-                                            IconButton(
-                                                onClick = { viewModel.archiveGallery(gallery) },
-                                                modifier = Modifier.size(48.dp)
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Rounded.Save,
-                                                    contentDescription = "Archive"
-                                                )
-                                            }
-                                        }
-                                    }
-                                    IconButton(
-                                        onClick = {
-                                            if (isDownloaded) {
-                                                viewModel.deleteGallery(gallery.id)
-                                            } else {
-                                                viewModel.downloadGallery(gallery)
-                                            }
-                                        },
-                                        modifier = Modifier.size(48.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = if (isDownloaded) Icons.Rounded.Delete else Icons.Rounded.Download,
-                                            contentDescription = if (isDownloaded) "Delete" else "Download"
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
+                        },
+                        onArchive = { viewModel.archiveGallery(gallery) },
+                        onDownloadOrDelete = {
+                            if (state.isDownloaded) viewModel.deleteGallery(gallery.id)
+                            else viewModel.downloadGallery(gallery)
+                        },
+                        onTagClick = onTagClick
+                    )
                 }
 
                 items(gallery.pages) { pageIndex ->
-                    val imageUrl = if (isDownloaded) {
-                        val imageType = gallery.images[pageIndex]
-                        val ext = when (imageType) {
-                            ImageType.Jpg -> "jpg"
-                            ImageType.Webp -> "webp"
-                        }
-                        File(
-                            context.filesDir,
-                            "galleries/${gallery.id}/${pageIndex + 1}.$ext"
-                        ).absolutePath
-                    } else {
-                        val imageType = gallery.images[pageIndex]
-                        when (imageType) {
-                            ImageType.Jpg -> "https://i1.nhentai.net/galleries/${gallery.pagesId}/${pageIndex + 1}.jpg"
-                            ImageType.Webp -> "https://i1.nhentai.net/galleries/${gallery.pagesId}/${pageIndex + 1}.webp"
-                        }
+                    val imageUrl = remember(gallery, pageIndex, state.isDownloaded) {
+                        getImageUrl(context, gallery, pageIndex + 1, state.isDownloaded)
                     }
-
                     GalleryPageCard(imageUrl, pageIndex + 1) {
                         viewModel.selectPage(pageIndex + 1)
                     }
@@ -490,38 +304,134 @@ fun GalleryScreen(
             }
 
             selectedPage?.let { currentPage ->
-                val imageUrl = if (isDownloaded) {
-                    val imageType = gallery.images[currentPage - 1]
-                    val ext = when (imageType) {
-                        ImageType.Jpg -> "jpg"
-                        ImageType.Webp -> "webp"
-                    }
-                    File(
-                        context.filesDir,
-                        "galleries/${gallery.id}/$currentPage.$ext"
-                    ).absolutePath
-                } else {
-                    val imageType = gallery.images[currentPage - 1]
-                    when (imageType) {
-                        ImageType.Jpg -> "https://i1.nhentai.net/galleries/${gallery.pagesId}/${currentPage}.jpg"
-                        ImageType.Webp -> "https://i1.nhentai.net/galleries/${gallery.pagesId}/${currentPage}.webp"
-                    }
+                val imageUrl = remember(gallery, currentPage, state.isDownloaded) {
+                    getImageUrl(context, gallery, currentPage, state.isDownloaded)
                 }
-
                 BackHandler { viewModel.selectPage(null) }
-
                 GalleryPageViewer(
                     imageUrl = imageUrl,
                     pageIndex = currentPage,
                     totalPages = gallery.pages,
                     onClose = { viewModel.selectPage(null) },
-                    onNextPage = {
-                        if (currentPage < gallery.pages) viewModel.selectPage(currentPage + 1)
-                    },
-                    onPreviousPage = {
-                        if (currentPage > 1) viewModel.selectPage(currentPage - 1)
-                    }
+                    onNextPage = { if (currentPage < gallery.pages) viewModel.selectPage(currentPage + 1) },
+                    onPreviousPage = { if (currentPage > 1) viewModel.selectPage(currentPage - 1) }
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LoadingScreen() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            CircularProgressIndicator(modifier = Modifier.size(48.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+            Text("Loading...", textAlign = TextAlign.Center)
+        }
+    }
+}
+
+@Composable
+private fun ErrorScreen(message: String, onRetry: () -> Unit) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = message,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(16.dp)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(onClick = onRetry) { Text("Retry") }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun GalleryHeader(
+    state: GalleryState.Success,
+    onUpdateStatus: (Status?, Boolean) -> Unit,
+    onArchive: () -> Unit,
+    onDownloadOrDelete: () -> Unit,
+    onTagClick: (String) -> Unit
+) {
+    val gallery = state.gallery
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Top
+    ) {
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current).data(gallery.thumb).build(),
+            contentDescription = gallery.name,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .clip(RoundedCornerShape(12.dp)),
+            contentScale = ContentScale.Crop
+        )
+
+        Text(
+            text = gallery.name,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold
+        )
+
+        GallerySection("Tags:", gallery.tags, onTagClick)
+        GallerySection("Characters:", gallery.characters, onTagClick)
+        GallerySection("Artists:", gallery.artists, onTagClick)
+
+        Text(text = "Pages: ${gallery.pages}", style = MaterialTheme.typography.bodyMedium)
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            StatusControls(state.status, onUpdateStatus)
+
+            if (state.isDownloading) {
+                CircularProgressIndicator()
+            } else {
+                Row {
+                    if (state.isDownloaded) {
+                        if (state.isArchiving) {
+                            CircularProgressIndicator(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .padding(8.dp)
+                            )
+                        } else {
+                            IconButton(onClick = onArchive, modifier = Modifier.size(48.dp)) {
+                                Icon(Icons.Rounded.Save, contentDescription = "Archive")
+                            }
+                        }
+                    }
+                    IconButton(onClick = onDownloadOrDelete, modifier = Modifier.size(48.dp)) {
+                        Icon(
+                            imageVector = if (state.isDownloaded) Icons.Rounded.Delete else Icons.Rounded.Download,
+                            contentDescription = if (state.isDownloaded) "Delete" else "Download"
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun GallerySection(title: String, items: List<String>, onItemClick: (String) -> Unit) {
+    if (items.isNotEmpty()) {
+        Text(text = title, style = MaterialTheme.typography.headlineSmall)
+        FlowRow {
+            items.forEach { item ->
+                TextButton(onClick = { onItemClick(item) }) {
+                    Text(item)
+                }
             }
         }
     }
@@ -563,5 +473,22 @@ fun StatusControls(status: GalleryStatus?, onUpdateStatus: (Status?, Boolean) ->
                 contentDescription = "Favorite"
             )
         }
+    }
+}
+
+private fun getImageUrl(
+    context: Context,
+    gallery: GalleryFullInfo,
+    pageNumber: Int,
+    isDownloaded: Boolean
+): String {
+    val ext = when (gallery.images[pageNumber - 1]) {
+        ImageType.Jpg -> "jpg"
+        ImageType.Webp -> "webp"
+    }
+    return if (isDownloaded) {
+        File(context.filesDir, "galleries/${gallery.id}/$pageNumber.$ext").absolutePath
+    } else {
+        "https://i1.nhentai.net/galleries/${gallery.pagesId}/$pageNumber.$ext"
     }
 }
