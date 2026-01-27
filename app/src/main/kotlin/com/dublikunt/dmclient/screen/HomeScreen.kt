@@ -9,13 +9,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -37,6 +35,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.dublikunt.dmclient.component.GalleryCard
+import com.dublikunt.dmclient.component.LoadingScreen
 import com.dublikunt.dmclient.database.AppDatabase
 import com.dublikunt.dmclient.database.PreferenceHelper
 import com.dublikunt.dmclient.database.history.GalleryHistory
@@ -160,23 +159,8 @@ fun HomeScreen(navController: NavHostController, viewModel: HomeViewModel = view
                     viewModel.fetchNextPage(scope)
                 }
 
-                if (viewModel.isLoading) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier
-                                    .size(48.dp)
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text("Loading...", textAlign = TextAlign.Center)
-                        }
-                    }
+                if (viewModel.isLoading && viewModel.stateList.isEmpty()) {
+                    LoadingScreen()
                 } else {
                     LazyVerticalGrid(
                         modifier = Modifier
@@ -205,8 +189,12 @@ fun HomeScreen(navController: NavHostController, viewModel: HomeViewModel = view
                                         .padding(16.dp)
                                 )
                             } else {
-                                LaunchedEffect(Unit) {
-                                    viewModel.fetchNextPage(scope)
+                                if (viewModel.isLoading) {
+                                    LoadingScreen(modifier = Modifier.padding(16.dp))
+                                } else {
+                                    LaunchedEffect(Unit) {
+                                        viewModel.fetchNextPage(scope)
+                                    }
                                 }
                             }
                         }

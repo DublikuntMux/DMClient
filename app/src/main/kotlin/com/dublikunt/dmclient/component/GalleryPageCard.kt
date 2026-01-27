@@ -1,9 +1,7 @@
 package com.dublikunt.dmclient.component
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -43,15 +41,9 @@ fun GalleryPageCard(imageUrl: String, pageNumber: Int, onClick: () -> Unit) {
                 contentScale = ContentScale.Crop
             )
 
-            Column(
-                modifier = Modifier
-                    .padding(5.dp)
-                    .align(Alignment.BottomEnd)
-                    .background(
-                        color = MaterialTheme.colorScheme.background.copy(alpha = 0.6f),
-                        shape = RoundedCornerShape(8.dp)
-                    )
-                    .padding(8.dp)
+            CardOverlay(
+                alignment = Alignment.BottomEnd,
+                modifier = Modifier.padding(5.dp)
             ) {
                 Text(
                     text = "Page $pageNumber",

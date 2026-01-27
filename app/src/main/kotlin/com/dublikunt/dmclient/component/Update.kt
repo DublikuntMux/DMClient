@@ -7,9 +7,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -89,9 +87,12 @@ fun UpdateCheckerDialog(
     onDismiss: () -> Unit,
     onUpdateClick: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Update Available") },
+    BaseDialog(
+        title = "Update Available",
+        onDismiss = onDismiss,
+        confirmText = "Update Now",
+        onConfirm = onUpdateClick,
+        dismissText = "Later",
         text = {
             Column(
                 modifier = Modifier
@@ -102,16 +103,6 @@ fun UpdateCheckerDialog(
                     Spacer(modifier = Modifier.height(8.dp))
                     MarkdownText(it)
                 }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onUpdateClick) {
-                Text("Update Now")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Later")
             }
         }
     )

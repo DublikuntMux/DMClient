@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -63,35 +62,28 @@ fun GalleryCard(
             )
 
             if (isFavorite || status != null) {
-                Row(
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .background(
-                            color = MaterialTheme.colorScheme.background.copy(alpha = 0.6f),
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                        .padding(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                CardOverlay(
+                    alignment = Alignment.TopStart,
+                    modifier = Modifier.padding(8.dp)
                 ) {
-                    if (isFavorite) {
-                        StatusDot(color = Color.Yellow)
-                    }
-                    if (status == Status.Reading) {
-                        StatusDot(color = Color.Green)
-                    } else if (status == Status.Read) {
-                        StatusDot(color = Color.Blue)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        if (isFavorite) {
+                            StatusDot(color = Color.Yellow)
+                        }
+                        if (status == Status.Reading) {
+                            StatusDot(color = Color.Green)
+                        } else if (status == Status.Read) {
+                            StatusDot(color = Color.Blue)
+                        }
                     }
                 }
             }
 
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .background(
-                        color = MaterialTheme.colorScheme.background.copy(alpha = 0.6f),
-                        shape = RoundedCornerShape(8.dp)
-                    )
-                    .padding(8.dp)
+            CardOverlay(
+                alignment = Alignment.BottomCenter,
+                modifier = Modifier.padding(8.dp)
             ) {
                 Text(
                     text = gallery.name,

@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -18,7 +17,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -34,7 +32,6 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -45,6 +42,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import com.dublikunt.dmclient.component.LoadingScreen
 import com.dublikunt.dmclient.scrapper.NHentaiApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -153,23 +151,7 @@ fun SearchScreen(navController: NavHostController, viewModel: SearchViewModel = 
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (viewModel.isLoading.value) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier
-                            .size(48.dp)
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text("Loading...", textAlign = TextAlign.Center)
-                    Text("First time may take a while", textAlign = TextAlign.Center)
-                }
-            }
+            LoadingScreen(text = "Loading...\nFirst time may take a while")
         } else {
             Column(
                 modifier = Modifier
@@ -305,9 +287,9 @@ fun TagGrid(
 
 @Composable
 fun SelectedItemsGrid(
-    selectedTags: List<String>,
-    selectedArtists: List<String>,
-    selectedCharacters: List<String>
+    selectedTags: MutableList<String>,
+    selectedArtists: MutableList<String>,
+    selectedCharacters: MutableList<String>
 ) {
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 100.dp),
@@ -315,59 +297,49 @@ fun SelectedItemsGrid(
             .fillMaxSize()
             .padding(10.dp)
     ) {
-        items(selectedTags) { tag ->
-            TagButton(tag, selectedTags.toMutableList())
+        items(selectedTags) { item ->
+            TagButton(item, selectedTags)
         }
-        items(selectedArtists) { artist ->
-            TagButton(artist, selectedArtists.toMutableList())
+        items(selectedArtists) { item ->
+            TagButton(item, selectedArtists)
         }
-        items(selectedCharacters) { character ->
-            TagButton(character, selectedCharacters.toMutableList())
+        items(selectedCharacters) { item ->
+            TagButton(item, selectedCharacters)
         }
     }
 }
 
 @Composable
-fun TagButton(tag: String, selectedTags: MutableList<String>) {
-    val isSelected = selectedTags.contains(tag)
+fun TagButton(item: String, selectedItems: MutableList<String>) {
+    val isSelected = selectedItems.contains(item)
     Button(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(80.dp),
         onClick = {
-            if (isSelected) selectedTags.remove(tag) else selectedTags.add(tag)
+            if (isSelected) {
+                selectedItems.remove(item)
+            } else {
+                selectedItems.add(item)
+            }
         },
         colors = ButtonDefaults.buttonColors(
-            containerColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+            contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
         ),
-        shape = RectangleShape
+        shape = RectangleShape,
+        modifier = Modifier.padding(4.dp)
     ) {
-        Text(
-            text = tag,
-            style = MaterialTheme.typography.bodyMedium,
-            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary
-        )
+        Text(text = item, textAlign = TextAlign.Center)
     }
 }
 
 fun concatenateStrings(
-    inputString: String,
+    query: String,
     tags: List<String>,
     artists: List<String>,
     characters: List<String>
 ): String {
-    val formattedInput = inputString.takeIf { it.isNotEmpty() }?.replace(" ", "+") ?: ""
-
-    val formattedTags = tags.filter { it.isNotEmpty() }
-        .joinToString("+") { it.replace(" ", "+") }
-
-    val formattedArtists = artists.filter { it.isNotEmpty() }
-        .joinToString("+") { it.replace(" ", "+") }
-
-    val formattedCharacters = characters.filter { it.isNotEmpty() }
-        .joinToString("+") { it.replace(" ", "+") }
-
-    return listOf(formattedInput, formattedTags, formattedArtists, formattedCharacters)
-        .filter { it.isNotEmpty() }
-        .joinToString("+")
+    val sb = StringBuilder(query)
+    tags.forEach { sb.append(" tag:\"$it\"") }
+    artists.forEach { sb.append(" artist:\"$it\"") }
+    characters.forEach { sb.append(" character:\"$it\"") }
+    return sb.toString().trim().replace(" ", "+")
 }

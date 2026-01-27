@@ -23,7 +23,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.core.net.toUri
 
 @Composable
-fun MarkdownText(text: String) {
+fun MarkdownText(text: String, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val annotatedString = parseMarkdownToAnnotatedString(text)
 
@@ -31,15 +31,15 @@ fun MarkdownText(text: String) {
 
     Text(
         text = annotatedString,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .pointerInput(Unit) {
                 detectTapGestures { tapOffsetPosition ->
                     val layoutResult = textLayoutResult ?: return@detectTapGestures
                     val position = layoutResult.getOffsetForPosition(tapOffsetPosition)
                     annotatedString
-                        .getStringAnnotations(start = position, end = position)
-                        .firstOrNull { it.tag == "URL" }
+                        .getStringAnnotations(tag = "URL", start = position, end = position)
+                        .firstOrNull()
                         ?.let { annotation ->
                             val intent = Intent(Intent.ACTION_VIEW, annotation.item.toUri())
                             context.startActivity(intent)

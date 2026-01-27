@@ -34,13 +34,14 @@ fun GalleryPageViewer(
     totalPages: Int,
     onClose: () -> Unit,
     onNextPage: () -> Unit,
-    onPreviousPage: () -> Unit
+    onPreviousPage: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset(0f, 0f)) }
     val maxScale = 5f
-    val minScale = 0.2f
+    val minScale = 1f
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
 
@@ -74,7 +75,7 @@ fun GalleryPageViewer(
     }
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .pointerInput(pageIndex) {
@@ -100,7 +101,11 @@ fun GalleryPageViewer(
                 .pointerInput(Unit) {
                     detectTransformGestures { _, pan, zoom, _ ->
                         scale = (scale * zoom).coerceIn(minScale, maxScale)
-                        offset = Offset(offset.x + (pan.x * scale), offset.y + (pan.y * scale))
+                        if (scale > 1f) {
+                            offset = Offset(offset.x + (pan.x * scale), offset.y + (pan.y * scale))
+                        } else {
+                            offset = Offset(0f, 0f)
+                        }
                     }
                 },
             contentScale = ContentScale.Fit
