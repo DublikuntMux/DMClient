@@ -66,10 +66,12 @@ class DownloadWorker(
                 val ext = when (imageType) {
                     ImageType.Jpg -> "jpg"
                     ImageType.Webp -> "webp"
+                    ImageType.Png -> "png"
                 }
                 val baseUrl = when (imageType) {
                     ImageType.Jpg -> "https://i1.nhentai.net/galleries/${gallery.pagesId}"
                     ImageType.Webp -> "https://i1.nhentai.net/galleries/${gallery.pagesId}"
+                    ImageType.Png -> "https://i1.nhentai.net/galleries/${gallery.pagesId}"
                 }
 
                 val pageFile = File(galleryDir, "$i.$ext")

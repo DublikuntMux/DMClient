@@ -458,6 +458,7 @@ private fun getImageUrl(
     val ext = when (gallery.images[pageNumber - 1]) {
         ImageType.Jpg -> "jpg"
         ImageType.Webp -> "webp"
+        ImageType.Png -> "png"
     }
     return if (isDownloaded) {
         File(context.filesDir, "galleries/${gallery.id}/$pageNumber.$ext").absolutePath

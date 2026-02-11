@@ -158,13 +158,16 @@ object NHentaiApi {
 
         val imagesList = thumbnails.mapNotNull { thumb ->
             val src = thumb.attr("data-src")
+            println(src)
             when {
                 src.endsWith(".jpg.webp") -> ImageType.Jpg
                 src.endsWith(".webp") -> ImageType.Webp
                 src.endsWith(".jpg") -> ImageType.Jpg
+                src.endsWith(".png") -> ImageType.Png
                 else -> null
             }
         }
+        println(imagesList)
 
         if (imagesList.size != pagesCount) {
             if (imagesList.isEmpty()) return null

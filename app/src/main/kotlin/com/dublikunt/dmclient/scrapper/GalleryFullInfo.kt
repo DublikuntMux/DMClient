@@ -15,5 +15,5 @@ data class GalleryFullInfo(
     val images: List<ImageType>
 )
 
-// https://t{1-9}.nhentai.net/galleries/{pagesId}/{page}t.{jpg|webp}
-// https://i{1-9}.nhentai.net/galleries/{pagesId}/{page}.{jpg|webp}
+// https://t{1-9}.nhentai.net/galleries/{pagesId}/{page}t.{jpg|webp|png}
+// https://i{1-9}.nhentai.net/galleries/{pagesId}/{page}.{jpg|webp|png}
