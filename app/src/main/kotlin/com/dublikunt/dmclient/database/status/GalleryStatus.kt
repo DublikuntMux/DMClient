@@ -1,9 +1,9 @@
 package com.dublikunt.dmclient.database.status
 
-import androidx.room.Entity
 import androidx.room.Embedded
-import androidx.room.Relation
+import androidx.room.Entity
 import androidx.room.PrimaryKey
+import androidx.room.Relation
 import kotlinx.serialization.Serializable
 
 @Serializable

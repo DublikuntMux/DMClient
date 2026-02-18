@@ -1,8 +1,8 @@
 package com.dublikunt.dmclient.screen
 
 import android.app.Application
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -20,16 +21,27 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -137,18 +149,23 @@ fun StatusesScreen(navController: NavHostController, viewModel: StatusesViewMode
     }
 
     val selectedStatusId = tabStatusIds.getOrNull(selectedTab)
-    val filteredHistory = remember(historyList, viewModel.statusMap.value, searchQuery, selectedStatusId) {
-        historyList.filter { galleryHistory ->
-            val status = viewModel.statusMap.value[galleryHistory.id]
-            if (status == null) {
-                false
-            } else {
-                val queryMatches = searchQuery.isBlank() || galleryHistory.name.contains(searchQuery, ignoreCase = true)
-                val statusMatches = selectedStatusId == null || status.status?.id == selectedStatusId
-                queryMatches && statusMatches
+    val filteredHistory =
+        remember(historyList, viewModel.statusMap.value, searchQuery, selectedStatusId) {
+            historyList.filter { galleryHistory ->
+                val status = viewModel.statusMap.value[galleryHistory.id]
+                if (status == null) {
+                    false
+                } else {
+                    val queryMatches = searchQuery.isBlank() || galleryHistory.name.contains(
+                        searchQuery,
+                        ignoreCase = true
+                    )
+                    val statusMatches =
+                        selectedStatusId == null || status.status?.id == selectedStatusId
+                    queryMatches && statusMatches
+                }
             }
         }
-    }
 
     Column(
         modifier = Modifier
@@ -171,7 +188,9 @@ fun StatusesScreen(navController: NavHostController, viewModel: StatusesViewMode
                 modifier = Modifier.weight(1f)
             )
 
-            Button(onClick = { showManageDialog = true }) {
+            FilledTonalButton(onClick = { showManageDialog = true }) {
+                Icon(imageVector = Icons.Default.Settings, contentDescription = "Manage statuses")
+                Spacer(modifier = Modifier.width(8.dp))
                 Text("Manage")
             }
         }
@@ -207,7 +226,8 @@ fun StatusesScreen(navController: NavHostController, viewModel: StatusesViewMode
                         navController,
                         viewModel.statusMap.value[galleryHistory.id]?.status?.name,
                         viewModel.statusMap.value[galleryHistory.id]?.status?.color,
-                        viewModel.statusMap.value[galleryHistory.id]?.galleryStatus?.favorite ?: false
+                        viewModel.statusMap.value[galleryHistory.id]?.galleryStatus?.favorite
+                            ?: false
                     )
 
                     Column(
@@ -270,30 +290,48 @@ private fun ManageStatusesDialog(
                     ) {
                         Text(status.name)
                         Row {
-                            Button(onClick = {
+                            OutlinedButton(onClick = {
                                 editorStatus = status
                                 creatingNew = false
-                            }) {
+                            }
+                            ) {
+                                Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit status")
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text("Edit")
                             }
-                            Spacer(modifier = Modifier.height(0.dp).padding(horizontal = 2.dp))
-                            Button(onClick = { onDelete(status.id) }) {
+                            Spacer(
+                                modifier = Modifier
+                                    .height(0.dp)
+                                    .padding(horizontal = 2.dp)
+                            )
+                            TextButton(
+                                onClick = { onDelete(status.id) },
+                                colors = ButtonDefaults.textButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.error
+                                )
+                            ) {
+                                Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete status")
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text("Delete")
                             }
                         }
                     }
                 }
 
-                Button(onClick = {
+                TextButton(onClick = {
                     editorStatus = null
                     creatingNew = true
                 }) {
+                    Icon(imageVector = Icons.Default.Add, contentDescription = "Create status")
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text("Create Status")
                 }
             }
         },
         confirmButton = {
-            Button(onClick = onDismiss) {
+            FilledTonalButton(onClick = onDismiss) {
+                Icon(imageVector = Icons.Default.Check, contentDescription = "Done")
+                Spacer(modifier = Modifier.width(8.dp))
                 Text("Done")
             }
         }
@@ -302,7 +340,8 @@ private fun ManageStatusesDialog(
     if (creatingNew || editorStatus != null) {
         val existing = editorStatus
         var name by remember(existing, creatingNew) { mutableStateOf(existing?.name ?: "") }
-        val initialColor = existing?.color?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "FF00FF00"
+        val initialColor =
+            existing?.color?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "FF00FF00"
         var colorInput by remember(existing, creatingNew) { mutableStateOf("#$initialColor") }
 
         AlertDialog(
@@ -340,14 +379,18 @@ private fun ManageStatusesDialog(
                         creatingNew = false
                     }
                 }) {
+                    Icon(imageVector = Icons.Default.Save, contentDescription = "Save status")
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text("Save")
                 }
             },
             dismissButton = {
-                Button(onClick = {
+                TextButton(onClick = {
                     editorStatus = null
                     creatingNew = false
                 }) {
+                    Icon(imageVector = Icons.Default.Close, contentDescription = "Cancel")
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text("Cancel")
                 }
             }

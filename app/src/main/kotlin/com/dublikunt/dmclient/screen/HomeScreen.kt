@@ -13,7 +13,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.material3.Button
+import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -229,7 +229,7 @@ fun PermissionRequestScreen(internetPermissionState: PermissionState) {
             }
             Text(message, textAlign = TextAlign.Center)
             Spacer(modifier = Modifier.height(8.dp))
-            Button(onClick = { internetPermissionState.launchPermissionRequest() }) {
+            ElevatedButton(onClick = { internetPermissionState.launchPermissionRequest() }) {
                 Text("Request permission")
             }
         }

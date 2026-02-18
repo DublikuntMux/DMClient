@@ -10,7 +10,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -36,6 +39,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dublikunt.dmclient.component.ConfirmationDialog
 import com.dublikunt.dmclient.component.settings.SettingsButton
+import com.dublikunt.dmclient.component.settings.SettingsButtonType
 import com.dublikunt.dmclient.database.AppDatabase
 import com.dublikunt.dmclient.database.PreferenceHelper
 import com.dublikunt.dmclient.database.download.DownloadedGallery
@@ -177,13 +181,31 @@ fun StorageScreen(viewModel: StorageViewModel = viewModel()) {
                         steps = 49
                     )
                 }
-                SettingsButton("Image Cache", "Clear All") {
+                SettingsButton(
+                    title = "Image Cache",
+                    buttonText = "Clear All",
+                    icon = Icons.Default.Image,
+                    buttonType = SettingsButtonType.Outlined,
+                    isDestructive = true
+                ) {
                     showClearCacheDialog = true
                 }
-                SettingsButton("History", "Clear All") {
+                SettingsButton(
+                    title = "History",
+                    buttonText = "Clear All",
+                    icon = Icons.Default.History,
+                    buttonType = SettingsButtonType.Outlined,
+                    isDestructive = true
+                ) {
                     showClearHistoryDialog = true
                 }
-                SettingsButton("Downloads", "Clear All") {
+                SettingsButton(
+                    title = "Downloads",
+                    buttonText = "Clear All",
+                    icon = Icons.Default.Download,
+                    buttonType = SettingsButtonType.Outlined,
+                    isDestructive = true
+                ) {
                     showClearDownloadsDialog = true
                 }
             }
@@ -231,6 +253,7 @@ fun StorageScreen(viewModel: StorageViewModel = viewModel()) {
         ConfirmationDialog(
             title = "Clear History",
             text = "Are you sure you want to clear all history?",
+            isDestructiveConfirm = true,
             onConfirm = {
                 viewModel.clearHistory()
                 showClearHistoryDialog = false
@@ -243,6 +266,7 @@ fun StorageScreen(viewModel: StorageViewModel = viewModel()) {
         ConfirmationDialog(
             title = "Clear Image Cache",
             text = "Are you sure you want to clear the image cache?",
+            isDestructiveConfirm = true,
             onConfirm = {
                 viewModel.clearImageCache()
                 showClearCacheDialog = false
@@ -255,6 +279,7 @@ fun StorageScreen(viewModel: StorageViewModel = viewModel()) {
         ConfirmationDialog(
             title = "Clear Downloads",
             text = "Are you sure you want to delete all downloaded galleries?",
+            isDestructiveConfirm = true,
             onConfirm = {
                 viewModel.clearAllDownloads()
                 showClearDownloadsDialog = false

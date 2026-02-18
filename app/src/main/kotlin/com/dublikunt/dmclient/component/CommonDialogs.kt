@@ -9,6 +9,7 @@ fun ConfirmationDialog(
     text: String,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
+    isDestructiveConfirm: Boolean = false,
     confirmText: String = "Confirm",
     dismissText: String = "Cancel"
 ) {
@@ -17,6 +18,7 @@ fun ConfirmationDialog(
         onDismiss = onDismiss,
         confirmText = confirmText,
         onConfirm = onConfirm,
+        isDestructiveConfirm = isDestructiveConfirm,
         dismissText = dismissText,
         text = { Text(text) }
     )

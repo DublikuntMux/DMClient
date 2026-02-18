@@ -1,6 +1,10 @@
 package com.dublikunt.dmclient.component
 
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -11,6 +15,7 @@ fun BaseDialog(
     onDismiss: () -> Unit,
     confirmText: String,
     onConfirm: () -> Unit,
+    isDestructiveConfirm: Boolean = false,
     dismissText: String? = null,
     text: @Composable (() -> Unit)? = null
 ) {
@@ -19,8 +24,20 @@ fun BaseDialog(
         title = { Text(title) },
         text = text,
         confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text(confirmText)
+            if (isDestructiveConfirm) {
+                Button(
+                    onClick = onConfirm,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    )
+                ) {
+                    Text(confirmText)
+                }
+            } else {
+                FilledTonalButton(onClick = onConfirm) {
+                    Text(confirmText)
+                }
             }
         },
         dismissButton = dismissText?.let {

@@ -9,7 +9,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -29,6 +37,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.dublikunt.dmclient.component.settings.SettingsButton
+import com.dublikunt.dmclient.component.settings.SettingsButtonType
 import com.dublikunt.dmclient.component.settings.SettingsDropdownButton
 import com.dublikunt.dmclient.database.AppDatabase
 import com.dublikunt.dmclient.database.PreferenceHelper
@@ -166,7 +175,12 @@ fun SettingsScreen(navController: NavController) {
 
                 Spacer(modifier = Modifier.height(16.dp))
                 SettingsSectionHeader("Security")
-                SettingsButton("Set or Change PIN Code", "Set") {
+                SettingsButton(
+                    title = "Set or Change PIN Code",
+                    buttonText = "Set",
+                    icon = Icons.Filled.Lock,
+                    buttonType = SettingsButtonType.Filled
+                ) {
                     pinInput = ""
                     pinInputError = null
                     showPinDialog = true
@@ -174,22 +188,49 @@ fun SettingsScreen(navController: NavController) {
 
                 Spacer(modifier = Modifier.height(16.dp))
                 SettingsSectionHeader("Data")
-                SettingsButton("Storage Management", "Open") {
+                SettingsButton(
+                    title = "Storage Management",
+                    buttonText = "Open",
+                    icon = Icons.Filled.Storage,
+                    buttonType = SettingsButtonType.Outlined
+                ) {
                     navController.navigate("storage")
                 }
-                SettingsButton("Export Data", "Export") {
+                SettingsButton(
+                    title = "Export Data",
+                    buttonText = "Export",
+                    icon = Icons.Filled.Upload,
+                    buttonType = SettingsButtonType.FilledTonal
+                ) {
                     exportLauncher.launch("dmclient_backup.json")
                 }
-                SettingsButton("Import Data", "Import") {
+                SettingsButton(
+                    title = "Import Data",
+                    buttonText = "Import",
+                    icon = Icons.Filled.Download,
+                    buttonType = SettingsButtonType.FilledTonal
+                ) {
                     importLauncher.launch(arrayOf("application/json"))
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
                 SettingsSectionHeader("Danger Zone")
-                SettingsButton("Delete Token", "Delete") {
+                SettingsButton(
+                    title = "Delete Token",
+                    buttonText = "Delete",
+                    icon = Icons.Filled.Delete,
+                    buttonType = SettingsButtonType.Text,
+                    isDestructive = true
+                ) {
                     showDeleteTokenDialog = true
                 }
-                SettingsButton("Clear Search Cache", "Delete") {
+                SettingsButton(
+                    title = "Clear Search Cache",
+                    buttonText = "Delete",
+                    icon = Icons.Filled.Delete,
+                    buttonType = SettingsButtonType.Text,
+                    isDestructive = true
+                ) {
                     showClearSearchCacheDialog = true
                 }
             }
@@ -202,15 +243,21 @@ fun SettingsScreen(navController: NavController) {
             title = { Text("Confirm Delete") },
             text = { Text("Are you sure you want to delete token? This action cannot be undone.") },
             confirmButton = {
-                TextButton(onClick = {
-                    showDeleteTokenDialog = false
-                    scope.launch {
-                        withContext(Dispatchers.IO) {
-                            PreferenceHelper.deleteTokens(context)
+                Button(
+                    onClick = {
+                        showDeleteTokenDialog = false
+                        scope.launch {
+                            withContext(Dispatchers.IO) {
+                                PreferenceHelper.deleteTokens(context)
+                            }
+                            showSnackbarMessage = "Token deleted successfully."
                         }
-                        showSnackbarMessage = "Token deleted successfully."
-                    }
-                }) {
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    )
+                ) {
                     Text("Confirm")
                 }
             },
@@ -229,23 +276,29 @@ fun SettingsScreen(navController: NavController) {
             title = { Text("Confirm Delete") },
             text = { Text("Are you sure you want to clear search cache?") },
             confirmButton = {
-                TextButton(onClick = {
-                    showClearSearchCacheDialog = false
-                    scope.launch {
-                        withContext(Dispatchers.IO) {
-                            val artists = File(context.filesDir, "artists.json")
-                            val characters = File(context.filesDir, "characters.json")
-                            val tags = File(context.filesDir, "tags.json")
+                Button(
+                    onClick = {
+                        showClearSearchCacheDialog = false
+                        scope.launch {
+                            withContext(Dispatchers.IO) {
+                                val artists = File(context.filesDir, "artists.json")
+                                val characters = File(context.filesDir, "characters.json")
+                                val tags = File(context.filesDir, "tags.json")
 
-                            if (artists.exists())
-                                artists.delete()
-                            if (characters.exists())
-                                characters.delete()
-                            if (tags.exists())
-                                tags.delete()
+                                if (artists.exists())
+                                    artists.delete()
+                                if (characters.exists())
+                                    characters.delete()
+                                if (tags.exists())
+                                    tags.delete()
+                            }
                         }
-                    }
-                }) {
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    )
+                ) {
                     Text("Confirm")
                 }
             },
@@ -278,10 +331,10 @@ fun SettingsScreen(navController: NavController) {
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
+                Button(onClick = {
                     val length = pinInput.length
                     if (length !in 4..15) {
-                        return@TextButton
+                        return@Button
                     }
 
                     scope.launch {

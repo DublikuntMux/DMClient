@@ -15,8 +15,8 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -33,7 +33,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
@@ -312,7 +311,7 @@ fun SelectedItemsGrid(
 @Composable
 fun TagButton(item: String, selectedItems: MutableList<String>) {
     val isSelected = selectedItems.contains(item)
-    Button(
+    FilledTonalButton(
         onClick = {
             if (isSelected) {
                 selectedItems.remove(item)
@@ -320,9 +319,9 @@ fun TagButton(item: String, selectedItems: MutableList<String>) {
                 selectedItems.add(item)
             }
         },
-        colors = ButtonDefaults.buttonColors(
-            containerColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
-            contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+        colors = ButtonDefaults.filledTonalButtonColors(
+            containerColor = if (isSelected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+            contentColor = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
         ),
         shape = RectangleShape,
         modifier = Modifier.padding(4.dp)

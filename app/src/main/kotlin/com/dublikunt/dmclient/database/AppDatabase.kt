@@ -57,25 +57,30 @@ abstract class AppDatabase : RoomDatabase() {
 
         val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("""
+                db.execSQL(
+                    """
                     CREATE TABLE IF NOT EXISTS custom_status (
                         id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
                         name TEXT NOT NULL,
                         color INTEGER NOT NULL
                     )
-                """.trimIndent())
+                """.trimIndent()
+                )
 
                 seedDefaultStatuses(db)
 
-                db.execSQL("""
+                db.execSQL(
+                    """
                     CREATE TABLE IF NOT EXISTS gallery_status_new (
                         id INTEGER PRIMARY KEY NOT NULL,
                         statusId INTEGER,
                         favorite INTEGER NOT NULL
                     )
-                """.trimIndent())
+                """.trimIndent()
+                )
 
-                db.execSQL("""
+                db.execSQL(
+                    """
                     INSERT INTO gallery_status_new (id, statusId, favorite)
                     SELECT
                         id,
@@ -86,7 +91,8 @@ abstract class AppDatabase : RoomDatabase() {
                         END,
                         favorite
                     FROM gallery_status
-                """.trimIndent())
+                """.trimIndent()
+                )
 
                 db.execSQL("DROP TABLE gallery_status")
                 db.execSQL("ALTER TABLE gallery_status_new RENAME TO gallery_status")

@@ -28,6 +28,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -483,7 +484,7 @@ fun StatusControls(
 
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box {
-            Button(onClick = { expanded = true }) {
+            FilledTonalButton(onClick = { expanded = true }) {
                 Text(text = status?.status?.name ?: "Set Status")
             }
 
@@ -554,7 +555,7 @@ fun StatusControls(
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
+                Button(onClick = {
                     val parsedColor = parseStatusColor(statusColorInput)
                     if (statusNameInput.isNotBlank() && parsedColor != null) {
                         if (isEditing) {
