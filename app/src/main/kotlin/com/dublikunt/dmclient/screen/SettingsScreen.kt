@@ -33,6 +33,7 @@ import com.dublikunt.dmclient.component.settings.SettingsDropdownButton
 import com.dublikunt.dmclient.database.AppDatabase
 import com.dublikunt.dmclient.database.PreferenceHelper
 import com.dublikunt.dmclient.database.history.GalleryHistory
+import com.dublikunt.dmclient.database.status.CustomStatus
 import com.dublikunt.dmclient.database.status.GalleryStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -46,7 +47,8 @@ import java.io.File
 @Serializable
 data class BackupData(
     val history: List<GalleryHistory>,
-    val status: List<GalleryStatus>
+    val galleryStatuses: List<GalleryStatus>,
+    val customStatuses: List<CustomStatus>
 )
 
 @Composable
@@ -77,8 +79,9 @@ fun SettingsScreen(navController: NavController) {
             scope.launch(Dispatchers.IO) {
                 try {
                     val history = historyDao.getAllHistory()
-                    val statuses = statusDao.getAllStatuses()
-                    val backup = BackupData(history, statuses)
+                    val galleryStatuses = statusDao.getAllGalleryStatusEntities()
+                    val customStatuses = statusDao.getCustomStatuses()
+                    val backup = BackupData(history, galleryStatuses, customStatuses)
                     val json = Json.encodeToString(backup)
 
                     context.contentResolver.openOutputStream(it)?.use { output ->
@@ -106,8 +109,11 @@ fun SettingsScreen(navController: NavController) {
                         if (backup.history.isNotEmpty()) {
                             historyDao.insertHistories(backup.history)
                         }
-                        if (backup.status.isNotEmpty()) {
-                            statusDao.insertStatuses(backup.status)
+                        if (backup.customStatuses.isNotEmpty()) {
+                            statusDao.insertCustomStatuses(backup.customStatuses)
+                        }
+                        if (backup.galleryStatuses.isNotEmpty()) {
+                            statusDao.insertStatuses(backup.galleryStatuses)
                         }
                     }
                     showSnackbarMessage = "Import successful"

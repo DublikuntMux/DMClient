@@ -33,7 +33,7 @@ import androidx.navigation.NavHostController
 import com.dublikunt.dmclient.component.GalleryCard
 import com.dublikunt.dmclient.database.AppDatabase
 import com.dublikunt.dmclient.database.history.GalleryHistory
-import com.dublikunt.dmclient.database.status.GalleryStatus
+import com.dublikunt.dmclient.database.status.GalleryStatusWithCustomStatus
 import com.dublikunt.dmclient.scrapper.GallerySimpleInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -44,7 +44,7 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
     private val statusDao = db.galleryStatusDao()
 
     val historyList: LiveData<List<GalleryHistory>> = historyDao.getHistory().asLiveData()
-    val statusMap = mutableStateOf<Map<Int, GalleryStatus?>>(emptyMap())
+    val statusMap = mutableStateOf<Map<Int, GalleryStatusWithCustomStatus?>>(emptyMap())
 
     fun removeGalleryFromHistory(gallery: GalleryHistory) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -55,7 +55,7 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
     fun fetchStatuses(ids: List<GalleryHistory>) {
         viewModelScope.launch(Dispatchers.IO) {
             val statuses = statusDao.getStatuses(ids.map { it.id })
-            statusMap.value = statuses.associateBy { it.id }
+            statusMap.value = statuses.associateBy { it.galleryStatus.id }
         }
     }
 }
@@ -85,8 +85,9 @@ fun HistoryScreen(navController: NavHostController, viewModel: HistoryViewModel 
                         galleryHistory.name
                     ),
                     navController,
-                    viewModel.statusMap.value[galleryHistory.id]?.status,
-                    viewModel.statusMap.value[galleryHistory.id]?.favorite ?: false
+                    viewModel.statusMap.value[galleryHistory.id]?.status?.name,
+                    viewModel.statusMap.value[galleryHistory.id]?.status?.color,
+                    viewModel.statusMap.value[galleryHistory.id]?.galleryStatus?.favorite ?: false
                 )
 
                 Column(

@@ -23,6 +23,7 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Save
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -31,6 +32,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -65,8 +67,9 @@ import com.dublikunt.dmclient.component.GalleryPageCard
 import com.dublikunt.dmclient.component.GalleryPageViewer
 import com.dublikunt.dmclient.component.LoadingScreen
 import com.dublikunt.dmclient.database.AppDatabase
+import com.dublikunt.dmclient.database.status.CustomStatus
 import com.dublikunt.dmclient.database.status.GalleryStatus
-import com.dublikunt.dmclient.database.status.Status
+import com.dublikunt.dmclient.database.status.GalleryStatusWithCustomStatus
 import com.dublikunt.dmclient.scrapper.GalleryFullInfo
 import com.dublikunt.dmclient.scrapper.ImageType
 import com.dublikunt.dmclient.scrapper.NHentaiApi
@@ -103,6 +106,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
             if (downloaded != null) {
                 val status = statusDao.getStatus(id)
+                val statuses = statusDao.getCustomStatuses()
                 val gallery = GalleryFullInfo(
                     id = downloaded.id,
                     thumb = downloaded.coverPath,
@@ -114,7 +118,12 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                     pagesId = downloaded.pagesId,
                     images = downloaded.imageTypes
                 )
-                _galleryState.value = GalleryState.Success(gallery, status, isDownloaded = true)
+                _galleryState.value = GalleryState.Success(
+                    gallery = gallery,
+                    status = status,
+                    availableStatuses = statuses,
+                    isDownloaded = true
+                )
 
                 launch(Dispatchers.Main) {
                     archiveInfos.asFlow().collect { infos ->
@@ -126,8 +135,14 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 val gallery = NHentaiApi.fetchGallery(id)
                 if (gallery != null) {
                     val status = statusDao.getStatus(id)
+                    val statuses = statusDao.getCustomStatuses()
                     _galleryState.value =
-                        GalleryState.Success(gallery, status, isDownloaded = false)
+                        GalleryState.Success(
+                            gallery = gallery,
+                            status = status,
+                            availableStatuses = statuses,
+                            isDownloaded = false
+                        )
 
                     launch(Dispatchers.Main) {
                         workInfos.asFlow().collect { infos ->
@@ -144,11 +159,30 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun updateStatus(id: Int, newStatus: Status?, isFavorite: Boolean) {
+    fun updateStatus(id: Int, newStatusId: Int?, isFavorite: Boolean) {
         viewModelScope.launch(Dispatchers.IO) {
-            val updatedStatus = GalleryStatus(id, newStatus, isFavorite)
+            val updatedStatus = GalleryStatus(id, newStatusId, isFavorite)
             statusDao.insertStatus(updatedStatus)
-            updateSuccessState { it.copy(status = updatedStatus) }
+            val statusWithDetails = statusDao.getStatus(id)
+            updateSuccessState { it.copy(status = statusWithDetails) }
+        }
+    }
+
+    fun createCustomStatus(name: String, color: Long) {
+        viewModelScope.launch(Dispatchers.IO) {
+            statusDao.insertCustomStatus(CustomStatus(name = name, color = color))
+            val statuses = statusDao.getCustomStatuses()
+            updateSuccessState { it.copy(availableStatuses = statuses) }
+        }
+    }
+
+    fun updateCustomStatus(status: CustomStatus) {
+        viewModelScope.launch(Dispatchers.IO) {
+            statusDao.updateCustomStatus(status)
+            val statuses = statusDao.getCustomStatuses()
+            val current = (_galleryState.value as? GalleryState.Success)?.gallery?.id
+            val refreshed = current?.let { statusDao.getStatus(it) }
+            updateSuccessState { it.copy(status = refreshed, availableStatuses = statuses) }
         }
     }
 
@@ -230,7 +264,8 @@ sealed class GalleryState {
     data object Loading : GalleryState()
     data class Success(
         val gallery: GalleryFullInfo,
-        val status: GalleryStatus?,
+        val status: GalleryStatusWithCustomStatus?,
+        val availableStatuses: List<CustomStatus> = emptyList(),
         val selectedPage: Int? = null,
         val isDownloaded: Boolean = false,
         val isDownloading: Boolean = false,
@@ -277,13 +312,20 @@ fun GalleryScreen(
                 item {
                     GalleryHeader(
                         state = state,
-                        onUpdateStatus = { newStatus, isFav ->
+                        onUpdateStatus = { newStatusId, isFav ->
                             viewModel.updateStatus(
                                 id,
-                                newStatus,
+                                newStatusId,
                                 isFav
                             )
                         },
+                        onCreateStatus = { name, color ->
+                            viewModel.createCustomStatus(
+                                name,
+                                color
+                            )
+                        },
+                        onEditStatus = { status -> viewModel.updateCustomStatus(status) },
                         onArchive = { viewModel.archiveGallery(gallery) },
                         onDownloadOrDelete = {
                             if (state.isDownloaded) viewModel.deleteGallery(gallery.id)
@@ -325,7 +367,9 @@ fun GalleryScreen(
 @Composable
 private fun GalleryHeader(
     state: GalleryState.Success,
-    onUpdateStatus: (Status?, Boolean) -> Unit,
+    onUpdateStatus: (Int?, Boolean) -> Unit,
+    onCreateStatus: (String, Long) -> Unit,
+    onEditStatus: (CustomStatus) -> Unit,
     onArchive: () -> Unit,
     onDownloadOrDelete: () -> Unit,
     onTagClick: (String) -> Unit
@@ -364,7 +408,13 @@ private fun GalleryHeader(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            StatusControls(state.status, onUpdateStatus)
+            StatusControls(
+                status = state.status,
+                availableStatuses = state.availableStatuses,
+                onUpdateStatus = onUpdateStatus,
+                onCreateStatus = onCreateStatus,
+                onEditStatus = onEditStatus
+            )
 
             if (state.isDownloading) {
                 CircularProgressIndicator()
@@ -411,8 +461,25 @@ private fun GallerySection(title: String, items: List<String>, onItemClick: (Str
 }
 
 @Composable
-fun StatusControls(status: GalleryStatus?, onUpdateStatus: (Status?, Boolean) -> Unit) {
+fun StatusControls(
+    status: GalleryStatusWithCustomStatus?,
+    availableStatuses: List<CustomStatus>,
+    onUpdateStatus: (Int?, Boolean) -> Unit,
+    onCreateStatus: (String, Long) -> Unit,
+    onEditStatus: (CustomStatus) -> Unit
+) {
     var expanded by remember { mutableStateOf(false) }
+    var editorOpen by remember { mutableStateOf(false) }
+    var editingStatus by remember { mutableStateOf<CustomStatus?>(null) }
+
+    val initialColor =
+        editingStatus?.color?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "FF00FF00"
+    var statusNameInput by remember(editorOpen, editingStatus) {
+        mutableStateOf(
+            editingStatus?.name ?: ""
+        )
+    }
+    var statusColorInput by remember(editorOpen, editingStatus) { mutableStateOf("#$initialColor") }
 
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box {
@@ -421,31 +488,106 @@ fun StatusControls(status: GalleryStatus?, onUpdateStatus: (Status?, Boolean) ->
             }
 
             DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                Status.entries.forEach { statusOption ->
+                availableStatuses.forEach { statusOption ->
                     DropdownMenuItem(text = { Text(statusOption.name) }, onClick = {
-                        onUpdateStatus(statusOption, status?.favorite ?: false)
+                        onUpdateStatus(statusOption.id, status?.galleryStatus?.favorite ?: false)
+                        expanded = false
+                    })
+                }
+                DropdownMenuItem(text = { Text("Create Status") }, onClick = {
+                    editingStatus = null
+                    editorOpen = true
+                    expanded = false
+                })
+                if (status?.status != null) {
+                    DropdownMenuItem(text = { Text("Edit Current Status") }, onClick = {
+                        editingStatus = status.status
+                        editorOpen = true
                         expanded = false
                     })
                 }
                 DropdownMenuItem(text = { Text("Remove Status") }, onClick = {
-                    onUpdateStatus(null, status?.favorite ?: false)
+                    onUpdateStatus(null, status?.galleryStatus?.favorite ?: false)
                     expanded = false
                 })
             }
         }
 
         IconButton(
-            onClick = { onUpdateStatus(status?.status, !(status?.favorite ?: false)) },
+            onClick = {
+                onUpdateStatus(
+                    status?.status?.id,
+                    !(status?.galleryStatus?.favorite ?: false)
+                )
+            },
             colors = IconButtonDefaults.iconButtonColors(
-                contentColor = if (status?.favorite == true) Color.Yellow else Color.Gray
+                contentColor = if (status?.galleryStatus?.favorite == true) Color.Yellow else Color.Gray
             ),
             modifier = Modifier.size(64.dp)
         ) {
             Icon(
-                if (status?.favorite == true) Icons.Rounded.Star else Icons.Outlined.Star,
+                if (status?.galleryStatus?.favorite == true) Icons.Rounded.Star else Icons.Outlined.Star,
                 contentDescription = "Favorite"
             )
         }
+    }
+
+    if (editorOpen) {
+        val isEditing = editingStatus != null
+        AlertDialog(
+            onDismissRequest = { editorOpen = false },
+            title = { Text(if (isEditing) "Edit Status" else "Create Status") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = statusNameInput,
+                        onValueChange = { statusNameInput = it },
+                        label = { Text("Name") },
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = statusColorInput,
+                        onValueChange = { statusColorInput = it },
+                        label = { Text("Color (#AARRGGBB or #RRGGBB)") },
+                        singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val parsedColor = parseStatusColor(statusColorInput)
+                    if (statusNameInput.isNotBlank() && parsedColor != null) {
+                        if (isEditing) {
+                            onEditStatus(
+                                editingStatus!!.copy(
+                                    name = statusNameInput.trim(),
+                                    color = parsedColor
+                                )
+                            )
+                        } else {
+                            onCreateStatus(statusNameInput.trim(), parsedColor)
+                        }
+                        editorOpen = false
+                    }
+                }) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { editorOpen = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+}
+
+private fun parseStatusColor(value: String): Long? {
+    val cleaned = value.trim().removePrefix("#")
+    return when (cleaned.length) {
+        6 -> cleaned.toLongOrNull(16)?.let { 0xFF000000 + it }
+        8 -> cleaned.toLongOrNull(16)
+        else -> null
     }
 }
 

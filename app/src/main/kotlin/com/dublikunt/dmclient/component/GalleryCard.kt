@@ -26,14 +26,14 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
-import com.dublikunt.dmclient.database.status.Status
 import com.dublikunt.dmclient.scrapper.GallerySimpleInfo
 
 @Composable
 fun GalleryCard(
     gallery: GallerySimpleInfo,
     navController: NavController,
-    status: Status?,
+    statusName: String?,
+    statusColor: Long?,
     isFavorite: Boolean,
     onClick: (() -> Unit)? = null
 ) {
@@ -61,7 +61,7 @@ fun GalleryCard(
                     .fillMaxSize()
             )
 
-            if (isFavorite || status != null) {
+            if (isFavorite || statusColor != null) {
                 CardOverlay(
                     alignment = Alignment.TopStart,
                     modifier = Modifier.padding(8.dp)
@@ -72,10 +72,8 @@ fun GalleryCard(
                         if (isFavorite) {
                             StatusDot(color = Color.Yellow)
                         }
-                        if (status == Status.Reading) {
-                            StatusDot(color = Color.Green)
-                        } else if (status == Status.Read) {
-                            StatusDot(color = Color.Blue)
+                        if (statusColor != null) {
+                            StatusDot(color = Color(statusColor.toInt()))
                         }
                     }
                 }
@@ -86,7 +84,7 @@ fun GalleryCard(
                 modifier = Modifier.padding(8.dp)
             ) {
                 Text(
-                    text = gallery.name,
+                    text = if (statusName.isNullOrBlank()) gallery.name else "${gallery.name} · $statusName",
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 4
                 )

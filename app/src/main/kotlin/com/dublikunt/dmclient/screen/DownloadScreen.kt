@@ -57,7 +57,8 @@ fun DownloadScreen(navController: NavHostController, viewModel: DownloadViewMode
                     GalleryCard(
                         gallery = simpleInfo,
                         navController = navController,
-                        status = null,
+                        statusName = null,
+                        statusColor = null,
                         isFavorite = false
                     )
                 }

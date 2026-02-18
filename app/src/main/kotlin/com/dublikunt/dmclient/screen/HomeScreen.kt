@@ -39,7 +39,7 @@ import com.dublikunt.dmclient.component.LoadingScreen
 import com.dublikunt.dmclient.database.AppDatabase
 import com.dublikunt.dmclient.database.PreferenceHelper
 import com.dublikunt.dmclient.database.history.GalleryHistory
-import com.dublikunt.dmclient.database.status.GalleryStatus
+import com.dublikunt.dmclient.database.status.GalleryStatusWithCustomStatus
 import com.dublikunt.dmclient.scrapper.GallerySimpleInfo
 import com.dublikunt.dmclient.scrapper.NHentaiApi
 import com.dublikunt.dmclient.scrapper.NHentaiWebView
@@ -71,7 +71,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private val historyDao = db.galleryHistoryDao()
     private val statusDao = db.galleryStatusDao()
 
-    val statusMap = mutableStateMapOf<Int, GalleryStatus?>()
+    val statusMap = mutableStateMapOf<Int, GalleryStatusWithCustomStatus?>()
 
     fun fetchNextPage(scope: CoroutineScope) {
         if (isLoading) return
@@ -173,8 +173,10 @@ fun HomeScreen(navController: NavHostController, viewModel: HomeViewModel = view
                             GalleryCard(
                                 galleryItem,
                                 navController,
-                                viewModel.statusMap[galleryItem.id]?.status,
-                                viewModel.statusMap[galleryItem.id]?.favorite ?: false
+                                viewModel.statusMap[galleryItem.id]?.status?.name,
+                                viewModel.statusMap[galleryItem.id]?.status?.color,
+                                viewModel.statusMap[galleryItem.id]?.galleryStatus?.favorite
+                                    ?: false
                             ) {
                                 viewModel.addGalleryToHistory(galleryItem)
                             }

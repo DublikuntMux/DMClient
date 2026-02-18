@@ -1,13 +1,13 @@
 [versions]
-agp = "9.0.0"
+agp = "9.0.1"
 biometric = "1.4.0-alpha05"
 kotlin = "2.3.10"
 kotlin-serialization = "1.10.0"
 ksp = "2.3.4"
 coreKtx = "1.17.0"
 lifecycleKtx = "2.10.0"
-activityCompose = "1.12.3"
-composeBom = "2026.01.01"
+activityCompose = "1.12.4"
+composeBom = "2026.02.00"
 permissions = "0.37.3"
 navigation = "2.9.7"
 okhttp = "5.3.2"
@@ -16,7 +16,7 @@ datastore = "1.2.0"
 jsoup = "1.22.1"
 room = "2.8.4"
 work = "2.11.1"
-runtimeLivedata = "1.10.2"
+runtimeLivedata = "1.10.3"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }

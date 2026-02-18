@@ -30,7 +30,7 @@ import com.dublikunt.dmclient.component.GalleryCard
 import com.dublikunt.dmclient.component.LoadingScreen
 import com.dublikunt.dmclient.database.AppDatabase
 import com.dublikunt.dmclient.database.history.GalleryHistory
-import com.dublikunt.dmclient.database.status.GalleryStatus
+import com.dublikunt.dmclient.database.status.GalleryStatusWithCustomStatus
 import com.dublikunt.dmclient.scrapper.GallerySimpleInfo
 import com.dublikunt.dmclient.scrapper.NHentaiApi
 import kotlinx.coroutines.CoroutineScope
@@ -51,7 +51,7 @@ class SearchResultViewModel(application: Application) : AndroidViewModel(applica
     private val historyDao = db.galleryHistoryDao()
     private val statusDao = db.galleryStatusDao()
 
-    val statusMap = mutableStateMapOf<Int, GalleryStatus?>()
+    val statusMap = mutableStateMapOf<Int, GalleryStatusWithCustomStatus?>()
 
     fun fetchNextPage(scope: CoroutineScope, query: String) {
         if (isLoading || errorCount >= 5) return
@@ -92,7 +92,7 @@ class SearchResultViewModel(application: Application) : AndroidViewModel(applica
     private fun fetchStatuses(ids: List<Int>) {
         viewModelScope.launch(Dispatchers.IO) {
             val statuses = statusDao.getStatuses(ids)
-            statuses.forEach { statusMap[it.id] = it }
+            statuses.forEach { statusMap[it.galleryStatus.id] = it }
         }
     }
 }
@@ -126,8 +126,11 @@ fun SearchResultScreen(
         ) {
             items(viewModel.stateList) { galleryItem ->
                 GalleryCard(
-                    galleryItem, navController, viewModel.statusMap[galleryItem.id]?.status,
-                    viewModel.statusMap[galleryItem.id]?.favorite ?: false
+                    galleryItem,
+                    navController,
+                    viewModel.statusMap[galleryItem.id]?.status?.name,
+                    viewModel.statusMap[galleryItem.id]?.status?.color,
+                    viewModel.statusMap[galleryItem.id]?.galleryStatus?.favorite ?: false
                 ) {
                     viewModel.addGalleryToHistory(galleryItem)
                 }
