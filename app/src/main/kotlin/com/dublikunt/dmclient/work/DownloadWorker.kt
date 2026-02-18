@@ -13,6 +13,7 @@ import androidx.work.workDataOf
 import com.dublikunt.dmclient.R
 import com.dublikunt.dmclient.database.AppDatabase
 import com.dublikunt.dmclient.database.download.DownloadedGallery
+import com.dublikunt.dmclient.scrapper.GalleryFullInfo
 import com.dublikunt.dmclient.scrapper.ImageType
 import com.dublikunt.dmclient.scrapper.NHentaiApi
 import kotlinx.serialization.json.Json
@@ -30,7 +31,7 @@ class DownloadWorker(
     override suspend fun doWork(): Result {
         val galleryJson = inputData.getString(KEY_GALLERY_JSON) ?: return Result.failure()
         val gallery = try {
-            Json.decodeFromString<com.dublikunt.dmclient.scrapper.GalleryFullInfo>(galleryJson)
+            Json.decodeFromString<GalleryFullInfo>(galleryJson)
         } catch (e: Exception) {
             e.printStackTrace()
             return Result.failure()
@@ -110,6 +111,7 @@ class DownloadWorker(
                 totalPages = gallery.pages,
                 pagesId = gallery.pagesId,
                 imageTypes = gallery.images,
+                parodies = gallery.parodies,
                 tags = gallery.tags,
                 artists = gallery.artists,
                 characters = gallery.characters

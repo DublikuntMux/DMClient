@@ -113,6 +113,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                     id = downloaded.id,
                     thumb = downloaded.coverPath,
                     name = downloaded.title,
+                    parodies = downloaded.parodies,
                     tags = downloaded.tags,
                     artists = downloaded.artists,
                     characters = downloaded.characters,
@@ -399,9 +400,10 @@ private fun GalleryHeader(
             fontWeight = FontWeight.Bold
         )
 
-        GallerySection("Tags:", gallery.tags, onTagClick)
-        GallerySection("Characters:", gallery.characters, onTagClick)
-        GallerySection("Artists:", gallery.artists, onTagClick)
+        GallerySection("Parodies", gallery.parodies, onTagClick)
+        GallerySection("Tags", gallery.tags, onTagClick)
+        GallerySection("Characters", gallery.characters, onTagClick)
+        GallerySection("Artists", gallery.artists, onTagClick)
 
         Text(text = "Pages: ${gallery.pages}", style = MaterialTheme.typography.bodyMedium)
 

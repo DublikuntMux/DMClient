@@ -7,6 +7,7 @@ data class GalleryFullInfo(
     val id: Int,
     val thumb: String,
     val name: String,
+    val parodies: List<String>,
     val tags: List<String>,
     val artists: List<String>,
     val characters: List<String>,

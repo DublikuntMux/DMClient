@@ -14,6 +14,7 @@ data class DownloadedGallery(
     val totalPages: Int,
     val pagesId: Int,
     val imageTypes: List<ImageType>,
+    val parodies: List<String>,
     val tags: List<String>,
     val artists: List<String>,
     val characters: List<String>,

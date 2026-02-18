@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 4,
-    "identityHash": "2e7e7bd8f8af99edb2e71742fdf851dc",
+    "identityHash": "040e88f6bc3cb9f6a754b35b55db3ff6",
     "entities": [
       {
         "tableName": "gallery_history",
@@ -101,7 +101,7 @@
       },
       {
         "tableName": "downloaded_galleries",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `title` TEXT NOT NULL, `coverPath` TEXT NOT NULL, `totalPages` INTEGER NOT NULL, `pagesId` INTEGER NOT NULL, `imageTypes` TEXT NOT NULL, `tags` TEXT NOT NULL, `artists` TEXT NOT NULL, `characters` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `title` TEXT NOT NULL, `coverPath` TEXT NOT NULL, `totalPages` INTEGER NOT NULL, `pagesId` INTEGER NOT NULL, `imageTypes` TEXT NOT NULL, `parodies` TEXT NOT NULL, `tags` TEXT NOT NULL, `artists` TEXT NOT NULL, `characters` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -140,6 +140,12 @@
             "notNull": true
           },
           {
+            "fieldPath": "parodies",
+            "columnName": "parodies",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
             "fieldPath": "tags",
             "columnName": "tags",
             "affinity": "TEXT",
@@ -174,7 +180,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2e7e7bd8f8af99edb2e71742fdf851dc')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '040e88f6bc3cb9f6a754b35b55db3ff6')"
     ]
   }
 }

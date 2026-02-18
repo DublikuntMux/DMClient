@@ -171,6 +171,11 @@ object NHentaiApi {
             if (imagesList.isEmpty()) return null
         }
 
+        val parodies = mutableListOf<String>()
+        doc.select("div.tag-container:contains(Parodies) .tags a span.name").forEach {
+            parodies.add(it.text())
+        }
+
         val tags = mutableListOf<String>()
         doc.select("div.tag-container:contains(Tags) .tags a span.name").forEach {
             tags.add(it.text())
@@ -190,6 +195,7 @@ object NHentaiApi {
             id,
             cover,
             name,
+            parodies,
             tags,
             artists,
             characters,
@@ -221,6 +227,7 @@ object NHentaiApi {
     fun getAllTags(): List<String> = fetchAllEntries("tags")
     fun getAllArtists(): List<String> = fetchAllEntries("artists")
     fun getAllCharacters(): List<String> = fetchAllEntries("characters")
+    fun getAllParodies(): List<String> = fetchAllEntries("parodies")
 
     fun search(query: String, page: Int? = null): List<GallerySimpleInfo> {
         var url = "${BASE_URL}/search/?q=${query}"

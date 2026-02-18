@@ -32,6 +32,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
@@ -54,6 +55,7 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
     val tags = mutableStateListOf<String>()
     val artists = mutableStateListOf<String>()
     val characters = mutableStateListOf<String>()
+    val parodies = mutableStateListOf<String>()
     val isLoading = mutableStateOf(true)
 
     fun loadData(filesDir: File) {
@@ -62,6 +64,7 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
             val tagsFile = File(filesDir, "tags.json")
             val artistsFile = File(filesDir, "artists.json")
             val charactersFile = File(filesDir, "characters.json")
+            val parodiesFile = File(filesDir, "parodies.json")
 
             if (tagsFile.exists()) {
                 tags.clear()
@@ -82,6 +85,13 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                 characters.addAll(loadFromFile(charactersFile))
             } else {
                 fetchAndSaveCharacters(filesDir)
+            }
+
+            if (parodiesFile.exists()) {
+                parodies.clear()
+                parodies.addAll(loadFromFile(parodiesFile))
+            } else {
+                fetchAndSaveParodies(filesDir)
             }
 
             isLoading.value = false
@@ -123,6 +133,16 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
         characters.addAll(fetchedCharacters)
     }
 
+    private suspend fun fetchAndSaveParodies(filesDir: File) {
+        val fetchedParodies = withContext(Dispatchers.IO) {
+            NHentaiApi.getAllParodies()
+        }
+        val parodiesFile = File(filesDir, "parodies.json")
+        saveToFile(fetchedParodies, parodiesFile)
+        parodies.clear()
+        parodies.addAll(fetchedParodies)
+    }
+
     private suspend fun saveToFile(data: List<String>, file: File) {
         withContext(Dispatchers.IO) {
             val jsonString = json.encodeToString(data)
@@ -137,10 +157,12 @@ fun SearchScreen(navController: NavHostController, viewModel: SearchViewModel = 
     val selectedTags = remember { mutableStateListOf<String>() }
     val selectedArtists = remember { mutableStateListOf<String>() }
     val selectedCharacters = remember { mutableStateListOf<String>() }
+    val selectedParodies = remember { mutableStateListOf<String>() }
     val searchQuery = remember { mutableStateOf("") }
     val tagSearchQuery = remember { mutableStateOf("") }
     val artistSearchQuery = remember { mutableStateOf("") }
     val characterSearchQuery = remember { mutableStateOf("") }
+    val parodiesSearchQuery = remember { mutableStateOf("") }
     val scrollState = rememberLazyGridState()
     var selectedTab by remember { mutableIntStateOf(0) }
 
@@ -172,7 +194,8 @@ fun SearchScreen(navController: NavHostController, viewModel: SearchViewModel = 
                                 searchQuery.value,
                                 selectedTags,
                                 selectedArtists,
-                                selectedCharacters
+                                selectedCharacters,
+                                selectedParodies
                             )
                             navController.navigate("search?query=${query}")
                         }) {
@@ -191,9 +214,12 @@ fun SearchScreen(navController: NavHostController, viewModel: SearchViewModel = 
                         Text("Artists")
                     }
                     Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }) {
-                        Text("Characters")
+                        Text("Character")
                     }
                     Tab(selected = selectedTab == 3, onClick = { selectedTab = 3 }) {
+                        Text("Parodies")
+                    }
+                    Tab(selected = selectedTab == 4, onClick = { selectedTab = 4 }) {
                         Text("Selected")
                     }
                 }
@@ -248,7 +274,29 @@ fun SearchScreen(navController: NavHostController, viewModel: SearchViewModel = 
                     }
 
                     3 -> {
-                        SelectedItemsGrid(selectedTags, selectedArtists, selectedCharacters)
+                        OutlinedTextField(
+                            singleLine = true,
+                            value = parodiesSearchQuery.value,
+                            onValueChange = { parodiesSearchQuery.value = it },
+                            label = { Text("Search Parodies") },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        TagGrid(
+                            selectedParodies,
+                            viewModel.parodies,
+                            parodiesSearchQuery.value,
+                            scrollState
+                        )
+                    }
+
+                    4 -> {
+                        SelectedItemsGrid(
+                            selectedTags,
+                            selectedArtists,
+                            selectedCharacters,
+                            selectedParodies
+                        )
                     }
                 }
             }
@@ -288,7 +336,8 @@ fun TagGrid(
 fun SelectedItemsGrid(
     selectedTags: MutableList<String>,
     selectedArtists: MutableList<String>,
-    selectedCharacters: MutableList<String>
+    selectedCharacters: MutableList<String>,
+    selectedParodies: MutableList<String>
 ) {
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 100.dp),
@@ -304,6 +353,9 @@ fun SelectedItemsGrid(
         }
         items(selectedCharacters) { item ->
             TagButton(item, selectedCharacters)
+        }
+        items(selectedParodies) { item ->
+            TagButton(item, selectedParodies)
         }
     }
 }
@@ -334,11 +386,13 @@ fun concatenateStrings(
     query: String,
     tags: List<String>,
     artists: List<String>,
-    characters: List<String>
+    characters: List<String>,
+    selectedParodies: SnapshotStateList<String>
 ): String {
     val sb = StringBuilder(query)
     tags.forEach { sb.append(" tag:\"$it\"") }
     artists.forEach { sb.append(" artist:\"$it\"") }
     characters.forEach { sb.append(" character:\"$it\"") }
+    selectedParodies.forEach { sb.append(" parody:\"$it\"") }
     return sb.toString().trim().replace(" ", "+")
 }
