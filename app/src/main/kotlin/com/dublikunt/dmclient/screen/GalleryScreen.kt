@@ -67,6 +67,7 @@ import com.dublikunt.dmclient.component.ErrorScreen
 import com.dublikunt.dmclient.component.GalleryPageCard
 import com.dublikunt.dmclient.component.GalleryPageViewer
 import com.dublikunt.dmclient.component.LoadingScreen
+import com.dublikunt.dmclient.component.StatusColorPicker
 import com.dublikunt.dmclient.database.AppDatabase
 import com.dublikunt.dmclient.database.status.CustomStatus
 import com.dublikunt.dmclient.database.status.GalleryStatus
@@ -473,14 +474,15 @@ fun StatusControls(
     var editorOpen by remember { mutableStateOf(false) }
     var editingStatus by remember { mutableStateOf<CustomStatus?>(null) }
 
-    val initialColor =
-        editingStatus?.color?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "FF00FF00"
+    editingStatus?.color?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "FF00FF00"
     var statusNameInput by remember(editorOpen, editingStatus) {
         mutableStateOf(
             editingStatus?.name ?: ""
         )
     }
-    var statusColorInput by remember(editorOpen, editingStatus) { mutableStateOf("#$initialColor") }
+    var selectedStatusColor by remember(editorOpen, editingStatus) {
+        mutableStateOf(editingStatus?.color ?: 0xFF00FF00)
+    }
 
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box {
@@ -546,27 +548,24 @@ fun StatusControls(
                         label = { Text("Name") },
                         singleLine = true
                     )
-                    OutlinedTextField(
-                        value = statusColorInput,
-                        onValueChange = { statusColorInput = it },
-                        label = { Text("Color (#AARRGGBB or #RRGGBB)") },
-                        singleLine = true
+                    StatusColorPicker(
+                        color = selectedStatusColor,
+                        onColorChange = { selectedStatusColor = it }
                     )
                 }
             },
             confirmButton = {
                 Button(onClick = {
-                    val parsedColor = parseStatusColor(statusColorInput)
-                    if (statusNameInput.isNotBlank() && parsedColor != null) {
+                    if (statusNameInput.isNotBlank()) {
                         if (isEditing) {
                             onEditStatus(
                                 editingStatus!!.copy(
                                     name = statusNameInput.trim(),
-                                    color = parsedColor
+                                    color = selectedStatusColor
                                 )
                             )
                         } else {
-                            onCreateStatus(statusNameInput.trim(), parsedColor)
+                            onCreateStatus(statusNameInput.trim(), selectedStatusColor)
                         }
                         editorOpen = false
                     }
@@ -580,15 +579,6 @@ fun StatusControls(
                 }
             }
         )
-    }
-}
-
-private fun parseStatusColor(value: String): Long? {
-    val cleaned = value.trim().removePrefix("#")
-    return when (cleaned.length) {
-        6 -> cleaned.toLongOrNull(16)?.let { 0xFF000000 + it }
-        8 -> cleaned.toLongOrNull(16)
-        else -> null
     }
 }
 

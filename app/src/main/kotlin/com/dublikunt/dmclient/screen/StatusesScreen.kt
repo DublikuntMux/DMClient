@@ -59,6 +59,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.dublikunt.dmclient.component.GalleryCard
+import com.dublikunt.dmclient.component.StatusColorPicker
 import com.dublikunt.dmclient.database.AppDatabase
 import com.dublikunt.dmclient.database.history.GalleryHistory
 import com.dublikunt.dmclient.database.status.CustomStatus
@@ -295,7 +296,10 @@ private fun ManageStatusesDialog(
                                 creatingNew = false
                             }
                             ) {
-                                Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit status")
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Edit status"
+                                )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text("Edit")
                             }
@@ -310,7 +314,10 @@ private fun ManageStatusesDialog(
                                     contentColor = MaterialTheme.colorScheme.error
                                 )
                             ) {
-                                Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete status")
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete status"
+                                )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text("Delete")
                             }
@@ -340,9 +347,9 @@ private fun ManageStatusesDialog(
     if (creatingNew || editorStatus != null) {
         val existing = editorStatus
         var name by remember(existing, creatingNew) { mutableStateOf(existing?.name ?: "") }
-        val initialColor =
-            existing?.color?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "FF00FF00"
-        var colorInput by remember(existing, creatingNew) { mutableStateOf("#$initialColor") }
+        var selectedColorLong by remember(existing, creatingNew) {
+            mutableStateOf(existing?.color ?: 0xFF00FF00)
+        }
 
         AlertDialog(
             onDismissRequest = {
@@ -358,22 +365,19 @@ private fun ManageStatusesDialog(
                         label = { Text("Name") },
                         singleLine = true
                     )
-                    OutlinedTextField(
-                        value = colorInput,
-                        onValueChange = { colorInput = it },
-                        label = { Text("Color (#AARRGGBB or #RRGGBB)") },
-                        singleLine = true
+                    StatusColorPicker(
+                        color = selectedColorLong,
+                        onColorChange = { selectedColorLong = it }
                     )
                 }
             },
             confirmButton = {
                 Button(onClick = {
-                    val parsedColor = parseStatusColor(colorInput)
-                    if (name.isNotBlank() && parsedColor != null) {
+                    if (name.isNotBlank()) {
                         if (existing == null) {
-                            onCreate(name.trim(), parsedColor)
+                            onCreate(name.trim(), selectedColorLong)
                         } else {
-                            onUpdate(existing.copy(name = name.trim(), color = parsedColor))
+                            onUpdate(existing.copy(name = name.trim(), color = selectedColorLong))
                         }
                         editorStatus = null
                         creatingNew = false
@@ -395,14 +399,5 @@ private fun ManageStatusesDialog(
                 }
             }
         )
-    }
-}
-
-private fun parseStatusColor(value: String): Long? {
-    val cleaned = value.trim().removePrefix("#")
-    return when (cleaned.length) {
-        6 -> cleaned.toLongOrNull(16)?.let { 0xFF000000 + it }
-        8 -> cleaned.toLongOrNull(16)
-        else -> null
     }
 }
