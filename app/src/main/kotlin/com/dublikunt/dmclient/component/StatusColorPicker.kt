@@ -27,9 +27,6 @@ fun StatusColorPicker(
     color: Long,
     onColorChange: (Long) -> Unit
 ) {
-    var alphaChannel by remember(color) {
-        mutableFloatStateOf(((color ushr 24) and 0xFF).toFloat())
-    }
     var redChannel by remember(color) {
         mutableFloatStateOf(((color ushr 16) and 0xFF).toFloat())
     }
@@ -43,7 +40,7 @@ fun StatusColorPicker(
     fun publishColor() {
         onColorChange(
             argbToLong(
-                alphaChannel.roundToInt(),
+                255,
                 redChannel.roundToInt(),
                 greenChannel.roundToInt(),
                 blueChannel.roundToInt()
@@ -54,17 +51,16 @@ fun StatusColorPicker(
     val selectedColorPreview = Color(
         red = redChannel / 255f,
         green = greenChannel / 255f,
-        blue = blueChannel / 255f,
-        alpha = alphaChannel / 255f
+        blue = blueChannel / 255f
     )
     val selectedColorLong = argbToLong(
-        alphaChannel.roundToInt(),
+        255,
         redChannel.roundToInt(),
         greenChannel.roundToInt(),
         blueChannel.roundToInt()
     )
     val selectedColorHex =
-        "#" + selectedColorLong.toUInt().toString(16).uppercase().padStart(8, '0')
+        "#" + (selectedColorLong and 0xFFFFFFL).toString(16).uppercase().padStart(6, '0')
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Color", style = MaterialTheme.typography.labelLarge)
@@ -82,14 +78,6 @@ fun StatusColorPicker(
             style = MaterialTheme.typography.bodyMedium
         )
 
-        ColorChannelSlider(
-            label = "Alpha",
-            value = alphaChannel,
-            onValueChange = {
-                alphaChannel = it
-                publishColor()
-            }
-        )
         ColorChannelSlider(
             label = "Red",
             value = redChannel,

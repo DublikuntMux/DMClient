@@ -37,7 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.dublikunt.dmclient.component.ConfirmationDialog
+import com.dublikunt.dmclient.component.BaseDialog
 import com.dublikunt.dmclient.component.settings.SettingsButton
 import com.dublikunt.dmclient.component.settings.SettingsButtonType
 import com.dublikunt.dmclient.database.AppDatabase
@@ -250,9 +250,11 @@ fun StorageScreen(viewModel: StorageViewModel = viewModel()) {
     }
 
     if (showClearHistoryDialog) {
-        ConfirmationDialog(
+        BaseDialog(
             title = "Clear History",
-            text = "Are you sure you want to clear all history?",
+            text = { Text("Are you sure you want to clear all history?") },
+            confirmText = "Confirm",
+            dismissText = "Cancel",
             isDestructiveConfirm = true,
             onConfirm = {
                 viewModel.clearHistory()
@@ -263,9 +265,11 @@ fun StorageScreen(viewModel: StorageViewModel = viewModel()) {
     }
 
     if (showClearCacheDialog) {
-        ConfirmationDialog(
+        BaseDialog(
             title = "Clear Image Cache",
-            text = "Are you sure you want to clear the image cache?",
+            text = { Text("Are you sure you want to clear the image cache?") },
+            confirmText = "Confirm",
+            dismissText = "Cancel",
             isDestructiveConfirm = true,
             onConfirm = {
                 viewModel.clearImageCache()
@@ -276,9 +280,11 @@ fun StorageScreen(viewModel: StorageViewModel = viewModel()) {
     }
 
     if (showClearDownloadsDialog) {
-        ConfirmationDialog(
+        BaseDialog(
             title = "Clear Downloads",
-            text = "Are you sure you want to delete all downloaded galleries?",
+            text = { Text("Are you sure you want to delete all downloaded galleries?") },
+            confirmText = "Confirm",
+            dismissText = "Cancel",
             isDestructiveConfirm = true,
             onConfirm = {
                 viewModel.clearAllDownloads()
