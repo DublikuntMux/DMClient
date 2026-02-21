@@ -13,20 +13,23 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
+import androidx.core.content.FileProvider
 import com.dublikunt.dmclient.R
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.File
 import java.io.IOException
 
 private const val RELEASE_INFO_URL =
@@ -58,6 +61,40 @@ suspend fun fetchLatestReleaseInfo(): ReleaseInfo? {
         } catch (e: Exception) {
             e.printStackTrace()
             null
+        }
+    }
+}
+
+private suspend fun downloadAndInstall(context: Context, releaseInfo: ReleaseInfo) {
+    withContext(Dispatchers.IO) {
+        try {
+            val apkUrl =
+                "https://github.com/DublikuntMux/DMClient/releases/download/${releaseInfo.name}/app-release.apk"
+            val request = Request.Builder().url(apkUrl).build()
+            okHttpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    throw IOException("Unexpected code $response")
+                }
+                val apkFile = File(context.cacheDir, "update.apk")
+                apkFile.outputStream().use {
+                    response.body.byteStream().copyTo(it)
+                }
+
+                val contentUri = FileProvider.getUriForFile(
+                    context,
+                    context.packageName + ".provider",
+                    apkFile
+                )
+
+                val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(contentUri, "application/vnd.android.package-archive")
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(installIntent)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 }
@@ -111,6 +148,7 @@ fun UpdateCheckerDialog(
 @Composable
 fun AppUpdateChecker() {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     var showDialog by remember { mutableStateOf(false) }
     var latestReleaseInfo by remember { mutableStateOf<ReleaseInfo?>(null) }
 
@@ -130,11 +168,8 @@ fun AppUpdateChecker() {
             onDismiss = { showDialog = false },
             onUpdateClick = {
                 showDialog = false
-                try {
-                    val intent = Intent(Intent.ACTION_VIEW, latestReleaseInfo!!.htmlUrl.toUri())
-                    context.startActivity(intent)
-                } catch (e: Exception) {
-                    e.printStackTrace()
+                coroutineScope.launch {
+                    downloadAndInstall(context, latestReleaseInfo!!)
                 }
             }
         )
