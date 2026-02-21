@@ -17,7 +17,7 @@ import com.dublikunt.dmclient.database.status.GalleryStatusDao
 
 @Database(
     entities = [GalleryHistory::class, GalleryStatus::class, CustomStatus::class, DownloadedGallery::class],
-    version = 4
+    version = 5
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -36,7 +36,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "main_database"
                 )
-                    .addMigrations(MIGRATION_3_4)
+                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5)
                     .addCallback(object : Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)
@@ -53,6 +53,12 @@ abstract class AppDatabase : RoomDatabase() {
         private fun seedDefaultStatuses(db: SupportSQLiteDatabase) {
             db.execSQL("INSERT OR IGNORE INTO custom_status (id, name, color) VALUES (1, 'Reading', 4278255360)")
             db.execSQL("INSERT OR IGNORE INTO custom_status (id, name, color) VALUES (2, 'Read', 4278190335)")
+        }
+
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE downloaded_galleries ADD COLUMN parodies TEXT NOT NULL DEFAULT '[]'")
+            }
         }
 
         val MIGRATION_3_4 = object : Migration(3, 4) {
