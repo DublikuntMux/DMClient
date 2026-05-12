@@ -1,5 +1,4 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 
 buildscript {
     repositories {
@@ -13,11 +12,11 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.ksp)
     alias(libs.plugins.androidx.room)
+    alias(libs.plugins.hilt.android)
 }
 
 kotlin {
     compilerOptions {
-        languageVersion = KotlinVersion.KOTLIN_2_3
         jvmTarget.set(JvmTarget.JVM_11)
         javaParameters.set(true)
     }
@@ -25,12 +24,13 @@ kotlin {
 
 android {
     namespace = "com.dublikunt.dmclient"
-    compileSdk = 36
+    compileSdk = 37
+    buildToolsVersion = "37.0.0"
 
     defaultConfig {
         applicationId = "com.dublikunt.dmclient"
         minSdk = 28
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 9
         versionName = "0.9.0"
         multiDexEnabled = true
@@ -103,4 +103,12 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.coil.compose)
     implementation(libs.coil.okhttp)
+
+    implementation(libs.androidx.paging.runtime)
+    implementation(libs.androidx.paging.compose)
+
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    implementation(libs.hilt.navigation.compose)
+    implementation(libs.hilt.work)
 }

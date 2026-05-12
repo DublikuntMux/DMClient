@@ -33,7 +33,7 @@ fun GalleryCard(
     gallery: GallerySimpleInfo,
     navController: NavController,
     statusName: String?,
-    statusColor: Long?,
+    statusColor: Int?,
     isFavorite: Boolean,
     onClick: (() -> Unit)? = null
 ) {
@@ -73,7 +73,7 @@ fun GalleryCard(
                             StatusDot(color = Color.Yellow)
                         }
                         if (statusColor != null) {
-                            StatusDot(color = Color(statusColor.toInt()))
+                            StatusDot(color = Color(statusColor))
                         }
                     }
                 }

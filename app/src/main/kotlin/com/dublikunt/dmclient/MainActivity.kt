@@ -74,8 +74,10 @@ import com.dublikunt.dmclient.screen.SettingsScreen
 import com.dublikunt.dmclient.screen.StatusesScreen
 import com.dublikunt.dmclient.screen.StorageScreen
 import com.dublikunt.dmclient.ui.theme.DMClientTheme
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

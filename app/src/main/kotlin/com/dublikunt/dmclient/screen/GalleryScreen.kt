@@ -40,6 +40,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -171,7 +172,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun createCustomStatus(name: String, color: Long) {
+    fun createCustomStatus(name: String, color: Int) {
         viewModelScope.launch(Dispatchers.IO) {
             statusDao.insertCustomStatus(CustomStatus(name = name, color = color))
             val statuses = statusDao.getCustomStatuses()
@@ -371,7 +372,7 @@ fun GalleryScreen(
 private fun GalleryHeader(
     state: GalleryState.Success,
     onUpdateStatus: (Int?, Boolean) -> Unit,
-    onCreateStatus: (String, Long) -> Unit,
+    onCreateStatus: (String, Int) -> Unit,
     onEditStatus: (CustomStatus) -> Unit,
     onArchive: () -> Unit,
     onDownloadOrDelete: () -> Unit,
@@ -469,7 +470,7 @@ fun StatusControls(
     status: GalleryStatusWithCustomStatus?,
     availableStatuses: List<CustomStatus>,
     onUpdateStatus: (Int?, Boolean) -> Unit,
-    onCreateStatus: (String, Long) -> Unit,
+    onCreateStatus: (String, Int) -> Unit,
     onEditStatus: (CustomStatus) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -483,7 +484,7 @@ fun StatusControls(
         )
     }
     var selectedStatusColor by remember(editorOpen, editingStatus) {
-        mutableStateOf(editingStatus?.color ?: 0xFF00FF00)
+        mutableIntStateOf(editingStatus?.color ?: 0x00FF00)
     }
 
     Row(verticalAlignment = Alignment.CenterVertically) {

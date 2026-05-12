@@ -24,14 +24,14 @@ import kotlin.math.roundToInt
 
 @Composable
 fun StatusColorPicker(
-    color: Long,
-    onColorChange: (Long) -> Unit
+    color: Int,
+    onColorChange: (Int) -> Unit
 ) {
     var redChannel by remember(color) {
-        mutableFloatStateOf(((color ushr 16) and 0xFF).toFloat())
+        mutableFloatStateOf(((color shr 16) and 0xFF).toFloat())
     }
     var greenChannel by remember(color) {
-        mutableFloatStateOf(((color ushr 8) and 0xFF).toFloat())
+        mutableFloatStateOf(((color shr 8) and 0xFF).toFloat())
     }
     var blueChannel by remember(color) {
         mutableFloatStateOf((color and 0xFF).toFloat())
@@ -39,8 +39,7 @@ fun StatusColorPicker(
 
     fun publishColor() {
         onColorChange(
-            argbToLong(
-                255,
+            rgbToInt(
                 redChannel.roundToInt(),
                 greenChannel.roundToInt(),
                 blueChannel.roundToInt()
@@ -53,14 +52,13 @@ fun StatusColorPicker(
         green = greenChannel / 255f,
         blue = blueChannel / 255f
     )
-    val selectedColorLong = argbToLong(
-        255,
+    val selectedColorInt = rgbToInt(
         redChannel.roundToInt(),
         greenChannel.roundToInt(),
         blueChannel.roundToInt()
     )
     val selectedColorHex =
-        "#" + (selectedColorLong and 0xFFFFFFL).toString(16).uppercase().padStart(6, '0')
+        "#" + (selectedColorInt and 0xFFFFFF).toString(16).uppercase().padStart(6, '0')
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Color", style = MaterialTheme.typography.labelLarge)
@@ -128,9 +126,8 @@ private fun ColorChannelSlider(
     }
 }
 
-private fun argbToLong(alpha: Int, red: Int, green: Int, blue: Int): Long {
-    return ((alpha.toLong() and 0xFF) shl 24) or
-            ((red.toLong() and 0xFF) shl 16) or
-            ((green.toLong() and 0xFF) shl 8) or
-            (blue.toLong() and 0xFF)
+private fun rgbToInt(red: Int, green: Int, blue: Int): Int {
+    return ((red and 0xFF) shl 16) or
+            ((green and 0xFF) shl 8) or
+            (blue and 0xFF)
 }

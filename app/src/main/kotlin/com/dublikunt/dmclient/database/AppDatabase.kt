@@ -17,7 +17,7 @@ import com.dublikunt.dmclient.database.status.GalleryStatusDao
 
 @Database(
     entities = [GalleryHistory::class, GalleryStatus::class, CustomStatus::class, DownloadedGallery::class],
-    version = 5
+    version = 6
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -36,11 +36,12 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "main_database"
                 )
-                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                     .addCallback(object : Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)
                             seedDefaultStatuses(db)
+                            createIndices(db)
                         }
                     })
                     .fallbackToDestructiveMigration(false)
@@ -53,6 +54,19 @@ abstract class AppDatabase : RoomDatabase() {
         private fun seedDefaultStatuses(db: SupportSQLiteDatabase) {
             db.execSQL("INSERT OR IGNORE INTO custom_status (id, name, color) VALUES (1, 'Reading', 4278255360)")
             db.execSQL("INSERT OR IGNORE INTO custom_status (id, name, color) VALUES (2, 'Read', 4278190335)")
+        }
+
+        private fun createIndices(db: SupportSQLiteDatabase) {
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_gallery_history_timestamp ON gallery_history(timestamp DESC)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_gallery_status_id ON gallery_status(id)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_gallery_status_favorite ON gallery_status(favorite) WHERE favorite = 1")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_downloaded_galleries_timestamp ON downloaded_galleries(timestamp DESC)")
+        }
+
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                createIndices(db)
+            }
         }
 
         val MIGRATION_4_5 = object : Migration(4, 5) {

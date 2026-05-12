@@ -10,7 +10,7 @@ import java.io.InputStream
 object NHentaiApi {
     const val BASE_URL = "https://nhentai.net"
     const val USER_AGENT =
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36"
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0"
     private val cookieJar = EasyCookieJar()
     private val client = OkHttpClient.Builder().cookieJar(cookieJar).build()
 
@@ -248,17 +248,17 @@ object NHentaiApi {
     private fun setupHeaders(builder: Request.Builder) {
         builder.apply {
             header("User-Agent", USER_AGENT)
-            header(
-                "Accept",
-                "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
-            )
-            header("Accept-Language", "en-US;q=0.8,en;q=0.7")
-            header("Dnt", "1")
+            header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+            header("Accept-Language", "en;q=0.9")
+            header("DNT", "1")
+            header("Sec-GPC", "1")
+            header("Connection", "keep-alive")
+            header("Upgrade-Insecure-Requests", "1")
             header("Sec-Fetch-Dest", "document")
             header("Sec-Fetch-Mode", "navigate")
             header("Sec-Fetch-Site", "none")
-            header("Sec-Fetch-User", "?1")
-            header("Upgrade-Insecure-Requests", "1")
+            header("Priority", "u=0, i")
+            header("TE", "trailers")
         }
     }
 }

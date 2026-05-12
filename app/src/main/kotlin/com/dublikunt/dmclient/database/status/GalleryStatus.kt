@@ -19,7 +19,7 @@ data class GalleryStatus(
 data class CustomStatus(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val name: String,
-    val color: Long
+    val color: Int
 )
 
 data class GalleryStatusWithCustomStatus(

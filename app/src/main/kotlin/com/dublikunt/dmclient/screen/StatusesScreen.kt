@@ -46,6 +46,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -95,7 +96,7 @@ class StatusesViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun createCustomStatus(name: String, color: Long) {
+    fun createCustomStatus(name: String, color: Int) {
         viewModelScope.launch(Dispatchers.IO) {
             statusDao.insertCustomStatus(CustomStatus(name = name.trim(), color = color))
             refreshAllStatuses()
@@ -133,7 +134,7 @@ fun StatusesScreen(navController: NavHostController, viewModel: StatusesViewMode
     val historyList by viewModel.historyList.observeAsState(emptyList())
     val customStatuses by viewModel.customStatuses
     val scrollState = rememberLazyGridState()
-    var selectedTab by remember { mutableStateOf(0) }
+    var selectedTab by remember { mutableIntStateOf(0) }
     var searchQuery by remember { mutableStateOf("") }
     var showManageDialog by remember { mutableStateOf(false) }
 
@@ -265,7 +266,7 @@ fun StatusesScreen(navController: NavHostController, viewModel: StatusesViewMode
 private fun ManageStatusesDialog(
     statuses: List<CustomStatus>,
     onDismiss: () -> Unit,
-    onCreate: (String, Long) -> Unit,
+    onCreate: (String, Int) -> Unit,
     onUpdate: (CustomStatus) -> Unit,
     onDelete: (Int) -> Unit
 ) {
@@ -347,8 +348,8 @@ private fun ManageStatusesDialog(
     if (creatingNew || editorStatus != null) {
         val existing = editorStatus
         var name by remember(existing, creatingNew) { mutableStateOf(existing?.name ?: "") }
-        var selectedColorLong by remember(existing, creatingNew) {
-            mutableStateOf(existing?.color ?: 0xFF00FF00)
+        var selectedColor by remember(existing, creatingNew) {
+            mutableIntStateOf(existing?.color ?: 0x00FF00)
         }
 
         AlertDialog(
@@ -366,8 +367,8 @@ private fun ManageStatusesDialog(
                         singleLine = true
                     )
                     StatusColorPicker(
-                        color = selectedColorLong,
-                        onColorChange = { selectedColorLong = it }
+                        color = selectedColor,
+                        onColorChange = { selectedColor = it }
                     )
                 }
             },
@@ -375,9 +376,9 @@ private fun ManageStatusesDialog(
                 Button(onClick = {
                     if (name.isNotBlank()) {
                         if (existing == null) {
-                            onCreate(name.trim(), selectedColorLong)
+                            onCreate(name.trim(), selectedColor)
                         } else {
-                            onUpdate(existing.copy(name = name.trim(), color = selectedColorLong))
+                            onUpdate(existing.copy(name = name.trim(), color = selectedColor))
                         }
                         editorStatus = null
                         creatingNew = false
