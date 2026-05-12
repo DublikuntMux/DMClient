@@ -4,6 +4,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okio.IOException
+import org.json.JSONObject
 import org.jsoup.Jsoup
 import java.io.InputStream
 
@@ -123,111 +124,160 @@ object NHentaiApi {
 
     private fun parseGallerySimpleInfo(responseBody: String): List<GallerySimpleInfo> {
         val doc = Jsoup.parse(responseBody)
-        val container =
-            doc.selectFirst(".container.index-container:not(.index-popular)") ?: return emptyList()
 
-        return container.select("div.gallery").mapNotNull { gallery ->
-            val a = gallery.selectFirst("a.cover") ?: return@mapNotNull null
-            val id = a.attr("href").removePrefix("/g/").removeSuffix("/").toIntOrNull()
-                ?: return@mapNotNull null
-            val imgUrl = a.selectFirst("img.lazyload")?.attr("data-src") ?: return@mapNotNull null
-            val name = a.selectFirst("div.caption")?.text().orEmpty()
-            GallerySimpleInfo(id, "https:$imgUrl", name)
+        val script = doc.select("script[data-sveltekit-fetched]")
+            .firstOrNull {
+                val url = it.attr("data-url")
+                url.startsWith("/api/v2/galleries") || url.startsWith("/api/v2/search")
+            } ?: return emptyList()
+
+        return try {
+            val outerJson = JSONObject(script.data())
+            val bodyString = outerJson.getString("body")
+
+            val innerJson = JSONObject(bodyString)
+            val results = innerJson.getJSONArray("result")
+
+            val galleryList = mutableListOf<GallerySimpleInfo>()
+
+            for (i in 0 until results.length()) {
+                val item = results.getJSONObject(i)
+                val id = item.getInt("id")
+
+                val thumbPath = item.getString("thumbnail")
+                val thumbUrl = "https://t.nhentai.net/$thumbPath"
+
+                val name = item.optString("english_title").ifEmpty {
+                    item.optString("japanese_title", "Unknown Title")
+                }
+
+                galleryList.add(GallerySimpleInfo(id, thumbUrl, name))
+            }
+            galleryList
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
         }
     }
 
     private fun parseGalleryFullInfo(responseBody: String, id: Int): GalleryFullInfo? {
         val doc = Jsoup.parse(responseBody)
-        val info = doc.getElementById("info") ?: return null
 
-        val cover =
-            "https:" + doc.getElementById("cover")?.selectFirst("a img.lazyload")?.attr("data-src")
-                .orEmpty()
-        val name =
-            info.selectFirst("h1.title")?.select("span")?.joinToString(" ") { it.text() }.orEmpty()
-        val pagesCount =
-            doc.select("div.tag-container:contains(Pages) .tags a span.name").text().toIntOrNull()
-                ?: return null
-
-        val thumbnails = doc.getElementById("thumbnail-container")?.select("img[data-src]")
+        val script = doc.select("script[data-sveltekit-fetched]")
+            .firstOrNull { it.attr("data-url").contains("/api/v2/galleries/$id") }
             ?: return null
 
-        val galleryId = thumbnails.firstNotNullOfOrNull {
-            it.attr("data-src").split("/").getOrNull(4)?.toIntOrNull()
-        } ?: return null
+        return try {
+            val outerJson = JSONObject(script.data())
+            val bodyString = outerJson.getString("body")
+            val innerJson = JSONObject(bodyString)
 
-        val imagesList = thumbnails.mapNotNull { thumb ->
-            val src = thumb.attr("data-src")
-            when {
-                src.endsWith(".jpg.webp") -> ImageType.Jpg
-                src.endsWith(".webp") -> ImageType.Webp
-                src.endsWith(".jpg") -> ImageType.Jpg
-                src.endsWith(".png") -> ImageType.Png
-                else -> null
+            val mediaId = innerJson.getString("media_id")
+            val titleObj = innerJson.getJSONObject("title")
+
+            val name = titleObj.optString("english").ifEmpty {
+                titleObj.optString("japanese", "Unknown Title")
             }
-        }
 
-        if (imagesList.size != pagesCount) {
-            if (imagesList.isEmpty()) return null
-        }
+            val coverPath = innerJson.getJSONObject("cover").getString("path")
+            val coverUrl = "https://t.nhentai.net/$coverPath"
 
-        val parodies = mutableListOf<String>()
-        doc.select("div.tag-container:contains(Parodies) .tags a span.name").forEach {
-            parodies.add(it.text())
-        }
+            val pagesCount = innerJson.getInt("num_pages")
 
-        val tags = mutableListOf<String>()
-        doc.select("div.tag-container:contains(Tags) .tags a span.name").forEach {
-            tags.add(it.text())
-        }
+            val tagsArray = innerJson.getJSONArray("tags")
+            val parodies = mutableListOf<String>()
+            val tags = mutableListOf<String>()
+            val artists = mutableListOf<String>()
+            val characters = mutableListOf<String>()
 
-        val artists = mutableListOf<String>()
-        doc.select("div.tag-container:contains(Artists) .tags a span.name").forEach {
-            artists.add(it.text())
-        }
+            for (i in 0 until tagsArray.length()) {
+                val tagItem = tagsArray.getJSONObject(i)
+                val tagName = tagItem.getString("name")
+                when (tagItem.getString("type")) {
+                    "parody" -> parodies.add(tagName)
+                    "tag" -> tags.add(tagName)
+                    "artist" -> artists.add(tagName)
+                    "character" -> characters.add(tagName)
+                }
+            }
 
-        val characters = mutableListOf<String>()
-        doc.select("div.tag-container:contains(Characters) .tags a span.name").forEach {
-            characters.add(it.text())
-        }
+            val pagesArray = innerJson.getJSONArray("pages")
+            val imagesList = mutableListOf<ImageType>()
 
-        return GalleryFullInfo(
-            id,
-            cover,
-            name,
-            parodies,
-            tags,
-            artists,
-            characters,
-            pagesCount,
-            galleryId,
-            imagesList
-        )
+            for (i in 0 until pagesArray.length()) {
+                val pagePath = pagesArray.getJSONObject(i).getString("path")
+                val type = when {
+                    pagePath.endsWith(".webp") -> ImageType.Webp
+                    pagePath.endsWith(".png") -> ImageType.Png
+                    else -> ImageType.Jpg
+                }
+                imagesList.add(type)
+            }
+
+            val numericMediaId = mediaId.toIntOrNull() ?: 0
+
+            GalleryFullInfo(
+                id,
+                coverUrl,
+                name,
+                parodies,
+                tags,
+                artists,
+                characters,
+                pagesCount,
+                numericMediaId,
+                imagesList
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
     }
 
-    private fun fetchAllEntries(endpoint: String): List<String> {
+    private fun fetchAllEntries(endpoint: String, singularType: String): List<String> {
         val entries = mutableListOf<String>()
-        val countResponse = fetchData("$BASE_URL/$endpoint") ?: return emptyList()
-        val countDoc = Jsoup.parse(countResponse)
-        val maxPages = countDoc.select(".alphabetical-pagination li a")
-            .find { it.text() == "Z" }
-            ?.attr("href")
-            ?.removePrefix("/$endpoint/?page=")
-            ?.removeSuffix("#Z")
-            ?.toIntOrNull() ?: 1
+        var currentPage = 1
+        var maxPages = 1
 
-        for (i in 0..maxPages) {
-            fetchData("$BASE_URL/$endpoint?page=$i")?.let {
-                Jsoup.parse(it).select("span.name").forEach { span -> entries.add(span.text()) }
+        do {
+            val url = "$BASE_URL/$endpoint/?page=$currentPage"
+            val responseBody = fetchData(url) ?: break
+            val doc = Jsoup.parse(responseBody)
+
+            val script = doc.select("script[data-sveltekit-fetched]")
+                .firstOrNull { it.attr("data-url").contains("/api/v2/tags/$singularType") }
+                ?: break
+
+            try {
+                val outerJson = JSONObject(script.data())
+                val bodyString = outerJson.getString("body")
+                val innerJson = JSONObject(bodyString)
+
+                if (currentPage == 1) {
+                    maxPages = innerJson.optInt("num_pages", 1)
+                }
+
+                val results = innerJson.getJSONArray("result")
+                for (i in 0 until results.length()) {
+                    val item = results.getJSONObject(i)
+                    entries.add(item.getString("name"))
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                break
             }
-        }
+
+            currentPage++
+            if (currentPage > 1000) break
+        } while (currentPage <= maxPages)
+
         return entries.distinct()
     }
 
-    fun getAllTags(): List<String> = fetchAllEntries("tags")
-    fun getAllArtists(): List<String> = fetchAllEntries("artists")
-    fun getAllCharacters(): List<String> = fetchAllEntries("characters")
-    fun getAllParodies(): List<String> = fetchAllEntries("parodies")
+    fun getAllTags(): List<String> = fetchAllEntries("tags", "tag")
+    fun getAllArtists(): List<String> = fetchAllEntries("artists", "artist")
+    fun getAllCharacters(): List<String> = fetchAllEntries("characters", "character")
+    fun getAllParodies(): List<String> = fetchAllEntries("parodies", "parody")
 
     fun search(query: String, page: Int? = null): List<GallerySimpleInfo> {
         var url = "${BASE_URL}/search/?q=${query}"

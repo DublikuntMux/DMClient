@@ -284,6 +284,7 @@ fun SettingsScreen(navController: NavController) {
                                 val artists = File(context.filesDir, "artists.json")
                                 val characters = File(context.filesDir, "characters.json")
                                 val tags = File(context.filesDir, "tags.json")
+                                val parodies = File(context.filesDir, "parodies.json")
 
                                 if (artists.exists())
                                     artists.delete()
@@ -291,6 +292,8 @@ fun SettingsScreen(navController: NavController) {
                                     characters.delete()
                                 if (tags.exists())
                                     tags.delete()
+                                if (parodies.exists())
+                                    parodies.delete()
                             }
                         }
                     },
