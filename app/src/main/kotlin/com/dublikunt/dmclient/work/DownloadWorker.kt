@@ -138,15 +138,16 @@ class DownloadWorker @AssistedInject constructor(
             channelId,
             channelName,
             NotificationManager.IMPORTANCE_LOW
-        )
+        ).apply { setShowBadge(false) }
         notificationManager.createNotificationChannel(channel)
 
         val notification = NotificationCompat.Builder(applicationContext, channelId)
             .setContentTitle("Downloading $title")
             .setContentText("$progress/$max pages")
-            .setSmallIcon(R.drawable.logo)
+            .setSmallIcon(R.drawable.ic_notification)
             .setOngoing(true)
             .setProgress(max, progress, false)
+            .setSilent(true)
             .build()
 
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

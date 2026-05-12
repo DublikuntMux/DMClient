@@ -120,13 +120,14 @@ class ArchiveWorker @AssistedInject constructor(
             channelId,
             channelName,
             NotificationManager.IMPORTANCE_LOW
-        )
+        ).apply { setShowBadge(false) }
         notificationManager.createNotificationChannel(channel)
 
         val notification = NotificationCompat.Builder(applicationContext, channelId)
             .setContentTitle("Archiving $title")
-            .setSmallIcon(R.drawable.logo)
+            .setSmallIcon(R.drawable.ic_notification)
             .setOngoing(true)
+            .setSilent(true)
             .build()
 
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

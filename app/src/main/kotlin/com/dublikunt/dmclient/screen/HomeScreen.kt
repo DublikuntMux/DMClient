@@ -141,12 +141,19 @@ fun HomeScreen(
 ) {
     val tokenFetched by viewModel.tokenFetched.collectAsState()
 
-    val internetPermissionState = rememberPermissionState(android.Manifest.permission.INTERNET)
-    val isPermissionGranted by rememberUpdatedState(internetPermissionState.status.isGranted)
+    @Suppress("InlinedApi")
+    val notificationPermissionState =
+        rememberPermissionState("android.permission.POST_NOTIFICATIONS")
+    val isNotificationGranted by rememberUpdatedState(notificationPermissionState.status.isGranted)
 
     val scrollState = rememberLazyGridState()
 
-    if (isPermissionGranted) {
+    if (!isNotificationGranted) {
+        LaunchedEffect(Unit) {
+            notificationPermissionState.launchPermissionRequest()
+        }
+        PermissionRequestScreen(notificationPermissionState)
+    } else {
         when (tokenFetched) {
             FetchStatus.NotFetched -> {
                 NHentaiWebView { session, token -> viewModel.saveTokensAndFetch(session, token) }
@@ -184,21 +191,22 @@ fun HomeScreen(
                                 ) { viewModel.addGalleryToHistory(it) }
                             }
                         }
-
                         when (val state = items.loadState.append) {
-                            is LoadState.Loading -> {
-                                item { LoadingScreen(modifier = Modifier.padding(16.dp)) }
+                            is LoadState.Loading -> item {
+                                LoadingScreen(
+                                    modifier = Modifier.padding(
+                                        16.dp
+                                    )
+                                )
                             }
 
-                            is LoadState.Error -> {
-                                item {
-                                    Text(
-                                        "Failed to load data. Please try again.",
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp)
-                                    )
-                                }
+                            is LoadState.Error -> item {
+                                Text(
+                                    "Failed to load data. Please try again.",
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp)
+                                )
                             }
 
                             else -> {}
@@ -209,26 +217,24 @@ fun HomeScreen(
 
             FetchStatus.Check -> LoadingScreen()
         }
-    } else {
-        PermissionRequestScreen(internetPermissionState)
     }
 }
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
-fun PermissionRequestScreen(internetPermissionState: PermissionState) {
+fun PermissionRequestScreen(permissionState: PermissionState) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(
             modifier = Modifier.padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            val message = if (internetPermissionState.status.shouldShowRationale)
-                "The internet is important for this app. Please grant the permission."
+            val message = if (permissionState.status.shouldShowRationale)
+                "Notifications are important for download progress and background tasks. Please grant the permission."
             else
-                "Internet permission required for this feature to be available. Please grant the permission."
+                "Notification permission required for download progress and background tasks to be visible. Please grant the permission."
             Text(message, textAlign = TextAlign.Center)
             Spacer(Modifier.height(8.dp))
-            ElevatedButton(onClick = { internetPermissionState.launchPermissionRequest() }) {
+            ElevatedButton(onClick = { permissionState.launchPermissionRequest() }) {
                 Text("Request permission")
             }
         }
