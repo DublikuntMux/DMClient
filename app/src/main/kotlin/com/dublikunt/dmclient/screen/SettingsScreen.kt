@@ -35,110 +35,120 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
 import com.dublikunt.dmclient.component.settings.SettingsButton
 import com.dublikunt.dmclient.component.settings.SettingsButtonType
 import com.dublikunt.dmclient.component.settings.SettingsDropdownButton
-import com.dublikunt.dmclient.database.AppDatabase
-import com.dublikunt.dmclient.database.PreferenceHelper
-import com.dublikunt.dmclient.database.history.GalleryHistory
+import com.dublikunt.dmclient.database.history.GalleryHistoryDao
 import com.dublikunt.dmclient.database.status.CustomStatus
 import com.dublikunt.dmclient.database.status.GalleryStatus
+import com.dublikunt.dmclient.database.status.GalleryStatusDao
+import com.dublikunt.dmclient.repository.PreferenceRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.File
+import javax.inject.Inject
 
 @Serializable
 data class BackupData(
-    val history: List<GalleryHistory>,
+    val history: List<com.dublikunt.dmclient.database.history.GalleryHistory>,
     val galleryStatuses: List<GalleryStatus>,
     val customStatuses: List<CustomStatus>
 )
 
+@HiltViewModel
+class SettingsViewModel @Inject constructor(
+    private val preferenceRepository: PreferenceRepository,
+    private val galleryHistoryDao: GalleryHistoryDao,
+    private val galleryStatusDao: GalleryStatusDao,
+) : ViewModel() {
+    val json = Json { ignoreUnknownKeys = true }
+
+    suspend fun getPreferredLanguage(): String =
+        preferenceRepository.preferredLanguage.first() ?: "all"
+
+    fun savePreferredLanguage(language: String) =
+        viewModelScope.launch { preferenceRepository.savePreferredLanguage(language) }
+
+    fun deleteTokens() = viewModelScope.launch { preferenceRepository.deleteTokens() }
+    fun savePinCode(pin: String) = viewModelScope.launch { preferenceRepository.savePinCode(pin) }
+
+    suspend fun exportData(): BackupData = withContext(Dispatchers.IO) {
+        val history = galleryHistoryDao.getAllHistory()
+        val galleryStatuses = galleryStatusDao.getAllGalleryStatusEntities()
+        val customStatuses = galleryStatusDao.getCustomStatuses()
+        BackupData(history, galleryStatuses, customStatuses)
+    }
+
+    suspend fun importData(backup: BackupData) = withContext(Dispatchers.IO) {
+        if (backup.history.isNotEmpty()) galleryHistoryDao.insertHistories(backup.history)
+        if (backup.customStatuses.isNotEmpty()) galleryStatusDao.insertCustomStatuses(backup.customStatuses)
+        if (backup.galleryStatuses.isNotEmpty()) galleryStatusDao.insertStatuses(backup.galleryStatuses)
+    }
+}
+
 @Composable
-fun SettingsScreen(navController: NavController) {
+fun SettingsScreen(
+    navController: NavController,
+    viewModel: SettingsViewModel = hiltViewModel()
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    val db = AppDatabase.getDatabase(context)
-    val historyDao = db.galleryHistoryDao()
-    val statusDao = db.galleryStatusDao()
-
     var selectedLanguage by remember { mutableStateOf("all") }
-
     var showDeleteTokenDialog by remember { mutableStateOf(false) }
     var showClearSearchCacheDialog by remember { mutableStateOf(false) }
     var showPinDialog by remember { mutableStateOf(false) }
-
     var showSnackbarMessage by remember { mutableStateOf<String?>(null) }
-
     var pinInput by remember { mutableStateOf("") }
     var pinInputError by remember { mutableStateOf<String?>(null) }
 
-    val exportLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("application/json")
-    ) { uri ->
-        uri?.let {
-            scope.launch(Dispatchers.IO) {
-                try {
-                    val history = historyDao.getAllHistory()
-                    val galleryStatuses = statusDao.getAllGalleryStatusEntities()
-                    val customStatuses = statusDao.getCustomStatuses()
-                    val backup = BackupData(history, galleryStatuses, customStatuses)
-                    val json = Json.encodeToString(backup)
-
-                    context.contentResolver.openOutputStream(it)?.use { output ->
-                        output.write(json.toByteArray())
+    val exportLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+            uri?.let {
+                scope.launch(Dispatchers.IO) {
+                    try {
+                        val backup = viewModel.exportData()
+                        val json = Json.encodeToString(backup)
+                        context.contentResolver.openOutputStream(it)
+                            ?.use { output -> output.write(json.toByteArray()) }
+                        showSnackbarMessage = "Export successful"
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        showSnackbarMessage = "Export failed: ${e.message}"
                     }
-                    showSnackbarMessage = "Export successful"
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    showSnackbarMessage = "Export failed: ${e.message}"
                 }
             }
         }
-    }
 
-    val importLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        uri?.let {
-            scope.launch(Dispatchers.IO) {
-                try {
-                    context.contentResolver.openInputStream(it)?.use { input ->
-                        val json = input.bufferedReader().readText()
-                        val backup = Json.decodeFromString<BackupData>(json)
-
-                        if (backup.history.isNotEmpty()) {
-                            historyDao.insertHistories(backup.history)
-                        }
-                        if (backup.customStatuses.isNotEmpty()) {
-                            statusDao.insertCustomStatuses(backup.customStatuses)
-                        }
-                        if (backup.galleryStatuses.isNotEmpty()) {
-                            statusDao.insertStatuses(backup.galleryStatuses)
-                        }
+    val importLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            uri?.let {
+                scope.launch(Dispatchers.IO) {
+                    try {
+                        val jsonStr = context.contentResolver.openInputStream(it)
+                            ?.use { input -> input.bufferedReader().readText() } ?: return@launch
+                        val backup = Json.decodeFromString<BackupData>(jsonStr)
+                        viewModel.importData(backup)
+                        showSnackbarMessage = "Import successful"
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        showSnackbarMessage = "Import failed: ${e.message}"
                     }
-                    showSnackbarMessage = "Import successful"
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    showSnackbarMessage = "Import failed: ${e.message}"
                 }
             }
         }
-    }
 
-    LaunchedEffect(Unit) {
-        val languageDeferred =
-            async { PreferenceHelper.getPreferredLanguage(context).firstOrNull() }
-        selectedLanguage = languageDeferred.await() ?: "all"
-    }
+    LaunchedEffect(Unit) { selectedLanguage = viewModel.getPreferredLanguage() }
 
     LaunchedEffect(showSnackbarMessage) {
         showSnackbarMessage?.let { message ->
@@ -147,9 +157,7 @@ fun SettingsScreen(navController: NavController) {
         }
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { paddingValues ->
+    Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { paddingValues ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -168,71 +176,57 @@ fun SettingsScreen(navController: NavController) {
                     languages
                 ) { newLanguage ->
                     selectedLanguage = newLanguage
-                    scope.launch {
-                        PreferenceHelper.savePreferredLanguage(context, newLanguage)
-                    }
+                    scope.launch { viewModel.savePreferredLanguage(newLanguage) }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(Modifier.height(16.dp))
                 SettingsSectionHeader("Security")
                 SettingsButton(
-                    title = "Set or Change PIN Code",
-                    buttonText = "Set",
-                    icon = Icons.Filled.Lock,
-                    buttonType = SettingsButtonType.Filled
+                    "Set or Change PIN Code",
+                    "Set",
+                    Icons.Filled.Lock,
+                    SettingsButtonType.Filled
                 ) {
-                    pinInput = ""
-                    pinInputError = null
-                    showPinDialog = true
+                    pinInput = ""; pinInputError = null; showPinDialog = true
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(Modifier.height(16.dp))
                 SettingsSectionHeader("Data")
                 SettingsButton(
-                    title = "Storage Management",
-                    buttonText = "Open",
-                    icon = Icons.Filled.Storage,
-                    buttonType = SettingsButtonType.Outlined
-                ) {
-                    navController.navigate("storage")
-                }
+                    "Storage Management",
+                    "Open",
+                    Icons.Filled.Storage,
+                    SettingsButtonType.Outlined
+                ) { navController.navigate("storage") }
                 SettingsButton(
-                    title = "Export Data",
-                    buttonText = "Export",
-                    icon = Icons.Filled.Upload,
-                    buttonType = SettingsButtonType.FilledTonal
-                ) {
-                    exportLauncher.launch("dmclient_backup.json")
-                }
+                    "Export Data",
+                    "Export",
+                    Icons.Filled.Upload,
+                    SettingsButtonType.FilledTonal
+                ) { exportLauncher.launch("dmclient_backup.json") }
                 SettingsButton(
-                    title = "Import Data",
-                    buttonText = "Import",
-                    icon = Icons.Filled.Download,
-                    buttonType = SettingsButtonType.FilledTonal
-                ) {
-                    importLauncher.launch(arrayOf("application/json"))
-                }
+                    "Import Data",
+                    "Import",
+                    Icons.Filled.Download,
+                    SettingsButtonType.FilledTonal
+                ) { importLauncher.launch(arrayOf("application/json")) }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(Modifier.height(16.dp))
                 SettingsSectionHeader("Danger Zone")
                 SettingsButton(
-                    title = "Delete Token",
-                    buttonText = "Delete",
-                    icon = Icons.Filled.Delete,
-                    buttonType = SettingsButtonType.Text,
+                    "Delete Token",
+                    "Delete",
+                    Icons.Filled.Delete,
+                    SettingsButtonType.Text,
                     isDestructive = true
-                ) {
-                    showDeleteTokenDialog = true
-                }
+                ) { showDeleteTokenDialog = true }
                 SettingsButton(
-                    title = "Clear Search Cache",
-                    buttonText = "Delete",
-                    icon = Icons.Filled.Delete,
-                    buttonType = SettingsButtonType.Text,
+                    "Clear Search Cache",
+                    "Delete",
+                    Icons.Filled.Delete,
+                    SettingsButtonType.Text,
                     isDestructive = true
-                ) {
-                    showClearSearchCacheDialog = true
-                }
+                ) { showClearSearchCacheDialog = true }
             }
         }
     }
@@ -246,29 +240,22 @@ fun SettingsScreen(navController: NavController) {
                 Button(
                     onClick = {
                         showDeleteTokenDialog = false
-                        scope.launch {
-                            withContext(Dispatchers.IO) {
-                                PreferenceHelper.deleteTokens(context)
-                            }
-                            showSnackbarMessage = "Token deleted successfully."
-                        }
+                        viewModel.deleteTokens()
+                        showSnackbarMessage = "Token deleted successfully."
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error,
                         contentColor = MaterialTheme.colorScheme.onError
                     )
-                ) {
-                    Text("Confirm")
-                }
+                ) { Text("Confirm") }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteTokenDialog = false }) {
-                    Text("Cancel")
-                }
+                TextButton(onClick = {
+                    showDeleteTokenDialog = false
+                }) { Text("Cancel") }
             }
         )
     }
-
 
     if (showClearSearchCacheDialog) {
         AlertDialog(
@@ -281,19 +268,14 @@ fun SettingsScreen(navController: NavController) {
                         showClearSearchCacheDialog = false
                         scope.launch {
                             withContext(Dispatchers.IO) {
-                                val artists = File(context.filesDir, "artists.json")
-                                val characters = File(context.filesDir, "characters.json")
-                                val tags = File(context.filesDir, "tags.json")
-                                val parodies = File(context.filesDir, "parodies.json")
-
-                                if (artists.exists())
-                                    artists.delete()
-                                if (characters.exists())
-                                    characters.delete()
-                                if (tags.exists())
-                                    tags.delete()
-                                if (parodies.exists())
-                                    parodies.delete()
+                                listOf(
+                                    "artists.json",
+                                    "characters.json",
+                                    "tags.json",
+                                    "parodies.json"
+                                ).forEach { name ->
+                                    File(context.filesDir, name).delete()
+                                }
                             }
                         }
                     },
@@ -301,14 +283,12 @@ fun SettingsScreen(navController: NavController) {
                         containerColor = MaterialTheme.colorScheme.error,
                         contentColor = MaterialTheme.colorScheme.onError
                     )
-                ) {
-                    Text("Confirm")
-                }
+                ) { Text("Confirm") }
             },
             dismissButton = {
-                TextButton(onClick = { showClearSearchCacheDialog = false }) {
-                    Text("Cancel")
-                }
+                TextButton(onClick = {
+                    showClearSearchCacheDialog = false
+                }) { Text("Cancel") }
             }
         )
     }
@@ -321,39 +301,29 @@ fun SettingsScreen(navController: NavController) {
                 Column {
                     OutlinedTextField(
                         value = pinInput,
-                        onValueChange = {
-                            pinInput = it.filter { ch -> ch.isDigit() }
-                        },
+                        onValueChange = { pinInput = it.filter { ch -> ch.isDigit() } },
                         label = { Text("Enter PIN (4–15 digits)") },
                         isError = pinInputError != null,
                         singleLine = true
                     )
                     pinInputError?.let { error ->
-                        Text(error, color = MaterialTheme.colorScheme.error)
+                        Text(
+                            error,
+                            color = MaterialTheme.colorScheme.error
+                        )
                     }
                 }
             },
             confirmButton = {
                 Button(onClick = {
-                    val length = pinInput.length
-                    if (length !in 4..15) {
-                        return@Button
-                    }
-
-                    scope.launch {
-                        PreferenceHelper.savePinCode(context, pinInput)
+                    if (pinInput.length in 4..15) {
+                        viewModel.savePinCode(pinInput)
                         showSnackbarMessage = "PIN code set successfully."
+                        showPinDialog = false
                     }
-                    showPinDialog = false
-                }) {
-                    Text("Save")
-                }
+                }) { Text("Save") }
             },
-            dismissButton = {
-                TextButton(onClick = { showPinDialog = false }) {
-                    Text("Cancel")
-                }
-            }
+            dismissButton = { TextButton(onClick = { showPinDialog = false }) { Text("Cancel") } }
         )
     }
 }
@@ -361,8 +331,7 @@ fun SettingsScreen(navController: NavController) {
 @Composable
 fun SettingsSectionHeader(title: String) {
     Text(
-        title,
-        style = MaterialTheme.typography.bodyLarge.copy(
+        title, style = MaterialTheme.typography.bodyLarge.copy(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
         )

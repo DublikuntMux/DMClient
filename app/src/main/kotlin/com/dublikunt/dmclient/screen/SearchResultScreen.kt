@@ -1,98 +1,111 @@
 package com.dublikunt.dmclient.screen
 
-import android.app.Application
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.AndroidViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.paging.LoadState
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.cachedIn
+import androidx.paging.compose.collectAsLazyPagingItems
 import com.dublikunt.dmclient.component.GalleryCard
 import com.dublikunt.dmclient.component.LoadingScreen
-import com.dublikunt.dmclient.database.AppDatabase
-import com.dublikunt.dmclient.database.history.GalleryHistory
+import com.dublikunt.dmclient.database.status.GalleryStatusDao
 import com.dublikunt.dmclient.database.status.GalleryStatusWithCustomStatus
+import com.dublikunt.dmclient.paging.SearchResultPagingSource
+import com.dublikunt.dmclient.repository.HistoryRepository
+import com.dublikunt.dmclient.repository.PreferenceRepository
+import com.dublikunt.dmclient.repository.SearchRepository
+import com.dublikunt.dmclient.scrapper.ContentLanguage
 import com.dublikunt.dmclient.scrapper.GallerySimpleInfo
-import com.dublikunt.dmclient.scrapper.NHentaiApi
-import kotlinx.coroutines.CoroutineScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
+@HiltViewModel
+class SearchResultViewModel @Inject constructor(
+    private val searchRepository: SearchRepository,
+    private val preferenceRepository: PreferenceRepository,
+    private val galleryStatusDao: GalleryStatusDao,
+    private val historyRepository: HistoryRepository,
+) : ViewModel() {
+    private val _language = MutableStateFlow(ContentLanguage.All)
+    private val _query = MutableStateFlow("")
 
-class SearchResultViewModel(application: Application) : AndroidViewModel(application) {
-    val stateList = mutableStateListOf<GallerySimpleInfo>()
-    private var currentPage by mutableIntStateOf(1)
-    var isLoading by mutableStateOf(false)
-    private var errorCount by mutableIntStateOf(0)
-    var showNothingFoundMessage by mutableStateOf(false)
-    private var firstLoaded by mutableStateOf(false)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val flow = combine(_query, _language) { q, l ->
+        if (q.isEmpty()) null else Pair(q, l)
+    }.filterNotNull().distinctUntilChanged().flatMapLatest { (query, lang) ->
+        Pager(PagingConfig(pageSize = 25)) {
+            SearchResultPagingSource(searchRepository, query, lang)
+        }.flow
+    }.cachedIn(viewModelScope)
 
-    private val db = AppDatabase.getDatabase(application)
-    private val historyDao = db.galleryHistoryDao()
-    private val statusDao = db.galleryStatusDao()
+    private val _statusMap = MutableStateFlow<Map<Int, GalleryStatusWithCustomStatus?>>(emptyMap())
+    val statusMap: StateFlow<Map<Int, GalleryStatusWithCustomStatus?>> = _statusMap.asStateFlow()
 
-    val statusMap = mutableStateMapOf<Int, GalleryStatusWithCustomStatus?>()
+    private val loadedStatusIds = mutableSetOf<Int>()
 
-    fun fetchNextPage(scope: CoroutineScope, query: String) {
-        if (isLoading || errorCount >= 5) return
-        isLoading = true
-        scope.launch {
-            try {
-                val fetched = withContext(Dispatchers.IO) {
-                    NHentaiApi.search(query, currentPage)
-                }
-                if (fetched.isNotEmpty()) {
-                    stateList.addAll(fetched)
-                    currentPage++
-                    fetchStatuses(fetched.map { it.id })
-                    errorCount = 0
-                    if (!firstLoaded) firstLoaded = true
-                } else {
-                    errorCount++
-                    if (errorCount >= 5) {
-                        showNothingFoundMessage = true
-                    }
-                }
-            } catch (_: Exception) {
-                errorCount++
-                if (errorCount >= 5) {
-                    showNothingFoundMessage = true
-                }
-            }
-            isLoading = false
+    init {
+        viewModelScope.launch {
+            _language.value =
+                ContentLanguage.fromString(preferenceRepository.preferredLanguage.first() ?: "all")
+        }
+    }
+
+    fun setQuery(query: String) {
+        if (_query.value != query) {
+            loadedStatusIds.clear()
+            _statusMap.value = emptyMap()
+            _query.value = query
+        }
+    }
+
+    fun loadStatuses(ids: List<Int>) {
+        val newIds = ids.filter { it !in loadedStatusIds }
+        if (newIds.isEmpty()) return
+        loadedStatusIds.addAll(newIds)
+        viewModelScope.launch(Dispatchers.IO) {
+            val statuses = galleryStatusDao.getStatuses(newIds)
+            _statusMap.value = _statusMap.value + statuses.associateBy { it.galleryStatus.id }
         }
     }
 
     fun addGalleryToHistory(gallery: GallerySimpleInfo) {
         viewModelScope.launch {
-            historyDao.insertHistory(GalleryHistory(gallery.id, gallery.thumb, gallery.name))
-        }
-    }
-
-    private fun fetchStatuses(ids: List<Int>) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val statuses = statusDao.getStatuses(ids)
-            statuses.forEach { statusMap[it.galleryStatus.id] = it }
+            historyRepository.insertHistory(
+                com.dublikunt.dmclient.database.history.GalleryHistory(
+                    gallery.id,
+                    gallery.thumb,
+                    gallery.name
+                )
+            )
         }
     }
 }
@@ -101,48 +114,56 @@ class SearchResultViewModel(application: Application) : AndroidViewModel(applica
 fun SearchResultScreen(
     query: String,
     navController: NavHostController,
-    viewModel: SearchResultViewModel = viewModel()
+    viewModel: SearchResultViewModel = hiltViewModel()
 ) {
-    val scope = rememberCoroutineScope()
     val scrollState = rememberLazyGridState()
 
-    LaunchedEffect(query) {
-        if (viewModel.stateList.isEmpty() && !viewModel.showNothingFoundMessage) {
-            viewModel.fetchNextPage(scope, query)
-        }
+    LaunchedEffect(query) { viewModel.setQuery(query) }
+
+    val items = viewModel.flow.collectAsLazyPagingItems()
+
+    val itemCount = items.itemCount
+    LaunchedEffect(itemCount) {
+        val ids = (0 until itemCount).mapNotNull { items.peek(it)?.id }
+        if (ids.isNotEmpty()) viewModel.loadStatuses(ids)
     }
 
-    if (viewModel.showNothingFoundMessage) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Nothing found", style = MaterialTheme.typography.headlineLarge)
-        }
-    } else {
-        LazyVerticalGrid(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            columns = GridCells.Adaptive(minSize = 128.dp),
-            state = scrollState
-        ) {
-            items(viewModel.stateList) { galleryItem ->
-                GalleryCard(
-                    galleryItem,
-                    navController,
-                    viewModel.statusMap[galleryItem.id]?.status?.name,
-                    viewModel.statusMap[galleryItem.id]?.status?.color,
-                    viewModel.statusMap[galleryItem.id]?.galleryStatus?.favorite ?: false
-                ) {
-                    viewModel.addGalleryToHistory(galleryItem)
-                }
-            }
+    val statusMap by viewModel.statusMap.collectAsState()
 
-            item {
-                if (viewModel.isLoading) {
-                    LoadingScreen(modifier = Modifier.padding(16.dp))
-                } else {
-                    LaunchedEffect(Unit) {
-                        viewModel.fetchNextPage(scope, query)
+    when (items.loadState.refresh) {
+        is LoadState.Loading -> LoadingScreen()
+        is LoadState.Error -> {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("Nothing found", style = MaterialTheme.typography.headlineLarge)
+            }
+        }
+
+        else -> {
+            LazyVerticalGrid(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                columns = GridCells.Adaptive(minSize = 128.dp),
+                state = scrollState
+            ) {
+                items(count = items.itemCount) { index ->
+                    val galleryItem = items[index]
+                    galleryItem?.let {
+                        GalleryCard(
+                            it, navController,
+                            statusMap[it.id]?.status?.name,
+                            statusMap[it.id]?.status?.color,
+                            statusMap[it.id]?.galleryStatus?.favorite ?: false
+                        ) { viewModel.addGalleryToHistory(it) }
                     }
+                }
+
+                when (val state = items.loadState.append) {
+                    is LoadState.Loading -> {
+                        item { LoadingScreen(modifier = Modifier.padding(16.dp)) }
+                    }
+
+                    else -> {}
                 }
             }
         }

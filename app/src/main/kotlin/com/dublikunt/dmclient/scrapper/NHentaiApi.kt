@@ -4,32 +4,28 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okio.IOException
+import org.json.JSONArray
 import org.json.JSONObject
 import org.jsoup.Jsoup
 import java.io.InputStream
+import javax.inject.Inject
+import javax.inject.Singleton
 
-object NHentaiApi {
-    const val BASE_URL = "https://nhentai.net"
-    const val USER_AGENT =
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0"
-    private val cookieJar = EasyCookieJar()
-    private val client = OkHttpClient.Builder().cookieJar(cookieJar).build()
-
-    private var language: ContentLanguage = ContentLanguage.All
+@Singleton
+class NHentaiApi @Inject constructor(
+    private val client: OkHttpClient,
+    private val cookieJar: EasyCookieJar
+) {
+    companion object {
+        const val BASE_URL = "https://nhentai.net"
+        const val USER_AGENT =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0"
+    }
 
     fun setTokens(session: String, token: String) {
         val url = BASE_URL.toHttpUrl()
         cookieJar.setCookieSecure(url, "session-affinity", session)
         cookieJar.setCookie(url, "csrftoken", token)
-    }
-
-    fun setLanguage(langString: String) {
-        language = when (langString) {
-            "english" -> ContentLanguage.English
-            "japanese" -> ContentLanguage.Japanese
-            "chinese" -> ContentLanguage.Chinese
-            else -> ContentLanguage.All
-        }
     }
 
     private fun fetchData(url: String, retryCount: Int = 4): String? {
@@ -95,21 +91,22 @@ object NHentaiApi {
         return null
     }
 
-    fun fetchMainPage(page: Int? = null): List<GallerySimpleInfo> {
-        val url = buildUrlForPage(page)
+    fun fetchMainPage(
+        page: Int? = null,
+        language: ContentLanguage = ContentLanguage.All
+    ): List<GallerySimpleInfo> {
+        val url = buildUrlForPage(page, language)
         val responseBody = fetchData(url) ?: return emptyList()
-
         return parseGallerySimpleInfo(responseBody)
     }
 
     fun fetchGallery(id: Int): GalleryFullInfo? {
         val url = "$BASE_URL/g/$id/"
         val responseBody = fetchData(url) ?: return null
-
         return parseGalleryFullInfo(responseBody, id)
     }
 
-    private fun buildUrlForPage(page: Int?): String {
+    private fun buildUrlForPage(page: Int?, language: ContentLanguage): String {
         var url = when (language) {
             ContentLanguage.All -> BASE_URL
             ContentLanguage.English -> "${BASE_URL}/language/english"
@@ -132,25 +129,35 @@ object NHentaiApi {
             } ?: return emptyList()
 
         return try {
-            val outerJson = JSONObject(script.data())
-            val bodyString = outerJson.getString("body")
+            val data = script.data()
+            val resultsArray: JSONArray
 
-            val innerJson = JSONObject(bodyString)
-            val results = innerJson.getJSONArray("result")
+            val tryObject = try {
+                JSONObject(data)
+            } catch (_: Exception) {
+                null
+            }
+            resultsArray = if (tryObject != null && tryObject.has("body")) {
+                val bodyStr = tryObject.getString("body")
+                val bodyObj = try {
+                    JSONObject(bodyStr)
+                } catch (_: Exception) {
+                    null
+                }
+                if (bodyObj != null) bodyObj.getJSONArray("result") else JSONArray(bodyStr)
+            } else {
+                JSONArray(data)
+            }
 
             val galleryList = mutableListOf<GallerySimpleInfo>()
-
-            for (i in 0 until results.length()) {
-                val item = results.getJSONObject(i)
+            for (i in 0 until resultsArray.length()) {
+                val item = resultsArray.getJSONObject(i)
                 val id = item.getInt("id")
-
                 val thumbPath = item.getString("thumbnail")
                 val thumbUrl = "https://t.nhentai.net/$thumbPath"
-
                 val name = item.optString("english_title").ifEmpty {
                     item.optString("japanese_title", "Unknown Title")
                 }
-
                 galleryList.add(GallerySimpleInfo(id, thumbUrl, name))
             }
             galleryList
@@ -168,9 +175,19 @@ object NHentaiApi {
             ?: return null
 
         return try {
-            val outerJson = JSONObject(script.data())
-            val bodyString = outerJson.getString("body")
-            val innerJson = JSONObject(bodyString)
+            val data = script.data()
+            val innerJson: JSONObject
+
+            val tryObject = try {
+                JSONObject(data)
+            } catch (_: Exception) {
+                null
+            }
+            innerJson = if (tryObject != null && tryObject.has("body")) {
+                JSONObject(tryObject.getString("body"))
+            } else {
+                JSONObject(data)
+            }
 
             val mediaId = innerJson.getString("media_id")
             val titleObj = innerJson.getJSONObject("title")
@@ -249,9 +266,19 @@ object NHentaiApi {
                 ?: break
 
             try {
-                val outerJson = JSONObject(script.data())
-                val bodyString = outerJson.getString("body")
-                val innerJson = JSONObject(bodyString)
+                val data = script.data()
+                val innerJson: JSONObject
+
+                val tryObject = try {
+                    JSONObject(data)
+                } catch (_: Exception) {
+                    null
+                }
+                innerJson = if (tryObject != null && tryObject.has("body")) {
+                    JSONObject(tryObject.getString("body"))
+                } else {
+                    JSONObject(data)
+                }
 
                 if (currentPage == 1) {
                     maxPages = innerJson.optInt("num_pages", 1)
@@ -279,7 +306,11 @@ object NHentaiApi {
     fun getAllCharacters(): List<String> = fetchAllEntries("characters", "character")
     fun getAllParodies(): List<String> = fetchAllEntries("parodies", "parody")
 
-    fun search(query: String, page: Int? = null): List<GallerySimpleInfo> {
+    fun search(
+        query: String,
+        page: Int? = null,
+        language: ContentLanguage = ContentLanguage.All
+    ): List<GallerySimpleInfo> {
         var url = "${BASE_URL}/search/?q=${query}"
         url += when (language) {
             ContentLanguage.All -> ""

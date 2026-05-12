@@ -6,61 +6,73 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
+import androidx.paging.LoadState
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.cachedIn
+import androidx.paging.compose.collectAsLazyPagingItems
 import com.dublikunt.dmclient.component.GalleryCard
 import com.dublikunt.dmclient.component.LoadingScreen
-import com.dublikunt.dmclient.database.AppDatabase
+import com.dublikunt.dmclient.repository.DownloadRepository
 import com.dublikunt.dmclient.scrapper.GallerySimpleInfo
+import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.File
+import javax.inject.Inject
 
-class DownloadViewModel(application: android.app.Application) : AndroidViewModel(application) {
-    private val db = AppDatabase.getDatabase(application)
-    val downloadedGalleries = db.downloadedGalleryDao().getAll()
+@HiltViewModel
+class DownloadViewModel @Inject constructor(
+    downloadRepository: DownloadRepository
+) : ViewModel() {
+    val flow = Pager(PagingConfig(pageSize = 25)) {
+        downloadRepository.getAllPagingSource()
+    }.flow.cachedIn(viewModelScope)
 }
 
 @Composable
-fun DownloadScreen(navController: NavHostController, viewModel: DownloadViewModel = viewModel()) {
-    val galleries by viewModel.downloadedGalleries.collectAsState(initial = null)
+fun DownloadScreen(
+    navController: NavHostController,
+    viewModel: DownloadViewModel = hiltViewModel()
+) {
+    val items = viewModel.flow.collectAsLazyPagingItems()
 
-    when {
-        galleries == null -> LoadingScreen()
-        galleries!!.isEmpty() -> {
+    when (items.loadState.refresh) {
+        is LoadState.Loading -> LoadingScreen()
+        is LoadState.Error -> {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("No downloaded galleries found.")
+                Text("Failed to load downloads.")
             }
         }
 
         else -> {
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 150.dp),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(galleries!!) { gallery ->
-                    val simpleInfo = GallerySimpleInfo(
-                        id = gallery.id,
-                        thumb = File(gallery.coverPath).path,
-                        name = gallery.title
-                    )
-
-                    GalleryCard(
-                        gallery = simpleInfo,
-                        navController = navController,
-                        statusName = null,
-                        statusColor = null,
-                        isFavorite = false
-                    )
+            if (items.itemCount == 0) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("No downloaded galleries found.")
+                }
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(minSize = 150.dp),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(count = items.itemCount) { index ->
+                        val gallery = items[index]
+                        gallery?.let {
+                            GalleryCard(
+                                GallerySimpleInfo(it.id, File(it.coverPath).path, it.title),
+                                navController, null, null, false
+                            )
+                        }
+                    }
                 }
             }
         }

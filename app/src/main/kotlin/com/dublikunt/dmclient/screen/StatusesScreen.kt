@@ -1,6 +1,5 @@
 package com.dublikunt.dmclient.screen
 
-import android.app.Application
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -44,8 +43,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,60 +52,67 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.asLiveData
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.dublikunt.dmclient.component.GalleryCard
 import com.dublikunt.dmclient.component.StatusColorPicker
-import com.dublikunt.dmclient.database.AppDatabase
-import com.dublikunt.dmclient.database.history.GalleryHistory
 import com.dublikunt.dmclient.database.status.CustomStatus
+import com.dublikunt.dmclient.database.status.GalleryStatusDao
 import com.dublikunt.dmclient.database.status.GalleryStatusWithCustomStatus
+import com.dublikunt.dmclient.repository.HistoryRepository
 import com.dublikunt.dmclient.scrapper.GallerySimpleInfo
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
-class StatusesViewModel(application: Application) : AndroidViewModel(application) {
-    private val db = AppDatabase.getDatabase(application)
-    private val historyDao = db.galleryHistoryDao()
-    private val statusDao = db.galleryStatusDao()
+@HiltViewModel
+class StatusesViewModel @Inject constructor(
+    private val historyRepository: HistoryRepository,
+    private val statusDao: GalleryStatusDao,
+) : ViewModel() {
+    private val _historyList =
+        MutableStateFlow<List<com.dublikunt.dmclient.database.history.GalleryHistory>>(emptyList())
+    val historyList: StateFlow<List<com.dublikunt.dmclient.database.history.GalleryHistory>> =
+        _historyList.asStateFlow()
 
-    val historyList: LiveData<List<GalleryHistory>> = historyDao.getHistory().asLiveData()
-    val statusMap = mutableStateOf<Map<Int, GalleryStatusWithCustomStatus?>>(emptyMap())
-    val customStatuses = mutableStateOf<List<CustomStatus>>(emptyList())
+    private val _statusMap = MutableStateFlow<Map<Int, GalleryStatusWithCustomStatus?>>(emptyMap())
+    val statusMap: StateFlow<Map<Int, GalleryStatusWithCustomStatus?>> = _statusMap.asStateFlow()
 
-    fun removeGalleryFromHistory(gallery: GalleryHistory) {
+    private val _customStatuses = MutableStateFlow<List<CustomStatus>>(emptyList())
+    val customStatuses: StateFlow<List<CustomStatus>> = _customStatuses.asStateFlow()
+
+    fun loadData() {
         viewModelScope.launch(Dispatchers.IO) {
-            historyDao.deleteHistory(gallery)
+            _historyList.value = historyRepository.getAllHistory()
+            refreshStatuses()
         }
     }
 
-    fun fetchStatuses(ids: List<GalleryHistory>) {
+    fun removeGalleryFromHistory(gallery: com.dublikunt.dmclient.database.history.GalleryHistory) {
         viewModelScope.launch(Dispatchers.IO) {
-            val statuses = statusDao.getStatuses(ids.map { it.id })
-            val allCustomStatuses = statusDao.getCustomStatuses()
-            withContext(Dispatchers.Main) {
-                statusMap.value = statuses.associateBy { it.galleryStatus.id }
-                customStatuses.value = allCustomStatuses
-            }
+            historyRepository.deleteHistory(gallery)
+            _historyList.value = historyRepository.getAllHistory()
+            refreshStatuses()
         }
     }
 
     fun createCustomStatus(name: String, color: Int) {
         viewModelScope.launch(Dispatchers.IO) {
             statusDao.insertCustomStatus(CustomStatus(name = name.trim(), color = color))
-            refreshAllStatuses()
+            refreshStatuses()
         }
     }
 
     fun updateCustomStatus(status: CustomStatus) {
         viewModelScope.launch(Dispatchers.IO) {
             statusDao.updateCustomStatus(status)
-            refreshAllStatuses()
+            refreshStatuses()
         }
     }
 
@@ -114,68 +120,55 @@ class StatusesViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch(Dispatchers.IO) {
             statusDao.clearStatusFromGalleries(statusId)
             statusDao.deleteCustomStatus(statusId)
-            refreshAllStatuses()
+            refreshStatuses()
         }
     }
 
-    private suspend fun refreshAllStatuses() {
-        val historyIds = historyDao.getAllHistory().map { it.id }
+    private suspend fun refreshStatuses() {
+        val historyIds = historyRepository.getAllHistory().map { it.id }
         val statuses = statusDao.getStatuses(historyIds)
         val allCustomStatuses = statusDao.getCustomStatuses()
-        withContext(Dispatchers.Main) {
-            statusMap.value = statuses.associateBy { it.galleryStatus.id }
-            customStatuses.value = allCustomStatuses
-        }
+        _statusMap.value = statuses.associateBy { it.galleryStatus.id }
+        _customStatuses.value = allCustomStatuses
     }
 }
 
 @Composable
-fun StatusesScreen(navController: NavHostController, viewModel: StatusesViewModel = viewModel()) {
-    val historyList by viewModel.historyList.observeAsState(emptyList())
-    val customStatuses by viewModel.customStatuses
+fun StatusesScreen(
+    navController: NavHostController,
+    viewModel: StatusesViewModel = hiltViewModel()
+) {
+    val historyList by viewModel.historyList.collectAsState()
+    val statusMap by viewModel.statusMap.collectAsState()
+    val customStatuses by viewModel.customStatuses.collectAsState()
     val scrollState = rememberLazyGridState()
     var selectedTab by remember { mutableIntStateOf(0) }
     var searchQuery by remember { mutableStateOf("") }
     var showManageDialog by remember { mutableStateOf(false) }
 
-    val tabStatusIds = remember(customStatuses) {
-        listOf<Int?>(null) + customStatuses.map { it.id }
-    }
+    LaunchedEffect(Unit) { viewModel.loadData() }
 
-    if (selectedTab >= tabStatusIds.size) {
-        selectedTab = 0
-    }
-
-    LaunchedEffect(historyList) {
-        viewModel.fetchStatuses(historyList)
-    }
+    val tabStatusIds =
+        remember(customStatuses) { listOf<Int?>(null) + customStatuses.map { it.id } }
+    if (selectedTab >= tabStatusIds.size) selectedTab = 0
 
     val selectedStatusId = tabStatusIds.getOrNull(selectedTab)
-    val filteredHistory =
-        remember(historyList, viewModel.statusMap.value, searchQuery, selectedStatusId) {
-            historyList.filter { galleryHistory ->
-                val status = viewModel.statusMap.value[galleryHistory.id]
-                if (status == null) {
-                    false
-                } else {
-                    val queryMatches = searchQuery.isBlank() || galleryHistory.name.contains(
-                        searchQuery,
-                        ignoreCase = true
-                    )
-                    val statusMatches =
-                        selectedStatusId == null || status.status?.id == selectedStatusId
-                    queryMatches && statusMatches
-                }
-            }
+    val filteredHistory = remember(historyList, statusMap, searchQuery, selectedStatusId) {
+        historyList.filter { galleryHistory ->
+            val status = statusMap[galleryHistory.id]
+            status != null && (searchQuery.isBlank() || galleryHistory.name.contains(
+                searchQuery,
+                ignoreCase = true
+            )) &&
+                    (selectedStatusId == null || status.status?.id == selectedStatusId)
         }
+    }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Text(text = "Statuses", style = MaterialTheme.typography.headlineMedium)
-        Spacer(modifier = Modifier.height(8.dp))
+    Column(modifier = Modifier
+        .fillMaxSize()
+        .padding(16.dp)) {
+        Text("Statuses", style = MaterialTheme.typography.headlineMedium)
+        Spacer(Modifier.height(8.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -189,33 +182,30 @@ fun StatusesScreen(navController: NavHostController, viewModel: StatusesViewMode
                 singleLine = true,
                 modifier = Modifier.weight(1f)
             )
-
             FilledTonalButton(onClick = { showManageDialog = true }) {
-                Icon(imageVector = Icons.Default.Settings, contentDescription = "Manage statuses")
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Manage")
+                Icon(Icons.Default.Settings, contentDescription = "Manage statuses"); Spacer(
+                Modifier.width(8.dp)
+            ); Text("Manage")
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(Modifier.height(8.dp))
 
         SecondaryTabRow(selectedTabIndex = selectedTab) {
-            Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) {
-                Text("All")
-            }
+            Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) { Text("All") }
             customStatuses.forEachIndexed { index, status ->
-                Tab(selected = selectedTab == index + 1, onClick = { selectedTab = index + 1 }) {
-                    Text(status.name)
-                }
+                Tab(
+                    selected = selectedTab == index + 1,
+                    onClick = { selectedTab = index + 1 }) { Text(status.name) }
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(Modifier.height(8.dp))
 
         LazyVerticalGrid(
             modifier = Modifier.fillMaxSize(),
             columns = GridCells.Adaptive(minSize = 128.dp),
-            state = scrollState,
+            state = scrollState
         ) {
             items(filteredHistory) { galleryHistory ->
                 Box(modifier = Modifier.fillMaxSize()) {
@@ -226,12 +216,10 @@ fun StatusesScreen(navController: NavHostController, viewModel: StatusesViewMode
                             galleryHistory.name
                         ),
                         navController,
-                        viewModel.statusMap.value[galleryHistory.id]?.status?.name,
-                        viewModel.statusMap.value[galleryHistory.id]?.status?.color,
-                        viewModel.statusMap.value[galleryHistory.id]?.galleryStatus?.favorite
-                            ?: false
+                        statusMap[galleryHistory.id]?.status?.name,
+                        statusMap[galleryHistory.id]?.status?.color,
+                        statusMap[galleryHistory.id]?.galleryStatus?.favorite ?: false
                     )
-
                     Column(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
@@ -240,9 +228,7 @@ fun StatusesScreen(navController: NavHostController, viewModel: StatusesViewMode
                                 shape = RoundedCornerShape(8.dp)
                             )
                     ) {
-                        IconButton(
-                            onClick = { viewModel.removeGalleryFromHistory(galleryHistory) }
-                        ) {
+                        IconButton(onClick = { viewModel.removeGalleryFromHistory(galleryHistory) }) {
                             Icon(Icons.Rounded.Delete, contentDescription = "Delete")
                         }
                     }
@@ -253,11 +239,10 @@ fun StatusesScreen(navController: NavHostController, viewModel: StatusesViewMode
 
     if (showManageDialog) {
         ManageStatusesDialog(
-            statuses = customStatuses,
-            onDismiss = { showManageDialog = false },
+            customStatuses, onDismiss = { showManageDialog = false },
             onCreate = { name, color -> viewModel.createCustomStatus(name, color) },
-            onUpdate = { status -> viewModel.updateCustomStatus(status) },
-            onDelete = { statusId -> viewModel.deleteCustomStatus(statusId) }
+            onUpdate = { viewModel.updateCustomStatus(it) },
+            onDelete = { viewModel.deleteCustomStatus(it) }
         )
     }
 }
@@ -293,54 +278,40 @@ private fun ManageStatusesDialog(
                         Text(status.name)
                         Row {
                             OutlinedButton(onClick = {
-                                editorStatus = status
-                                creatingNew = false
-                            }
-                            ) {
+                                editorStatus = status; creatingNew = false
+                            }) {
                                 Icon(
-                                    imageVector = Icons.Default.Edit,
+                                    Icons.Default.Edit,
                                     contentDescription = "Edit status"
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Edit")
+                                ); Spacer(Modifier.width(8.dp)); Text("Edit")
                             }
-                            Spacer(
-                                modifier = Modifier
-                                    .height(0.dp)
-                                    .padding(horizontal = 2.dp)
-                            )
+                            Spacer(Modifier.padding(horizontal = 2.dp))
                             TextButton(
                                 onClick = { onDelete(status.id) },
-                                colors = ButtonDefaults.textButtonColors(
-                                    contentColor = MaterialTheme.colorScheme.error
-                                )
+                                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Delete,
+                                    Icons.Default.Delete,
                                     contentDescription = "Delete status"
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Delete")
+                                ); Spacer(Modifier.width(8.dp)); Text("Delete")
                             }
                         }
                     }
                 }
-
-                TextButton(onClick = {
-                    editorStatus = null
-                    creatingNew = true
-                }) {
-                    Icon(imageVector = Icons.Default.Add, contentDescription = "Create status")
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Create Status")
+                TextButton(onClick = { editorStatus = null; creatingNew = true }) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "Create status"
+                    ); Spacer(Modifier.width(8.dp)); Text("Create Status")
                 }
             }
         },
         confirmButton = {
             FilledTonalButton(onClick = onDismiss) {
-                Icon(imageVector = Icons.Default.Check, contentDescription = "Done")
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Done")
+                Icon(
+                    Icons.Default.Check,
+                    "Done"
+                ); Spacer(Modifier.width(8.dp)); Text("Done")
             }
         }
     )
@@ -349,14 +320,13 @@ private fun ManageStatusesDialog(
         val existing = editorStatus
         var name by remember(existing, creatingNew) { mutableStateOf(existing?.name ?: "") }
         var selectedColor by remember(existing, creatingNew) {
-            mutableIntStateOf(existing?.color ?: 0x00FF00)
+            mutableIntStateOf(
+                existing?.color ?: 0x00FF00
+            )
         }
 
         AlertDialog(
-            onDismissRequest = {
-                editorStatus = null
-                creatingNew = false
-            },
+            onDismissRequest = { editorStatus = null; creatingNew = false },
             title = { Text(if (existing == null) "Create Status" else "Edit Status") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -366,37 +336,26 @@ private fun ManageStatusesDialog(
                         label = { Text("Name") },
                         singleLine = true
                     )
-                    StatusColorPicker(
-                        color = selectedColor,
-                        onColorChange = { selectedColor = it }
-                    )
+                    StatusColorPicker(selectedColor) { selectedColor = it }
                 }
             },
             confirmButton = {
                 Button(onClick = {
                     if (name.isNotBlank()) {
-                        if (existing == null) {
-                            onCreate(name.trim(), selectedColor)
-                        } else {
-                            onUpdate(existing.copy(name = name.trim(), color = selectedColor))
-                        }
-                        editorStatus = null
-                        creatingNew = false
+                        if (existing == null) onCreate(name.trim(), selectedColor)
+                        else onUpdate(existing.copy(name = name.trim(), color = selectedColor))
+                        editorStatus = null; creatingNew = false
                     }
-                }) {
-                    Icon(imageVector = Icons.Default.Save, contentDescription = "Save status")
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Save")
-                }
+                }) { Icon(Icons.Default.Save, "Save"); Spacer(Modifier.width(8.dp)); Text("Save") }
             },
             dismissButton = {
                 TextButton(onClick = {
-                    editorStatus = null
-                    creatingNew = false
+                    editorStatus = null; creatingNew = false
                 }) {
-                    Icon(imageVector = Icons.Default.Close, contentDescription = "Cancel")
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Cancel")
+                    Icon(
+                        Icons.Default.Close,
+                        "Cancel"
+                    ); Spacer(Modifier.width(8.dp)); Text("Cancel")
                 }
             }
         )

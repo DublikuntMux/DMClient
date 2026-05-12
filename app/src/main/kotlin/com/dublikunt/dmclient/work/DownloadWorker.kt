@@ -6,23 +6,29 @@ import android.content.Context
 import android.content.pm.ServiceInfo
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.dublikunt.dmclient.R
-import com.dublikunt.dmclient.database.AppDatabase
 import com.dublikunt.dmclient.database.download.DownloadedGallery
+import com.dublikunt.dmclient.database.download.DownloadedGalleryDao
 import com.dublikunt.dmclient.scrapper.GalleryFullInfo
 import com.dublikunt.dmclient.scrapper.ImageType
 import com.dublikunt.dmclient.scrapper.NHentaiApi
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedInject
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.FileOutputStream
 
-class DownloadWorker(
-    context: Context,
-    workerParams: WorkerParameters
+@HiltWorker
+class DownloadWorker @AssistedInject constructor(
+    @Assisted context: Context,
+    @Assisted workerParams: WorkerParameters,
+    private val nHentaiApi: NHentaiApi,
+    private val downloadedDao: DownloadedGalleryDao
 ) : CoroutineWorker(context, workerParams) {
 
     private val notificationManager =
@@ -44,15 +50,13 @@ class DownloadWorker(
         val galleryDir = File(context.filesDir, "galleries/${gallery.id}")
         if (!galleryDir.exists()) galleryDir.mkdirs()
 
-        val db = AppDatabase.getDatabase(context)
-
         try {
             val coverFile = File(
                 galleryDir,
                 "cover.${gallery.thumb.split(".").last()}"
             )
             if (!coverFile.exists()) {
-                NHentaiApi.downloadImage(gallery.thumb)?.use { input ->
+                nHentaiApi.downloadImage(gallery.thumb)?.use { input ->
                     FileOutputStream(coverFile).use { output ->
                         input.copyTo(output)
                     }
@@ -69,16 +73,12 @@ class DownloadWorker(
                     ImageType.Webp -> "webp"
                     ImageType.Png -> "png"
                 }
-                val baseUrl = when (imageType) {
-                    ImageType.Jpg -> "https://i1.nhentai.net/galleries/${gallery.pagesId}"
-                    ImageType.Webp -> "https://i1.nhentai.net/galleries/${gallery.pagesId}"
-                    ImageType.Png -> "https://i1.nhentai.net/galleries/${gallery.pagesId}"
-                }
+                val baseUrl = "https://i1.nhentai.net/galleries/${gallery.pagesId}"
 
                 val pageFile = File(galleryDir, "$i.$ext")
                 if (!pageFile.exists()) {
                     val pageUrl = "$baseUrl/$i.$ext"
-                    NHentaiApi.downloadImage(pageUrl)?.use { input ->
+                    nHentaiApi.downloadImage(pageUrl)?.use { input ->
                         FileOutputStream(pageFile).use { output ->
                             input.copyTo(output)
                         }
@@ -116,7 +116,7 @@ class DownloadWorker(
                 artists = gallery.artists,
                 characters = gallery.characters
             )
-            db.downloadedGalleryDao().insert(downloadedGallery)
+            downloadedDao.insert(downloadedGallery)
 
             return Result.success()
         } catch (e: Exception) {

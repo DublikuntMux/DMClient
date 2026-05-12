@@ -1,6 +1,5 @@
 package com.dublikunt.dmclient.screen
 
-import android.app.Application
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -18,56 +16,77 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.asLiveData
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.cachedIn
+import androidx.paging.compose.collectAsLazyPagingItems
 import com.dublikunt.dmclient.component.GalleryCard
-import com.dublikunt.dmclient.database.AppDatabase
 import com.dublikunt.dmclient.database.history.GalleryHistory
+import com.dublikunt.dmclient.database.status.GalleryStatusDao
 import com.dublikunt.dmclient.database.status.GalleryStatusWithCustomStatus
+import com.dublikunt.dmclient.repository.HistoryRepository
 import com.dublikunt.dmclient.scrapper.GallerySimpleInfo
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class HistoryViewModel(application: Application) : AndroidViewModel(application) {
-    private val db = AppDatabase.getDatabase(application)
-    private val historyDao = db.galleryHistoryDao()
-    private val statusDao = db.galleryStatusDao()
+@HiltViewModel
+class HistoryViewModel @Inject constructor(
+    private val historyRepository: HistoryRepository,
+    private val statusDao: GalleryStatusDao,
+) : ViewModel() {
+    val flow = Pager(PagingConfig(pageSize = 25)) {
+        historyRepository.getAllPagingSource()
+    }.flow.cachedIn(viewModelScope)
 
-    val historyList: LiveData<List<GalleryHistory>> = historyDao.getHistory().asLiveData()
-    val statusMap = mutableStateOf<Map<Int, GalleryStatusWithCustomStatus?>>(emptyMap())
+    private val _statusMap = MutableStateFlow<Map<Int, GalleryStatusWithCustomStatus?>>(emptyMap())
+    val statusMap: StateFlow<Map<Int, GalleryStatusWithCustomStatus?>> = _statusMap.asStateFlow()
+
+    private val loadedStatusIds = mutableSetOf<Int>()
 
     fun removeGalleryFromHistory(gallery: GalleryHistory) {
-        viewModelScope.launch(Dispatchers.IO) {
-            historyDao.deleteHistory(gallery)
-        }
+        viewModelScope.launch(Dispatchers.IO) { historyRepository.deleteHistory(gallery) }
     }
 
-    fun fetchStatuses(ids: List<GalleryHistory>) {
+    fun loadStatuses(ids: List<Int>) {
+        val newIds = ids.filter { it !in loadedStatusIds }
+        if (newIds.isEmpty()) return
+        loadedStatusIds.addAll(newIds)
         viewModelScope.launch(Dispatchers.IO) {
-            val statuses = statusDao.getStatuses(ids.map { it.id })
-            statusMap.value = statuses.associateBy { it.galleryStatus.id }
+            val statuses = statusDao.getStatuses(newIds)
+            _statusMap.value = _statusMap.value + statuses.associateBy { it.galleryStatus.id }
         }
     }
 }
 
 @Composable
-fun HistoryScreen(navController: NavHostController, viewModel: HistoryViewModel = viewModel()) {
-    val historyList by viewModel.historyList.observeAsState(emptyList())
+fun HistoryScreen(
+    navController: NavHostController,
+    viewModel: HistoryViewModel = hiltViewModel()
+) {
+    val items = viewModel.flow.collectAsLazyPagingItems()
     val scrollState = rememberLazyGridState()
 
-    LaunchedEffect(historyList) {
-        viewModel.fetchStatuses(historyList)
+    val itemCount = items.itemCount
+    LaunchedEffect(itemCount) {
+        val ids = (0 until itemCount).mapNotNull { items.peek(it)?.id }
+        if (ids.isNotEmpty()) viewModel.loadStatuses(ids)
     }
+
+    val statusMap by viewModel.statusMap.collectAsState()
 
     LazyVerticalGrid(
         modifier = Modifier
@@ -76,32 +95,28 @@ fun HistoryScreen(navController: NavHostController, viewModel: HistoryViewModel 
         columns = GridCells.Adaptive(minSize = 128.dp),
         state = scrollState,
     ) {
-        items(historyList) { galleryHistory ->
-            Box(modifier = Modifier.fillMaxSize()) {
-                GalleryCard(
-                    GallerySimpleInfo(
-                        galleryHistory.id,
-                        galleryHistory.coverUrl,
-                        galleryHistory.name
-                    ),
-                    navController,
-                    viewModel.statusMap.value[galleryHistory.id]?.status?.name,
-                    viewModel.statusMap.value[galleryHistory.id]?.status?.color,
-                    viewModel.statusMap.value[galleryHistory.id]?.galleryStatus?.favorite ?: false
-                )
-
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .background(
-                            color = MaterialTheme.colorScheme.background.copy(alpha = 0.6f),
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                ) {
-                    IconButton(
-                        onClick = { viewModel.removeGalleryFromHistory(galleryHistory) }
+        items(count = items.itemCount) { index ->
+            val history = items[index]
+            history?.let { h ->
+                Box(modifier = Modifier.fillMaxSize()) {
+                    GalleryCard(
+                        GallerySimpleInfo(h.id, h.coverUrl, h.name),
+                        navController,
+                        statusMap[h.id]?.status?.name,
+                        statusMap[h.id]?.status?.color,
+                        statusMap[h.id]?.galleryStatus?.favorite ?: false
+                    )
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .background(
+                                color = MaterialTheme.colorScheme.background.copy(alpha = 0.6f),
+                                shape = RoundedCornerShape(8.dp)
+                            )
                     ) {
-                        Icon(Icons.Rounded.Delete, contentDescription = "Delete")
+                        IconButton(onClick = { viewModel.removeGalleryFromHistory(h) }) {
+                            Icon(Icons.Rounded.Delete, contentDescription = "Delete")
+                        }
                     }
                 }
             }

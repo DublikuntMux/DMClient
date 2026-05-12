@@ -38,6 +38,7 @@ androidx-datastore = { group = "androidx.datastore", name = "datastore-preferenc
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+androidx-room-paging = { group = "androidx.room", name = "room-paging", version.ref = "room" }
 androidx-work = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" }
 accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "permissions" }
 kotlin-serialization = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlin-serialization" }

@@ -9,11 +9,14 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.core.app.NotificationCompat
+import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import com.dublikunt.dmclient.R
 import com.dublikunt.dmclient.scrapper.GalleryFullInfo
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedInject
 import kotlinx.serialization.json.Json
 import java.io.BufferedInputStream
 import java.io.File
@@ -21,9 +24,10 @@ import java.io.FileInputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
-class ArchiveWorker(
-    context: Context,
-    workerParams: WorkerParameters
+@HiltWorker
+class ArchiveWorker @AssistedInject constructor(
+    @Assisted context: Context,
+    @Assisted workerParams: WorkerParameters
 ) : CoroutineWorker(context, workerParams) {
 
     private val notificationManager =

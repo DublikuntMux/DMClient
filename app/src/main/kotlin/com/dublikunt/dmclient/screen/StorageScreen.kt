@@ -1,5 +1,6 @@
 package com.dublikunt.dmclient.screen
 
+import android.content.Context
 import android.text.format.Formatter
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -34,87 +35,87 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.AndroidViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dublikunt.dmclient.component.BaseDialog
 import com.dublikunt.dmclient.component.settings.SettingsButton
 import com.dublikunt.dmclient.component.settings.SettingsButtonType
-import com.dublikunt.dmclient.database.AppDatabase
-import com.dublikunt.dmclient.database.PreferenceHelper
 import com.dublikunt.dmclient.database.download.DownloadedGallery
+import com.dublikunt.dmclient.database.history.GalleryHistoryDao
+import com.dublikunt.dmclient.repository.DownloadRepository
+import com.dublikunt.dmclient.repository.PreferenceRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.io.File
+import javax.inject.Inject
 
-class StorageViewModel(application: android.app.Application) : AndroidViewModel(application) {
-    private val context = application
-    private val db = AppDatabase.getDatabase(application)
-    private val historyDao = db.galleryHistoryDao()
-    private val downloadedDao = db.downloadedGalleryDao()
-
+@HiltViewModel
+class StorageViewModel @Inject constructor(
+    @param:ApplicationContext private val context: Context,
+    private val downloadRepository: DownloadRepository,
+    private val preferenceRepository: PreferenceRepository,
+    private val galleryHistoryDao: GalleryHistoryDao,
+) : ViewModel() {
     private val _imageCacheSize = MutableStateFlow(0L)
-    val imageCacheSize: StateFlow<Long> = _imageCacheSize
+    val imageCacheSize: StateFlow<Long> = _imageCacheSize.asStateFlow()
 
     private val _historyCount = MutableStateFlow(0)
-    val historyCount: StateFlow<Int> = _historyCount
+    val historyCount: StateFlow<Int> = _historyCount.asStateFlow()
 
-    val downloadedGalleries = downloadedDao.getAll()
+    private val _maxCacheSize = MutableStateFlow(1024L * 1024 * 1024)
+    val maxCacheSize: StateFlow<Long> = _maxCacheSize.asStateFlow()
 
-    private val _maxCacheSize = MutableStateFlow(1024L * 1024 * 1024) // Default 1GB
-    val maxCacheSize: StateFlow<Long> = _maxCacheSize
+    val downloadedGalleries = downloadRepository.getAll()
 
     init {
         refreshStats()
         viewModelScope.launch {
             _maxCacheSize.value =
-                PreferenceHelper.getMaxImageCacheSize(context).first() ?: (1024L * 1024 * 1024)
+                preferenceRepository.maxImageCacheSize.first() ?: (1024L * 1024 * 1024)
         }
     }
 
     fun refreshStats() {
         viewModelScope.launch(Dispatchers.IO) {
             _imageCacheSize.value = calculateCacheSize()
-            _historyCount.value = historyDao.getAllHistory().size
+            _historyCount.value = galleryHistoryDao.getAllHistory().size
         }
     }
 
     private fun calculateCacheSize(): Long {
-        val cacheDir = context.cacheDir.resolve("image_cache")
-        return if (cacheDir.exists()) {
-            cacheDir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
-        } else {
-            0L
-        }
+        val cacheDir = File(context.cacheDir, "image_cache")
+        return if (cacheDir.exists()) cacheDir.walkTopDown().filter { it.isFile }
+            .sumOf { it.length() } else 0L
     }
 
     fun clearImageCache() {
         viewModelScope.launch(Dispatchers.IO) {
-            val cacheDir = context.cacheDir.resolve("image_cache")
-            cacheDir.deleteRecursively()
+            File(context.cacheDir, "image_cache").deleteRecursively()
             _imageCacheSize.value = 0L
         }
     }
 
     fun clearHistory() {
         viewModelScope.launch(Dispatchers.IO) {
-            historyDao.deleteAllHistory()
+            galleryHistoryDao.deleteAllHistory()
             _historyCount.value = 0
         }
     }
 
     fun clearAllDownloads() {
-        viewModelScope.launch(Dispatchers.IO) {
-            downloadedDao.deleteAll()
-        }
+        viewModelScope.launch(Dispatchers.IO) { downloadRepository.deleteAll() }
     }
 
     fun deleteDownloadedGallery(gallery: DownloadedGallery) {
         viewModelScope.launch(Dispatchers.IO) {
-            downloadedDao.delete(gallery)
+            downloadRepository.delete(gallery)
             File(gallery.coverPath).parentFile?.deleteRecursively()
         }
     }
@@ -122,14 +123,14 @@ class StorageViewModel(application: android.app.Application) : AndroidViewModel(
     fun setMaxCacheSize(size: Long) {
         viewModelScope.launch {
             _maxCacheSize.value = size
-            PreferenceHelper.saveMaxImageCacheSize(context, size)
+            preferenceRepository.saveMaxImageCacheSize(size)
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StorageScreen(viewModel: StorageViewModel = viewModel()) {
+fun StorageScreen(viewModel: StorageViewModel = hiltViewModel()) {
     val context = LocalContext.current
     val imageCacheSize by viewModel.imageCacheSize.collectAsState()
     val historyCount by viewModel.historyCount.collectAsState()
@@ -141,9 +142,7 @@ fun StorageScreen(viewModel: StorageViewModel = viewModel()) {
     var showClearDownloadsDialog by remember { mutableStateOf(false) }
 
     Scaffold(
-        topBar = {
-            TopAppBar(title = { Text("Storage Management") })
-        }
+        topBar = { TopAppBar(title = { Text("Storage Management") }) }
     ) { padding ->
         LazyColumn(
             modifier = Modifier
@@ -182,40 +181,32 @@ fun StorageScreen(viewModel: StorageViewModel = viewModel()) {
                     )
                 }
                 SettingsButton(
-                    title = "Image Cache",
-                    buttonText = "Clear All",
-                    icon = Icons.Default.Image,
-                    buttonType = SettingsButtonType.Outlined,
+                    "Image Cache",
+                    "Clear All",
+                    Icons.Default.Image,
+                    SettingsButtonType.Outlined,
                     isDestructive = true
-                ) {
-                    showClearCacheDialog = true
-                }
+                ) { showClearCacheDialog = true }
                 SettingsButton(
-                    title = "History",
-                    buttonText = "Clear All",
-                    icon = Icons.Default.History,
-                    buttonType = SettingsButtonType.Outlined,
+                    "History",
+                    "Clear All",
+                    Icons.Default.History,
+                    SettingsButtonType.Outlined,
                     isDestructive = true
-                ) {
-                    showClearHistoryDialog = true
-                }
+                ) { showClearHistoryDialog = true }
                 SettingsButton(
-                    title = "Downloads",
-                    buttonText = "Clear All",
-                    icon = Icons.Default.Download,
-                    buttonType = SettingsButtonType.Outlined,
+                    "Downloads",
+                    "Clear All",
+                    Icons.Default.Download,
+                    SettingsButtonType.Outlined,
                     isDestructive = true
-                ) {
-                    showClearDownloadsDialog = true
-                }
+                ) { showClearDownloadsDialog = true }
             }
 
             items(downloads) { gallery ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp)
-                ) {
+                Card(modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)) {
                     Row(
                         modifier = Modifier
                             .padding(8.dp)
@@ -234,12 +225,10 @@ fun StorageScreen(viewModel: StorageViewModel = viewModel()) {
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }
-                        IconButton(onClick = {
-                            viewModel.deleteDownloadedGallery(gallery)
-                        }) {
+                        IconButton(onClick = { viewModel.deleteDownloadedGallery(gallery) }) {
                             Icon(
                                 Icons.Default.Delete,
-                                contentDescription = "Delete",
+                                "Delete",
                                 tint = MaterialTheme.colorScheme.error
                             )
                         }
@@ -249,50 +238,33 @@ fun StorageScreen(viewModel: StorageViewModel = viewModel()) {
         }
     }
 
-    if (showClearHistoryDialog) {
-        BaseDialog(
-            title = "Clear History",
-            text = { Text("Are you sure you want to clear all history?") },
-            confirmText = "Confirm",
-            dismissText = "Cancel",
-            isDestructiveConfirm = true,
-            onConfirm = {
-                viewModel.clearHistory()
-                showClearHistoryDialog = false
-            },
-            onDismiss = { showClearHistoryDialog = false }
-        )
-    }
-
-    if (showClearCacheDialog) {
-        BaseDialog(
-            title = "Clear Image Cache",
-            text = { Text("Are you sure you want to clear the image cache?") },
-            confirmText = "Confirm",
-            dismissText = "Cancel",
-            isDestructiveConfirm = true,
-            onConfirm = {
-                viewModel.clearImageCache()
-                showClearCacheDialog = false
-            },
-            onDismiss = { showClearCacheDialog = false }
-        )
-    }
-
-    if (showClearDownloadsDialog) {
-        BaseDialog(
-            title = "Clear Downloads",
-            text = { Text("Are you sure you want to delete all downloaded galleries?") },
-            confirmText = "Confirm",
-            dismissText = "Cancel",
-            isDestructiveConfirm = true,
-            onConfirm = {
-                viewModel.clearAllDownloads()
-                showClearDownloadsDialog = false
-            },
-            onDismiss = { showClearDownloadsDialog = false }
-        )
-    }
+    if (showClearHistoryDialog) BaseDialog(
+        title = "Clear History",
+        text = { Text("Are you sure you want to clear all history?") },
+        confirmText = "Confirm",
+        dismissText = "Cancel",
+        isDestructiveConfirm = true,
+        onConfirm = { viewModel.clearHistory(); showClearHistoryDialog = false },
+        onDismiss = { showClearHistoryDialog = false }
+    )
+    if (showClearCacheDialog) BaseDialog(
+        title = "Clear Image Cache",
+        text = { Text("Are you sure you want to clear the image cache?") },
+        confirmText = "Confirm",
+        dismissText = "Cancel",
+        isDestructiveConfirm = true,
+        onConfirm = { viewModel.clearImageCache(); showClearCacheDialog = false },
+        onDismiss = { showClearCacheDialog = false }
+    )
+    if (showClearDownloadsDialog) BaseDialog(
+        title = "Clear Downloads",
+        text = { Text("Are you sure you want to delete all downloaded galleries?") },
+        confirmText = "Confirm",
+        dismissText = "Cancel",
+        isDestructiveConfirm = true,
+        onConfirm = { viewModel.clearAllDownloads(); showClearDownloadsDialog = false },
+        onDismiss = { showClearDownloadsDialog = false }
+    )
 }
 
 @Composable
@@ -303,7 +275,6 @@ fun StorageInfoRow(label: String, value: String) {
             .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(label)
-        Text(value, fontWeight = FontWeight.SemiBold)
+        Text(label); Text(value, fontWeight = FontWeight.SemiBold)
     }
 }

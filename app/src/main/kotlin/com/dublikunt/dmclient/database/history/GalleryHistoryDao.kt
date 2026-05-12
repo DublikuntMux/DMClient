@@ -1,5 +1,6 @@
 package com.dublikunt.dmclient.database.history
 
+import androidx.paging.PagingSource
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
@@ -17,6 +18,9 @@ interface GalleryHistoryDao {
 
     @Query("SELECT * FROM gallery_history ORDER BY timestamp DESC")
     fun getHistory(): Flow<List<GalleryHistory>>
+
+    @Query("SELECT * FROM gallery_history ORDER BY timestamp DESC")
+    fun getAllPagingSource(): PagingSource<Int, GalleryHistory>
 
     @Query("SELECT * FROM gallery_history")
     suspend fun getAllHistory(): List<GalleryHistory>

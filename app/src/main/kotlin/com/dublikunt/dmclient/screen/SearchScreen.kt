@@ -1,6 +1,5 @@
 package com.dublikunt.dmclient.screen
 
-import android.app.Application
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -26,6 +25,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -38,63 +38,79 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.AndroidViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.dublikunt.dmclient.component.LoadingScreen
-import com.dublikunt.dmclient.scrapper.NHentaiApi
+import com.dublikunt.dmclient.repository.PreferenceRepository
+import com.dublikunt.dmclient.repository.SearchRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import java.io.File
+import javax.inject.Inject
 
-class SearchViewModel(application: Application) : AndroidViewModel(application) {
+@HiltViewModel
+class SearchViewModel @Inject constructor(
+    private val searchRepository: SearchRepository,
+    private val preferenceRepository: PreferenceRepository,
+) : ViewModel() {
     private val json = Json { ignoreUnknownKeys = true }
-    val tags = mutableStateListOf<String>()
-    val artists = mutableStateListOf<String>()
-    val characters = mutableStateListOf<String>()
-    val parodies = mutableStateListOf<String>()
-    val isLoading = mutableStateOf(true)
+
+    private val _tags = MutableStateFlow<List<String>>(emptyList())
+    val tags: StateFlow<List<String>> = _tags.asStateFlow()
+
+    private val _artists = MutableStateFlow<List<String>>(emptyList())
+    val artists: StateFlow<List<String>> = _artists.asStateFlow()
+
+    private val _characters = MutableStateFlow<List<String>>(emptyList())
+    val characters: StateFlow<List<String>> = _characters.asStateFlow()
+
+    private val _parodies = MutableStateFlow<List<String>>(emptyList())
+    val parodies: StateFlow<List<String>> = _parodies.asStateFlow()
+
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     fun loadData(filesDir: File) {
         viewModelScope.launch {
-            isLoading.value = true
+            _isLoading.value = true
             val tagsFile = File(filesDir, "tags.json")
             val artistsFile = File(filesDir, "artists.json")
             val charactersFile = File(filesDir, "characters.json")
             val parodiesFile = File(filesDir, "parodies.json")
 
             if (tagsFile.exists()) {
-                tags.clear()
-                tags.addAll(loadFromFile(tagsFile))
+                _tags.value = loadFromFile(tagsFile)
             } else {
                 fetchAndSaveTags(filesDir)
             }
 
             if (artistsFile.exists()) {
-                artists.clear()
-                artists.addAll(loadFromFile(artistsFile))
+                _artists.value = loadFromFile(artistsFile)
             } else {
                 fetchAndSaveArtists(filesDir)
             }
 
             if (charactersFile.exists()) {
-                characters.clear()
-                characters.addAll(loadFromFile(charactersFile))
+                _characters.value = loadFromFile(charactersFile)
             } else {
                 fetchAndSaveCharacters(filesDir)
             }
 
             if (parodiesFile.exists()) {
-                parodies.clear()
-                parodies.addAll(loadFromFile(parodiesFile))
+                _parodies.value = loadFromFile(parodiesFile)
             } else {
                 fetchAndSaveParodies(filesDir)
             }
 
-            isLoading.value = false
+            _isLoading.value = false
         }
     }
 
@@ -104,43 +120,27 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private suspend fun fetchAndSaveTags(filesDir: File) {
-        val fetchedTags = withContext(Dispatchers.IO) {
-            NHentaiApi.getAllTags()
-        }
-        val tagsFile = File(filesDir, "tags.json")
-        saveToFile(fetchedTags, tagsFile)
-        tags.clear()
-        tags.addAll(fetchedTags)
+        val fetchedTags = withContext(Dispatchers.IO) { searchRepository.getAllTags() }
+        saveToFile(fetchedTags, File(filesDir, "tags.json"))
+        _tags.value = fetchedTags
     }
 
     private suspend fun fetchAndSaveArtists(filesDir: File) {
-        val fetchedArtists = withContext(Dispatchers.IO) {
-            NHentaiApi.getAllArtists()
-        }
-        val artistsFile = File(filesDir, "artists.json")
-        saveToFile(fetchedArtists, artistsFile)
-        artists.clear()
-        artists.addAll(fetchedArtists)
+        val fetchedArtists = withContext(Dispatchers.IO) { searchRepository.getAllArtists() }
+        saveToFile(fetchedArtists, File(filesDir, "artists.json"))
+        _artists.value = fetchedArtists
     }
 
     private suspend fun fetchAndSaveCharacters(filesDir: File) {
-        val fetchedCharacters = withContext(Dispatchers.IO) {
-            NHentaiApi.getAllCharacters()
-        }
-        val charactersFile = File(filesDir, "characters.json")
-        saveToFile(fetchedCharacters, charactersFile)
-        characters.clear()
-        characters.addAll(fetchedCharacters)
+        val fetchedCharacters = withContext(Dispatchers.IO) { searchRepository.getAllCharacters() }
+        saveToFile(fetchedCharacters, File(filesDir, "characters.json"))
+        _characters.value = fetchedCharacters
     }
 
     private suspend fun fetchAndSaveParodies(filesDir: File) {
-        val fetchedParodies = withContext(Dispatchers.IO) {
-            NHentaiApi.getAllParodies()
-        }
-        val parodiesFile = File(filesDir, "parodies.json")
-        saveToFile(fetchedParodies, parodiesFile)
-        parodies.clear()
-        parodies.addAll(fetchedParodies)
+        val fetchedParodies = withContext(Dispatchers.IO) { searchRepository.getAllParodies() }
+        saveToFile(fetchedParodies, File(filesDir, "parodies.json"))
+        _parodies.value = fetchedParodies
     }
 
     private suspend fun saveToFile(data: List<String>, file: File) {
@@ -152,8 +152,17 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
 }
 
 @Composable
-fun SearchScreen(navController: NavHostController, viewModel: SearchViewModel = viewModel()) {
+fun SearchScreen(
+    navController: NavHostController,
+    viewModel: SearchViewModel = hiltViewModel()
+) {
     val context = LocalContext.current
+    val tags by viewModel.tags.collectAsState()
+    val artists by viewModel.artists.collectAsState()
+    val characters by viewModel.characters.collectAsState()
+    val parodies by viewModel.parodies.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+
     val selectedTags = remember { mutableStateListOf<String>() }
     val selectedArtists = remember { mutableStateListOf<String>() }
     val selectedCharacters = remember { mutableStateListOf<String>() }
@@ -166,12 +175,10 @@ fun SearchScreen(navController: NavHostController, viewModel: SearchViewModel = 
     val scrollState = rememberLazyGridState()
     var selectedTab by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(Unit) {
-        viewModel.loadData(context.filesDir)
-    }
+    LaunchedEffect(Unit) { viewModel.loadData(context.filesDir) }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        if (viewModel.isLoading.value) {
+        if (isLoading) {
             LoadingScreen(text = "Loading...\nFirst time may take a while")
         } else {
             Column(
@@ -207,21 +214,19 @@ fun SearchScreen(navController: NavHostController, viewModel: SearchViewModel = 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 SecondaryTabRow(selectedTabIndex = selectedTab) {
-                    Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) {
-                        Text("Tags")
-                    }
-                    Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }) {
-                        Text("Artists")
-                    }
-                    Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }) {
-                        Text("Character")
-                    }
-                    Tab(selected = selectedTab == 3, onClick = { selectedTab = 3 }) {
-                        Text("Parodies")
-                    }
-                    Tab(selected = selectedTab == 4, onClick = { selectedTab = 4 }) {
-                        Text("Selected")
-                    }
+                    Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) { Text("Tags") }
+                    Tab(
+                        selected = selectedTab == 1,
+                        onClick = { selectedTab = 1 }) { Text("Artists") }
+                    Tab(
+                        selected = selectedTab == 2,
+                        onClick = { selectedTab = 2 }) { Text("Character") }
+                    Tab(
+                        selected = selectedTab == 3,
+                        onClick = { selectedTab = 3 }) { Text("Parodies") }
+                    Tab(
+                        selected = selectedTab == 4,
+                        onClick = { selectedTab = 4 }) { Text("Selected") }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -236,7 +241,7 @@ fun SearchScreen(navController: NavHostController, viewModel: SearchViewModel = 
                             modifier = Modifier.fillMaxWidth(),
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        TagGrid(selectedTags, viewModel.tags, tagSearchQuery.value, scrollState)
+                        TagGrid(selectedTags, tags, tagSearchQuery.value, scrollState)
                     }
 
                     1 -> {
@@ -248,12 +253,7 @@ fun SearchScreen(navController: NavHostController, viewModel: SearchViewModel = 
                             modifier = Modifier.fillMaxWidth(),
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        TagGrid(
-                            selectedArtists,
-                            viewModel.artists,
-                            artistSearchQuery.value,
-                            scrollState
-                        )
+                        TagGrid(selectedArtists, artists, artistSearchQuery.value, scrollState)
                     }
 
                     2 -> {
@@ -267,7 +267,7 @@ fun SearchScreen(navController: NavHostController, viewModel: SearchViewModel = 
                         Spacer(modifier = Modifier.height(8.dp))
                         TagGrid(
                             selectedCharacters,
-                            viewModel.characters,
+                            characters,
                             characterSearchQuery.value,
                             scrollState
                         )
@@ -282,12 +282,7 @@ fun SearchScreen(navController: NavHostController, viewModel: SearchViewModel = 
                             modifier = Modifier.fillMaxWidth(),
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        TagGrid(
-                            selectedParodies,
-                            viewModel.parodies,
-                            parodiesSearchQuery.value,
-                            scrollState
-                        )
+                        TagGrid(selectedParodies, parodies, parodiesSearchQuery.value, scrollState)
                     }
 
                     4 -> {
@@ -318,16 +313,12 @@ fun TagGrid(
             .fillMaxSize()
             .padding(10.dp)
     ) {
-        items(selectedItems) { item ->
-            TagButton(item, selectedItems)
-        }
+        items(selectedItems) { item -> TagButton(item, selectedItems) }
 
         items.filter {
             it.contains(searchQuery, ignoreCase = true) && !selectedItems.contains(it)
         }.forEach { item ->
-            item {
-                TagButton(item, selectedItems)
-            }
+            item { TagButton(item, selectedItems) }
         }
     }
 }
@@ -345,18 +336,10 @@ fun SelectedItemsGrid(
             .fillMaxSize()
             .padding(10.dp)
     ) {
-        items(selectedTags) { item ->
-            TagButton(item, selectedTags)
-        }
-        items(selectedArtists) { item ->
-            TagButton(item, selectedArtists)
-        }
-        items(selectedCharacters) { item ->
-            TagButton(item, selectedCharacters)
-        }
-        items(selectedParodies) { item ->
-            TagButton(item, selectedParodies)
-        }
+        items(selectedTags) { item -> TagButton(item, selectedTags) }
+        items(selectedArtists) { item -> TagButton(item, selectedArtists) }
+        items(selectedCharacters) { item -> TagButton(item, selectedCharacters) }
+        items(selectedParodies) { item -> TagButton(item, selectedParodies) }
     }
 }
 
@@ -365,15 +348,14 @@ fun TagButton(item: String, selectedItems: MutableList<String>) {
     val isSelected = selectedItems.contains(item)
     FilledTonalButton(
         onClick = {
-            if (isSelected) {
-                selectedItems.remove(item)
-            } else {
-                selectedItems.add(item)
-            }
+            if (isSelected) selectedItems.remove(item)
+            else selectedItems.add(item)
         },
         colors = ButtonDefaults.filledTonalButtonColors(
-            containerColor = if (isSelected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-            contentColor = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+            containerColor = if (isSelected) MaterialTheme.colorScheme.secondaryContainer
+            else MaterialTheme.colorScheme.surfaceVariant,
+            contentColor = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer
+            else MaterialTheme.colorScheme.onSurfaceVariant
         ),
         shape = RectangleShape,
         modifier = Modifier.padding(4.dp)

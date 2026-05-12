@@ -1,5 +1,6 @@
 package com.dublikunt.dmclient.database.download
 
+import androidx.paging.PagingSource
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
@@ -14,6 +15,9 @@ interface DownloadedGalleryDao {
 
     @Query("SELECT * FROM downloaded_galleries ORDER BY timestamp DESC")
     fun getAll(): Flow<List<DownloadedGallery>>
+
+    @Query("SELECT * FROM downloaded_galleries ORDER BY timestamp DESC")
+    fun getAllPagingSource(): PagingSource<Int, DownloadedGallery>
 
     @Query("SELECT * FROM downloaded_galleries WHERE id = :id")
     suspend fun getById(id: Int): DownloadedGallery?

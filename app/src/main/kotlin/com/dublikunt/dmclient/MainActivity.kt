@@ -35,6 +35,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,7 +63,7 @@ import coil3.disk.directory
 import coil3.memory.MemoryCache
 import coil3.request.crossfade
 import com.dublikunt.dmclient.component.AppUpdateChecker
-import com.dublikunt.dmclient.database.PreferenceHelper
+import com.dublikunt.dmclient.repository.PreferenceRepository
 import com.dublikunt.dmclient.screen.DownloadScreen
 import com.dublikunt.dmclient.screen.GalleryScreen
 import com.dublikunt.dmclient.screen.HistoryScreen
@@ -76,9 +77,13 @@ import com.dublikunt.dmclient.screen.StorageScreen
 import com.dublikunt.dmclient.ui.theme.DMClientTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : FragmentActivity() {
+    @Inject
+    lateinit var preferenceRepository: PreferenceRepository
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -88,27 +93,21 @@ class MainActivity : FragmentActivity() {
                 var isUnlocked by remember { mutableStateOf(false) }
                 var pinCode by remember { mutableStateOf<String?>(null) }
 
-                LaunchedEffect(Unit) {
-                    PreferenceHelper.getPinCode(this@MainActivity).collect {
-                        if (it == null) {
-                            isUnlocked = true
-                        } else {
-                            pinCode = it
-                        }
+                val pinCodeFlow by preferenceRepository.pinCode.collectAsState(initial = null)
+
+                LaunchedEffect(pinCodeFlow) {
+                    if (pinCodeFlow == null) {
+                        isUnlocked = true
+                    } else {
+                        pinCode = pinCodeFlow
                     }
                 }
 
                 if (isUnlocked) {
                     val context = this@MainActivity
-                    var maxCacheSize by remember { mutableStateOf(1024L * 1024 * 1024) }
-
-                    LaunchedEffect(Unit) {
-                        PreferenceHelper.getMaxImageCacheSize(context).collect {
-                            if (it != null) {
-                                maxCacheSize = it
-                            }
-                        }
-                    }
+                    val cacheSize by preferenceRepository.maxImageCacheSize
+                        .collectAsState(initial = 1024L * 1024 * 1024)
+                    val maxCacheSize = cacheSize ?: 1024L * 1024 * 1024
 
                     setSingletonImageLoaderFactory { ctx ->
                         ImageLoader.Builder(ctx)
@@ -120,7 +119,7 @@ class MainActivity : FragmentActivity() {
                             }
                             .diskCache {
                                 DiskCache.Builder()
-                                    .directory(cacheDir.resolve("image_cache"))
+                                    .directory(context.cacheDir.resolve("image_cache"))
                                     .maxSizeBytes(maxCacheSize)
                                     .build()
                             }
@@ -220,27 +219,15 @@ fun AppNavHost(navController: NavHostController) {
         composable(Screen.Storage.route) { StorageScreen() }
         composable(
             route = "gallery?id={id}",
-            arguments = listOf(
-                navArgument("id") {
-                    type = NavType.IntType
-                    nullable = false
-                }
-            )
+            arguments = listOf(navArgument("id") { type = NavType.IntType; nullable = false })
         ) { backStackEntry ->
-            val id = backStackEntry.arguments?.getInt("id")!!
-            GalleryScreen(id, navController)
+            GalleryScreen(backStackEntry.arguments?.getInt("id")!!, navController)
         }
         composable(
             route = "search?query={query}",
-            arguments = listOf(
-                navArgument("query") {
-                    type = NavType.StringType
-                    nullable = false
-                }
-            )
+            arguments = listOf(navArgument("query") { type = NavType.StringType; nullable = false })
         ) { backStackEntry ->
-            val query = backStackEntry.arguments?.getString("query")!!
-            SearchResultScreen(query, navController)
+            SearchResultScreen(backStackEntry.arguments?.getString("query")!!, navController)
         }
     }
 }
@@ -255,18 +242,12 @@ fun MainScreen() {
 
     ModalNavigationDrawer(
         drawerState = drawerState,
-        drawerContent = {
-            AppDrawer(navController) {
-                scope.launch { drawerState.close() }
-            }
-        }
+        drawerContent = { AppDrawer(navController) { scope.launch { drawerState.close() } } }
     ) {
         Scaffold(
             topBar = { TopBar { scope.launch { drawerState.open() } } }
         ) { padding ->
-            Box(modifier = Modifier.padding(padding)) {
-                AppNavHost(navController)
-            }
+            Box(modifier = Modifier.padding(padding)) { AppNavHost(navController) }
         }
     }
 }
