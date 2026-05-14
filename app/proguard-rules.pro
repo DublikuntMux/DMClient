@@ -4,14 +4,7 @@
 -dontpreverify
 -optimizations *
 -allowaccessmodification
--repackageclasses a
--overloadaggressively
--adaptclassstrings
--adaptresourcefilenames
--adaptresourcefilecontents **
--renamesourcefileattribute x
--ignorewarnings
--dontnote
+-repackageclasses
 -verbose
 
 -dontwarn com.google.re2j.Matcher

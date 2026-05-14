@@ -1,12 +1,16 @@
 package com.dublikunt.dmclient.database.download
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.dublikunt.dmclient.scrapper.ImageType
 import kotlinx.serialization.Serializable
 
 @Serializable
-@Entity(tableName = "downloaded_galleries")
+@Entity(
+    tableName = "downloaded_galleries",
+    indices = [Index(value = ["timestamp"], orders = [Index.Order.DESC])]
+)
 data class DownloadedGallery(
     @PrimaryKey val id: Int,
     val title: String,

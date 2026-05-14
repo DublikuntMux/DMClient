@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 6,
-    "identityHash": "040e88f6bc3cb9f6a754b35b55db3ff6",
+    "identityHash": "f616c3633e483dd6103e1c9a15b225bc",
     "entities": [
       {
         "tableName": "gallery_history",
@@ -38,7 +38,20 @@
           "columnNames": [
             "id"
           ]
-        }
+        },
+        "indices": [
+          {
+            "name": "index_gallery_history_timestamp",
+            "unique": false,
+            "columnNames": [
+              "timestamp"
+            ],
+            "orders": [
+              "DESC"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_gallery_history_timestamp` ON `${TABLE_NAME}` (`timestamp` DESC)"
+          }
+        ]
       },
       {
         "tableName": "gallery_status",
@@ -175,12 +188,25 @@
           "columnNames": [
             "id"
           ]
-        }
+        },
+        "indices": [
+          {
+            "name": "index_downloaded_galleries_timestamp",
+            "unique": false,
+            "columnNames": [
+              "timestamp"
+            ],
+            "orders": [
+              "DESC"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_downloaded_galleries_timestamp` ON `${TABLE_NAME}` (`timestamp` DESC)"
+          }
+        ]
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '040e88f6bc3cb9f6a754b35b55db3ff6')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f616c3633e483dd6103e1c9a15b225bc')"
     ]
   }
 }
