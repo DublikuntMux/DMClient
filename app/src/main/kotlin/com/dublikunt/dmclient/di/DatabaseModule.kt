@@ -4,6 +4,7 @@ import android.content.Context
 import com.dublikunt.dmclient.database.AppDatabase
 import com.dublikunt.dmclient.database.download.DownloadedGalleryDao
 import com.dublikunt.dmclient.database.history.GalleryHistoryDao
+import com.dublikunt.dmclient.database.search.SearchCacheDao
 import com.dublikunt.dmclient.database.status.GalleryStatusDao
 import dagger.Module
 import dagger.Provides
@@ -30,4 +31,7 @@ object DatabaseModule {
     @Provides
     fun provideDownloadedGalleryDao(db: AppDatabase): DownloadedGalleryDao =
         db.downloadedGalleryDao()
+
+    @Provides
+    fun provideSearchCacheDao(db: AppDatabase): SearchCacheDao = db.searchCacheDao()
 }

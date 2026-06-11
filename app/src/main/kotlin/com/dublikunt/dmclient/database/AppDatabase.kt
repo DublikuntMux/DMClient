@@ -11,19 +11,22 @@ import com.dublikunt.dmclient.database.download.DownloadedGallery
 import com.dublikunt.dmclient.database.download.DownloadedGalleryDao
 import com.dublikunt.dmclient.database.history.GalleryHistory
 import com.dublikunt.dmclient.database.history.GalleryHistoryDao
+import com.dublikunt.dmclient.database.search.SearchCache
+import com.dublikunt.dmclient.database.search.SearchCacheDao
 import com.dublikunt.dmclient.database.status.CustomStatus
 import com.dublikunt.dmclient.database.status.GalleryStatus
 import com.dublikunt.dmclient.database.status.GalleryStatusDao
 
 @Database(
-    entities = [GalleryHistory::class, GalleryStatus::class, CustomStatus::class, DownloadedGallery::class],
-    version = 6
+    entities = [GalleryHistory::class, GalleryStatus::class, CustomStatus::class, DownloadedGallery::class, SearchCache::class],
+    version = 7
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun galleryHistoryDao(): GalleryHistoryDao
     abstract fun galleryStatusDao(): GalleryStatusDao
     abstract fun downloadedGalleryDao(): DownloadedGalleryDao
+    abstract fun searchCacheDao(): SearchCacheDao
 
     companion object {
         @Volatile
@@ -36,7 +39,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "main_database"
                 )
-                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                     .addCallback(object : Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)
@@ -66,6 +69,20 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 createIndices(db)
+            }
+        }
+
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS search_cache (
+                        type TEXT PRIMARY KEY NOT NULL,
+                        names TEXT NOT NULL DEFAULT '[]',
+                        lastUpdated INTEGER NOT NULL DEFAULT 0
+                    )
+                    """.trimIndent()
+                )
             }
         }
 

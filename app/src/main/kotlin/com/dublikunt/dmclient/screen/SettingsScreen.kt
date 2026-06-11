@@ -43,6 +43,7 @@ import com.dublikunt.dmclient.component.settings.SettingsButton
 import com.dublikunt.dmclient.component.settings.SettingsButtonType
 import com.dublikunt.dmclient.component.settings.SettingsDropdownButton
 import com.dublikunt.dmclient.database.history.GalleryHistoryDao
+import com.dublikunt.dmclient.database.search.SearchCacheDao
 import com.dublikunt.dmclient.database.status.CustomStatus
 import com.dublikunt.dmclient.database.status.GalleryStatus
 import com.dublikunt.dmclient.database.status.GalleryStatusDao
@@ -54,7 +55,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import java.io.File
 import javax.inject.Inject
 
 @Serializable
@@ -69,9 +69,8 @@ class SettingsViewModel @Inject constructor(
     private val preferenceRepository: PreferenceRepository,
     private val galleryHistoryDao: GalleryHistoryDao,
     private val galleryStatusDao: GalleryStatusDao,
+    private val searchCacheDao: SearchCacheDao,
 ) : ViewModel() {
-    val json = Json { ignoreUnknownKeys = true }
-
     suspend fun getPreferredLanguage(): String =
         preferenceRepository.preferredLanguage.first() ?: "all"
 
@@ -80,6 +79,12 @@ class SettingsViewModel @Inject constructor(
 
     fun deleteTokens() = viewModelScope.launch { preferenceRepository.deleteTokens() }
     fun savePinCode(pin: String) = viewModelScope.launch { preferenceRepository.savePinCode(pin) }
+
+    fun clearSearchCache(filesDir: java.io.File) = viewModelScope.launch(Dispatchers.IO) {
+        searchCacheDao.deleteAll()
+        listOf("artists.json", "characters.json", "tags.json", "parodies.json")
+            .forEach { name -> java.io.File(filesDir, name).delete() }
+    }
 
     suspend fun exportData(): BackupData = withContext(Dispatchers.IO) {
         val history = galleryHistoryDao.getAllHistory()
@@ -266,18 +271,7 @@ fun SettingsScreen(
                 Button(
                     onClick = {
                         showClearSearchCacheDialog = false
-                        scope.launch {
-                            withContext(Dispatchers.IO) {
-                                listOf(
-                                    "artists.json",
-                                    "characters.json",
-                                    "tags.json",
-                                    "parodies.json"
-                                ).forEach { name ->
-                                    File(context.filesDir, name).delete()
-                                }
-                            }
-                        }
+                        viewModel.clearSearchCache(context.filesDir)
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error,

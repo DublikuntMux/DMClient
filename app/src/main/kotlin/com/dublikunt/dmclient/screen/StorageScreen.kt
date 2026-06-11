@@ -204,9 +204,11 @@ fun StorageScreen(viewModel: StorageViewModel = hiltViewModel()) {
             }
 
             items(downloads) { gallery ->
-                Card(modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp)) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                ) {
                     Row(
                         modifier = Modifier
                             .padding(8.dp)

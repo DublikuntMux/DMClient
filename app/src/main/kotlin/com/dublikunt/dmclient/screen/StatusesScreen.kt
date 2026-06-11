@@ -164,9 +164,11 @@ fun StatusesScreen(
         }
     }
 
-    Column(modifier = Modifier
-        .fillMaxSize()
-        .padding(16.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
         Text("Statuses", style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(8.dp))
 

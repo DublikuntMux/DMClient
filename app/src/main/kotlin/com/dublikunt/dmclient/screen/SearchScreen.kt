@@ -1,5 +1,6 @@
 package com.dublikunt.dmclient.screen
 
+import android.content.Context
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -18,6 +19,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SecondaryTabRow
@@ -35,33 +37,39 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
-import com.dublikunt.dmclient.component.LoadingScreen
-import com.dublikunt.dmclient.repository.PreferenceRepository
-import com.dublikunt.dmclient.repository.SearchRepository
+import androidx.work.WorkManager
+import com.dublikunt.dmclient.database.search.SearchCacheDao
+import com.dublikunt.dmclient.work.SearchCacheWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 import java.io.File
 import javax.inject.Inject
 
+enum class CacheStatus {
+    Loading,
+    Fetching,
+    Ready,
+    Error
+}
+
 @HiltViewModel
 class SearchViewModel @Inject constructor(
-    private val searchRepository: SearchRepository,
-    private val preferenceRepository: PreferenceRepository,
+    private val searchCacheDao: SearchCacheDao,
+    @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
-    private val json = Json { ignoreUnknownKeys = true }
+    private val workManager = WorkManager.getInstance(context)
 
     private val _tags = MutableStateFlow<List<String>>(emptyList())
     val tags: StateFlow<List<String>> = _tags.asStateFlow()
@@ -75,78 +83,75 @@ class SearchViewModel @Inject constructor(
     private val _parodies = MutableStateFlow<List<String>>(emptyList())
     val parodies: StateFlow<List<String>> = _parodies.asStateFlow()
 
-    private val _isLoading = MutableStateFlow(true)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+    private val _cacheStatus = MutableStateFlow(CacheStatus.Loading)
+    val cacheStatus: StateFlow<CacheStatus> = _cacheStatus.asStateFlow()
 
     fun loadData(filesDir: File) {
         viewModelScope.launch {
-            _isLoading.value = true
-            val tagsFile = File(filesDir, "tags.json")
-            val artistsFile = File(filesDir, "artists.json")
-            val charactersFile = File(filesDir, "characters.json")
-            val parodiesFile = File(filesDir, "parodies.json")
+            _cacheStatus.value = CacheStatus.Loading
 
-            if (tagsFile.exists()) {
-                _tags.value = loadFromFile(tagsFile)
+            val cachedTags = searchCacheDao.getByType("tags")
+            val cachedArtists = searchCacheDao.getByType("artists")
+            val cachedCharacters = searchCacheDao.getByType("characters")
+            val cachedParodies = searchCacheDao.getByType("parodies")
+
+            cachedTags?.let { _tags.value = it.names }
+            cachedArtists?.let { _artists.value = it.names }
+            cachedCharacters?.let { _characters.value = it.names }
+            cachedParodies?.let { _parodies.value = it.names }
+
+            val allCached = cachedTags != null && cachedArtists != null &&
+                    cachedCharacters != null && cachedParodies != null
+
+            if (allCached) {
+                _cacheStatus.value = CacheStatus.Ready
             } else {
-                fetchAndSaveTags(filesDir)
+                enqueueCacheWorker(filesDir)
             }
-
-            if (artistsFile.exists()) {
-                _artists.value = loadFromFile(artistsFile)
-            } else {
-                fetchAndSaveArtists(filesDir)
-            }
-
-            if (charactersFile.exists()) {
-                _characters.value = loadFromFile(charactersFile)
-            } else {
-                fetchAndSaveCharacters(filesDir)
-            }
-
-            if (parodiesFile.exists()) {
-                _parodies.value = loadFromFile(parodiesFile)
-            } else {
-                fetchAndSaveParodies(filesDir)
-            }
-
-            _isLoading.value = false
         }
     }
 
-    private suspend fun loadFromFile(file: File): List<String> = withContext(Dispatchers.IO) {
-        val jsonString = file.readText()
-        json.decodeFromString<List<String>>(jsonString)
+    private fun enqueueCacheWorker(filesDir: File) {
+        _cacheStatus.value = CacheStatus.Fetching
+
+        val request = androidx.work.OneTimeWorkRequestBuilder<SearchCacheWorker>()
+            .build()
+
+        workManager.enqueueUniqueWork(
+            SearchCacheWorker.UNIQUE_WORK_NAME,
+            androidx.work.ExistingWorkPolicy.KEEP,
+            request
+        )
+
+        viewModelScope.launch {
+            workManager.getWorkInfoByIdFlow(request.id)
+                .collect { workInfo ->
+                    val state = workInfo?.state
+                    if (state == androidx.work.WorkInfo.State.SUCCEEDED) {
+                        reloadFromDatabase(filesDir)
+                    } else if (state == androidx.work.WorkInfo.State.FAILED) {
+                        _cacheStatus.value = CacheStatus.Error
+                    }
+                }
+        }
     }
 
-    private suspend fun fetchAndSaveTags(filesDir: File) {
-        val fetchedTags = withContext(Dispatchers.IO) { searchRepository.getAllTags() }
-        saveToFile(fetchedTags, File(filesDir, "tags.json"))
-        _tags.value = fetchedTags
-    }
+    private suspend fun reloadFromDatabase(filesDir: File) {
+        val cachedTags = searchCacheDao.getByType("tags")
+        val cachedArtists = searchCacheDao.getByType("artists")
+        val cachedCharacters = searchCacheDao.getByType("characters")
+        val cachedParodies = searchCacheDao.getByType("parodies")
 
-    private suspend fun fetchAndSaveArtists(filesDir: File) {
-        val fetchedArtists = withContext(Dispatchers.IO) { searchRepository.getAllArtists() }
-        saveToFile(fetchedArtists, File(filesDir, "artists.json"))
-        _artists.value = fetchedArtists
-    }
+        cachedTags?.let { _tags.value = it.names }
+        cachedArtists?.let { _artists.value = it.names }
+        cachedCharacters?.let { _characters.value = it.names }
+        cachedParodies?.let { _parodies.value = it.names }
 
-    private suspend fun fetchAndSaveCharacters(filesDir: File) {
-        val fetchedCharacters = withContext(Dispatchers.IO) { searchRepository.getAllCharacters() }
-        saveToFile(fetchedCharacters, File(filesDir, "characters.json"))
-        _characters.value = fetchedCharacters
-    }
+        _cacheStatus.value = CacheStatus.Ready
 
-    private suspend fun fetchAndSaveParodies(filesDir: File) {
-        val fetchedParodies = withContext(Dispatchers.IO) { searchRepository.getAllParodies() }
-        saveToFile(fetchedParodies, File(filesDir, "parodies.json"))
-        _parodies.value = fetchedParodies
-    }
-
-    private suspend fun saveToFile(data: List<String>, file: File) {
         withContext(Dispatchers.IO) {
-            val jsonString = json.encodeToString(data)
-            file.writeText(jsonString)
+            listOf("artists.json", "characters.json", "tags.json", "parodies.json")
+                .forEach { name -> File(filesDir, name).delete() }
         }
     }
 }
@@ -156,12 +161,11 @@ fun SearchScreen(
     navController: NavHostController,
     viewModel: SearchViewModel = hiltViewModel()
 ) {
-    val context = LocalContext.current
     val tags by viewModel.tags.collectAsState()
     val artists by viewModel.artists.collectAsState()
     val characters by viewModel.characters.collectAsState()
     val parodies by viewModel.parodies.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
+    val cacheStatus by viewModel.cacheStatus.collectAsState()
 
     val selectedTags = remember { mutableStateListOf<String>() }
     val selectedArtists = remember { mutableStateListOf<String>() }
@@ -175,124 +179,144 @@ fun SearchScreen(
     val scrollState = rememberLazyGridState()
     var selectedTab by remember { mutableIntStateOf(0) }
 
+    val context = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(Unit) { viewModel.loadData(context.filesDir) }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        if (isLoading) {
-            LoadingScreen(text = "Loading...\nFirst time may take a while")
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
-            ) {
-                Text(text = "Search:", style = MaterialTheme.typography.headlineMedium)
-                Spacer(modifier = Modifier.height(8.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
+            Text(text = "Search:", style = MaterialTheme.typography.headlineMedium)
+            Spacer(modifier = Modifier.height(8.dp))
 
-                OutlinedTextField(
-                    singleLine = true,
-                    value = searchQuery.value,
-                    onValueChange = { searchQuery.value = it },
-                    label = { Text("Query") },
-                    modifier = Modifier.fillMaxWidth(),
-                    trailingIcon = {
-                        IconButton(onClick = {
-                            val query = concatenateStrings(
-                                searchQuery.value,
-                                selectedTags,
-                                selectedArtists,
-                                selectedCharacters,
-                                selectedParodies
-                            )
-                            navController.navigate("search?query=${query}")
-                        }) {
-                            Icon(Icons.Rounded.Search, contentDescription = "Search")
-                        }
-                    }
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                SecondaryTabRow(selectedTabIndex = selectedTab) {
-                    Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) { Text("Tags") }
-                    Tab(
-                        selected = selectedTab == 1,
-                        onClick = { selectedTab = 1 }) { Text("Artists") }
-                    Tab(
-                        selected = selectedTab == 2,
-                        onClick = { selectedTab = 2 }) { Text("Character") }
-                    Tab(
-                        selected = selectedTab == 3,
-                        onClick = { selectedTab = 3 }) { Text("Parodies") }
-                    Tab(
-                        selected = selectedTab == 4,
-                        onClick = { selectedTab = 4 }) { Text("Selected") }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                when (selectedTab) {
-                    0 -> {
-                        OutlinedTextField(
-                            singleLine = true,
-                            value = tagSearchQuery.value,
-                            onValueChange = { tagSearchQuery.value = it },
-                            label = { Text("Search Tags") },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        TagGrid(selectedTags, tags, tagSearchQuery.value, scrollState)
-                    }
-
-                    1 -> {
-                        OutlinedTextField(
-                            singleLine = true,
-                            value = artistSearchQuery.value,
-                            onValueChange = { artistSearchQuery.value = it },
-                            label = { Text("Search Artists") },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        TagGrid(selectedArtists, artists, artistSearchQuery.value, scrollState)
-                    }
-
-                    2 -> {
-                        OutlinedTextField(
-                            singleLine = true,
-                            value = characterSearchQuery.value,
-                            onValueChange = { characterSearchQuery.value = it },
-                            label = { Text("Search Characters") },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        TagGrid(
-                            selectedCharacters,
-                            characters,
-                            characterSearchQuery.value,
-                            scrollState
-                        )
-                    }
-
-                    3 -> {
-                        OutlinedTextField(
-                            singleLine = true,
-                            value = parodiesSearchQuery.value,
-                            onValueChange = { parodiesSearchQuery.value = it },
-                            label = { Text("Search Parodies") },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        TagGrid(selectedParodies, parodies, parodiesSearchQuery.value, scrollState)
-                    }
-
-                    4 -> {
-                        SelectedItemsGrid(
+            OutlinedTextField(
+                singleLine = true,
+                value = searchQuery.value,
+                onValueChange = { searchQuery.value = it },
+                label = { Text("Query") },
+                modifier = Modifier.fillMaxWidth(),
+                trailingIcon = {
+                    IconButton(onClick = {
+                        val query = concatenateStrings(
+                            searchQuery.value,
                             selectedTags,
                             selectedArtists,
                             selectedCharacters,
                             selectedParodies
                         )
+                        navController.navigate("search?query=${query}")
+                    }) {
+                        Icon(Icons.Rounded.Search, contentDescription = "Search")
                     }
+                }
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            when (cacheStatus) {
+                CacheStatus.Fetching -> {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    Text(
+                        text = "Fetching tag data in background...",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                CacheStatus.Error -> {
+                    Text(
+                        text = "Failed to fetch tag data. Pull to try again.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                else -> {}
+            }
+
+            SecondaryTabRow(selectedTabIndex = selectedTab) {
+                Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) { Text("Tags") }
+                Tab(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 }) { Text("Artists") }
+                Tab(
+                    selected = selectedTab == 2,
+                    onClick = { selectedTab = 2 }) { Text("Character") }
+                Tab(
+                    selected = selectedTab == 3,
+                    onClick = { selectedTab = 3 }) { Text("Parodies") }
+                Tab(
+                    selected = selectedTab == 4,
+                    onClick = { selectedTab = 4 }) { Text("Selected") }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            when (selectedTab) {
+                0 -> {
+                    OutlinedTextField(
+                        singleLine = true,
+                        value = tagSearchQuery.value,
+                        onValueChange = { tagSearchQuery.value = it },
+                        label = { Text("Search Tags") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TagGrid(selectedTags, tags, tagSearchQuery.value, scrollState)
+                }
+
+                1 -> {
+                    OutlinedTextField(
+                        singleLine = true,
+                        value = artistSearchQuery.value,
+                        onValueChange = { artistSearchQuery.value = it },
+                        label = { Text("Search Artists") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TagGrid(selectedArtists, artists, artistSearchQuery.value, scrollState)
+                }
+
+                2 -> {
+                    OutlinedTextField(
+                        singleLine = true,
+                        value = characterSearchQuery.value,
+                        onValueChange = { characterSearchQuery.value = it },
+                        label = { Text("Search Characters") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TagGrid(
+                        selectedCharacters,
+                        characters,
+                        characterSearchQuery.value,
+                        scrollState
+                    )
+                }
+
+                3 -> {
+                    OutlinedTextField(
+                        singleLine = true,
+                        value = parodiesSearchQuery.value,
+                        onValueChange = { parodiesSearchQuery.value = it },
+                        label = { Text("Search Parodies") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TagGrid(selectedParodies, parodies, parodiesSearchQuery.value, scrollState)
+                }
+
+                4 -> {
+                    SelectedItemsGrid(
+                        selectedTags,
+                        selectedArtists,
+                        selectedCharacters,
+                        selectedParodies
+                    )
                 }
             }
         }
