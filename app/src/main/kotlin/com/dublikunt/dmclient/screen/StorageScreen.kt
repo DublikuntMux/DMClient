@@ -27,6 +27,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -110,7 +111,10 @@ class StorageViewModel @Inject constructor(
     }
 
     fun clearAllDownloads() {
-        viewModelScope.launch(Dispatchers.IO) { downloadRepository.deleteAll() }
+        viewModelScope.launch(Dispatchers.IO) {
+            downloadRepository.deleteAll()
+            File(context.filesDir, "galleries").deleteRecursively()
+        }
     }
 
     fun deleteDownloadedGallery(gallery: DownloadedGallery) {
@@ -173,9 +177,15 @@ fun StorageScreen(viewModel: StorageViewModel = hiltViewModel()) {
             item {
                 Column {
                     Text("Maximum Cache Size: ${Formatter.formatFileSize(context, maxCacheSize)}")
+                    var sliderValue by remember(maxCacheSize) {
+                        mutableFloatStateOf(maxCacheSize.toFloat())
+                    }
                     Slider(
-                        value = maxCacheSize.toFloat(),
-                        onValueChange = { viewModel.setMaxCacheSize(it.toLong()) },
+                        value = sliderValue,
+                        onValueChange = { sliderValue = it },
+                        onValueChangeFinished = {
+                            viewModel.setMaxCacheSize(sliderValue.toLong())
+                        },
                         valueRange = (100f * 1024 * 1024)..(5f * 1024 * 1024 * 1024),
                         steps = 49
                     )

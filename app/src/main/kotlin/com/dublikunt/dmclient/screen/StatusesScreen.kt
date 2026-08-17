@@ -126,7 +126,8 @@ class StatusesViewModel @Inject constructor(
 
     private suspend fun refreshStatuses() {
         val historyIds = historyRepository.getAllHistory().map { it.id }
-        val statuses = statusDao.getStatuses(historyIds)
+        val statuses = if (historyIds.isEmpty()) emptyList()
+        else statusDao.getStatuses(historyIds)
         val allCustomStatuses = statusDao.getCustomStatuses()
         _statusMap.value = statuses.associateBy { it.galleryStatus.id }
         _customStatuses.value = allCustomStatuses
