@@ -12,11 +12,15 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -30,6 +34,7 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.cachedIn
 import androidx.paging.compose.collectAsLazyPagingItems
+import com.dublikunt.dmclient.component.ErrorScreen
 import com.dublikunt.dmclient.component.GalleryCard
 import com.dublikunt.dmclient.component.LoadingScreen
 import com.dublikunt.dmclient.database.status.GalleryStatusDao
@@ -145,14 +150,15 @@ fun HomeScreen(
     val notificationPermissionState =
         rememberPermissionState("android.permission.POST_NOTIFICATIONS")
     val isNotificationGranted by rememberUpdatedState(notificationPermissionState.status.isGranted)
+    var permissionSkipped by rememberSaveable { mutableStateOf(false) }
 
     val scrollState = rememberLazyGridState()
 
-    if (!isNotificationGranted) {
+    if (!isNotificationGranted && !permissionSkipped) {
         LaunchedEffect(Unit) {
             notificationPermissionState.launchPermissionRequest()
         }
-        PermissionRequestScreen(notificationPermissionState)
+        PermissionRequestScreen(notificationPermissionState, onSkip = { permissionSkipped = true })
     } else {
         when (tokenFetched) {
             FetchStatus.NotFetched -> {
@@ -169,46 +175,51 @@ fun HomeScreen(
 
                 val statusMap by viewModel.statusMap.collectAsState()
 
-                if (items.itemCount == 0 && items.loadState.refresh is LoadState.Loading) {
-                    LoadingScreen()
-                } else {
-                    LazyVerticalGrid(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        columns = GridCells.Adaptive(minSize = 128.dp),
-                        state = scrollState
-                    ) {
-                        items(count = items.itemCount, key = { index -> items.peek(index)?.id ?: index }) { index ->
-                            val galleryItem = items[index]
-                            galleryItem?.let {
-                                GalleryCard(
-                                    it, navController,
-                                    statusMap[it.id]?.status?.name,
-                                    statusMap[it.id]?.status?.color,
-                                    statusMap[it.id]?.galleryStatus?.favorite ?: false
-                                ) { viewModel.addGalleryToHistory(it) }
+                when (val refresh = items.loadState.refresh) {
+                    is LoadState.Loading -> LoadingScreen()
+                    is LoadState.Error -> ErrorScreen("Failed to load data. Please try again.") {
+                        items.retry()
+                    }
+
+                    else -> {
+                        LazyVerticalGrid(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
+                            columns = GridCells.Adaptive(minSize = 128.dp),
+                            state = scrollState
+                        ) {
+                            items(count = items.itemCount, key = { index -> items.peek(index)?.id ?: index }) { index ->
+                                val galleryItem = items[index]
+                                galleryItem?.let {
+                                    GalleryCard(
+                                        it, navController,
+                                        statusMap[it.id]?.status?.name,
+                                        statusMap[it.id]?.status?.color,
+                                        statusMap[it.id]?.galleryStatus?.favorite ?: false
+                                    ) { viewModel.addGalleryToHistory(it) }
+                                }
                             }
-                        }
-                        when (val state = items.loadState.append) {
-                            is LoadState.Loading -> item {
-                                LoadingScreen(
-                                    modifier = Modifier.padding(
-                                        16.dp
+                            when (val state = items.loadState.append) {
+                                is LoadState.Loading -> item {
+                                    LoadingScreen(
+                                        modifier = Modifier.padding(
+                                            16.dp
+                                        )
                                     )
-                                )
-                            }
+                                }
 
-                            is LoadState.Error -> item {
-                                Text(
-                                    "Failed to load data. Please try again.",
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp)
-                                )
-                            }
+                                is LoadState.Error -> item {
+                                    Text(
+                                        "Failed to load data. Please try again.",
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp)
+                                    )
+                                }
 
-                            else -> {}
+                                else -> {}
+                            }
                         }
                     }
                 }
@@ -221,7 +232,7 @@ fun HomeScreen(
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
-fun PermissionRequestScreen(permissionState: PermissionState) {
+fun PermissionRequestScreen(permissionState: PermissionState, onSkip: () -> Unit) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -235,6 +246,10 @@ fun PermissionRequestScreen(permissionState: PermissionState) {
             Spacer(Modifier.height(8.dp))
             ElevatedButton(onClick = { permissionState.launchPermissionRequest() }) {
                 Text("Request permission")
+            }
+            Spacer(Modifier.height(8.dp))
+            TextButton(onClick = onSkip) {
+                Text("Continue without notifications")
             }
         }
     }

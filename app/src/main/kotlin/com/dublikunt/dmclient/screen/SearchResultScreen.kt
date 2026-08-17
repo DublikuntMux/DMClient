@@ -2,6 +2,7 @@ package com.dublikunt.dmclient.screen
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -24,6 +25,7 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.cachedIn
 import androidx.paging.compose.collectAsLazyPagingItems
+import com.dublikunt.dmclient.component.ErrorScreen
 import com.dublikunt.dmclient.component.GalleryCard
 import com.dublikunt.dmclient.component.LoadingScreen
 import com.dublikunt.dmclient.database.status.GalleryStatusDao
@@ -130,40 +132,53 @@ fun SearchResultScreen(
 
     val statusMap by viewModel.statusMap.collectAsState()
 
-    when (items.loadState.refresh) {
+    when (val refresh = items.loadState.refresh) {
         is LoadState.Loading -> LoadingScreen()
-        is LoadState.Error -> {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Nothing found", style = MaterialTheme.typography.headlineLarge)
-            }
+        is LoadState.Error -> ErrorScreen("Failed to load results. Please try again.") {
+            items.retry()
         }
 
         else -> {
-            LazyVerticalGrid(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                columns = GridCells.Adaptive(minSize = 128.dp),
-                state = scrollState
-            ) {
-                items(count = items.itemCount) { index ->
-                    val galleryItem = items[index]
-                    galleryItem?.let {
-                        GalleryCard(
-                            it, navController,
-                            statusMap[it.id]?.status?.name,
-                            statusMap[it.id]?.status?.color,
-                            statusMap[it.id]?.galleryStatus?.favorite ?: false
-                        ) { viewModel.addGalleryToHistory(it) }
-                    }
+            if (items.itemCount == 0) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Nothing found", style = MaterialTheme.typography.headlineLarge)
                 }
-
-                when (val state = items.loadState.append) {
-                    is LoadState.Loading -> {
-                        item { LoadingScreen(modifier = Modifier.padding(16.dp)) }
+            } else {
+                LazyVerticalGrid(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    columns = GridCells.Adaptive(minSize = 128.dp),
+                    state = scrollState
+                ) {
+                    items(count = items.itemCount) { index ->
+                        val galleryItem = items[index]
+                        galleryItem?.let {
+                            GalleryCard(
+                                it, navController,
+                                statusMap[it.id]?.status?.name,
+                                statusMap[it.id]?.status?.color,
+                                statusMap[it.id]?.galleryStatus?.favorite ?: false
+                            ) { viewModel.addGalleryToHistory(it) }
+                        }
                     }
 
-                    else -> {}
+                    when (val state = items.loadState.append) {
+                        is LoadState.Loading -> {
+                            item { LoadingScreen(modifier = Modifier.padding(16.dp)) }
+                        }
+
+                        is LoadState.Error -> item {
+                            Text(
+                                "Failed to load more results. Please try again.",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp)
+                            )
+                        }
+
+                        else -> {}
+                    }
                 }
             }
         }
