@@ -30,5 +30,8 @@ class SearchResultPagingSource(
     }
 
     override fun getRefreshKey(state: PagingState<Int, GallerySimpleInfo>): Int? =
-        state.anchorPosition
-}
+        state.anchorPosition?.let { anchorPosition ->
+            state.closestPageToPosition(anchorPosition)?.let { page ->
+                page.prevKey?.plus(1) ?: page.nextKey?.minus(1)
+            }
+        }}
