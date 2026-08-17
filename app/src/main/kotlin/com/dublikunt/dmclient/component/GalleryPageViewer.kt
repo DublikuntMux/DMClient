@@ -20,9 +20,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
@@ -42,10 +42,9 @@ fun GalleryPageViewer(
     var offset by remember { mutableStateOf(Offset(0f, 0f)) }
     val maxScale = 5f
     val minScale = 1f
-    val configuration = LocalConfiguration.current
     val density = LocalDensity.current
 
-    val screenWidthDp = configuration.screenWidthDp.dp
+    val screenWidthDp = with(density) { LocalWindowInfo.current.containerSize.width.toDp() }
 
     val tapGesturesHandler = rememberUpdatedState { tapOffset: Offset ->
         val tapOffsetDp = with(density) { tapOffset.x.toDp() }
