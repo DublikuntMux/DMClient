@@ -58,6 +58,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
@@ -76,9 +77,10 @@ class HomeViewModel @Inject constructor(
     private val galleryStatusDao: GalleryStatusDao,
 ) : ViewModel() {
     private val _language = MutableStateFlow(ContentLanguage.All)
+    private val _authGeneration = MutableStateFlow(0)
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val flow = _language.flatMapLatest { lang ->
+    val flow = combine(_language, _authGeneration) { lang, _ -> lang }.flatMapLatest { lang ->
         Pager(PagingConfig(pageSize = 25)) {
             HomePagingSource(homeRepository, lang)
         }.flow
@@ -99,10 +101,25 @@ class HomeViewModel @Inject constructor(
             val session = preferenceRepository.sessionAffinity.first()
             val token = preferenceRepository.csrfToken.first()
             if (!session.isNullOrEmpty() && !token.isNullOrEmpty()) {
-                nHentaiApi.setTokens(session, token)
+                val cfClearance = preferenceRepository.cfClearance.first()
+                nHentaiApi.setCookies(
+                    listOfNotNull(
+                        "session-affinity" to session,
+                        "csrftoken" to token,
+                        cfClearance?.let { "cf_clearance" to it }
+                    )
+                )
                 _tokenFetched.value = FetchStatus.Fetched
             } else {
                 _tokenFetched.value = FetchStatus.NotFetched
+            }
+        }
+        viewModelScope.launch {
+            nHentaiApi.authRequired.collect {
+                preferenceRepository.deleteTokens()
+                nHentaiApi.clearCookies()
+                _tokenFetched.value = FetchStatus.NotFetched
+                _authGeneration.value++
             }
         }
     }
@@ -129,10 +146,14 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun saveTokensAndFetch(session: String, token: String) {
+    fun saveTokensAndFetch(cookies: List<Pair<String, String>>) {
         viewModelScope.launch {
-            preferenceRepository.saveTokens(session, token)
-            nHentaiApi.setTokens(session, token)
+            val session = cookies.firstOrNull { it.first == "session-affinity" }?.second
+            val token = cookies.firstOrNull { it.first == "csrftoken" }?.second
+            if (session == null || token == null) return@launch
+            val cfClearance = cookies.firstOrNull { it.first == "cf_clearance" }?.second
+            preferenceRepository.saveTokens(session, token, cfClearance)
+            nHentaiApi.setCookies(cookies)
             _tokenFetched.value = FetchStatus.Fetched
         }
     }
@@ -162,7 +183,7 @@ fun HomeScreen(
     } else {
         when (tokenFetched) {
             FetchStatus.NotFetched -> {
-                NHentaiWebView { session, token -> viewModel.saveTokensAndFetch(session, token) }
+                NHentaiWebView { cookies -> viewModel.saveTokensAndFetch(cookies) }
             }
 
             FetchStatus.Fetched -> {

@@ -1,6 +1,8 @@
 package com.dublikunt.dmclient.scrapper
 
 import android.net.Uri
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -20,14 +22,24 @@ class NHentaiApi @Inject constructor(
     companion object {
         const val BASE_URL = "https://nhentai.net"
         const val USER_AGENT =
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0"
+            "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Mobile Safari/537.36"
+
+        private val COOKIE_HOSTS = listOf("nhentai.net", "t.nhentai.net", "i1.nhentai.net")
     }
 
-    fun setTokens(session: String, token: String) {
-        val url = BASE_URL.toHttpUrl()
-        cookieJar.setCookie(url, "session-affinity", session, secure = true)
-        cookieJar.setCookie(url, "csrftoken", token)
+    private val _authRequired = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val authRequired: SharedFlow<Unit> = _authRequired
+
+    fun setCookies(cookies: List<Pair<String, String>>) {
+        val baseUrl = BASE_URL.toHttpUrl()
+        cookies.forEach { (name, value) ->
+            COOKIE_HOSTS.forEach { host ->
+                cookieJar.setCookie(baseUrl.newBuilder().host(host).build(), name, value, secure = true)
+            }
+        }
     }
+
+    fun clearCookies() = cookieJar.clear()
 
     private fun fetchData(url: String, retryCount: Int = 4): String? {
         var currentRetry = 0
@@ -35,6 +47,10 @@ class NHentaiApi @Inject constructor(
             try {
                 val request = Request.Builder().url(url).apply { setupHeaders(this) }.build()
                 client.newCall(request).execute().use { response ->
+                    if (response.code == 403) {
+                        _authRequired.tryEmit(Unit)
+                        return null
+                    }
                     if (response.code == 429) {
                         currentRetry++
                         val waitTime = 1000L * currentRetry
@@ -65,6 +81,11 @@ class NHentaiApi @Inject constructor(
             try {
                 val request = Request.Builder().url(url).apply { setupHeaders(this) }.build()
                 val response = client.newCall(request).execute()
+                if (response.code == 403) {
+                    response.close()
+                    _authRequired.tryEmit(Unit)
+                    return null
+                }
                 if (response.code == 429) {
                     response.close()
                     currentRetry++
@@ -330,17 +351,26 @@ class NHentaiApi @Inject constructor(
     private fun setupHeaders(builder: Request.Builder) {
         builder.apply {
             header("User-Agent", USER_AGENT)
-            header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+            header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
             header("Accept-Language", "en;q=0.9")
-            header("DNT", "1")
             header("Sec-GPC", "1")
             header("Connection", "keep-alive")
             header("Upgrade-Insecure-Requests", "1")
             header("Sec-Fetch-Dest", "document")
             header("Sec-Fetch-Mode", "navigate")
-            header("Sec-Fetch-Site", "none")
+            header("Sec-Fetch-Site", "same-origin")
+            header("Sec-Fetch-User", "?1")
             header("Priority", "u=0, i")
             header("TE", "trailers")
+            header("Sec-CH-UA", "\"Not;A=Brand\";v=\"8\", \"Chromium\";v=\"150\", \"Google Chrome\";v=\"150\"")
+            header("Sec-CH-UA-Arch", "\"\"")
+            header("Sec-CH-UA-Bitness", "\"\"")
+            header("Sec-CH-UA-Full-Version", "\"150.0.7871.232\"")
+            header("Sec-CH-UA-Full-Version-List", "\"Not;A=Brand\";v=\"8.0.0.0\", \"Chromium\";v=\"150.0.7871.232\", \"Google Chrome\";v=\"150.0.7871.232\"")
+            header("Sec-CH-UA-Mobile", "?1")
+            header("Sec-CH-UA-Model", "\"\"")
+            header("Sec-CH-UA-Platform", "\"Android\"")
+            header("Sec-CH-UA-Platform-Version", "\"17.0.0\"")
         }
     }
 }

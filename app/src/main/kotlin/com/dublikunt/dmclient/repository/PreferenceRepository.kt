@@ -15,22 +15,27 @@ class PreferenceRepository @Inject constructor(
 ) {
     private val SESSION_AFFINITY_KEY = stringPreferencesKey("session_affinity")
     private val CSRF_TOKEN_KEY = stringPreferencesKey("csrftoken")
+    private val CF_CLEARANCE_KEY = stringPreferencesKey("cf_clearance")
     private val PREFERRED_LANGUAGE_KEY = stringPreferencesKey("preferred_language")
     private val PIN_CODE_KEY = stringPreferencesKey("pin_code")
     private val MAX_IMAGE_CACHE_SIZE_KEY = stringPreferencesKey("max_image_cache_size")
 
     val sessionAffinity: Flow<String?> = dataStore.data.map { it[SESSION_AFFINITY_KEY] }
     val csrfToken: Flow<String?> = dataStore.data.map { it[CSRF_TOKEN_KEY] }
+    val cfClearance: Flow<String?> = dataStore.data.map { it[CF_CLEARANCE_KEY] }
     val preferredLanguage: Flow<String?> = dataStore.data.map { it[PREFERRED_LANGUAGE_KEY] }
     val pinCode: Flow<String?> = dataStore.data.map { it[PIN_CODE_KEY] }
     val maxImageCacheSize: Flow<Long?> = dataStore.data.map {
         it[MAX_IMAGE_CACHE_SIZE_KEY]?.toLongOrNull()
     }
 
-    suspend fun saveTokens(session: String, token: String) {
+    suspend fun saveTokens(session: String, token: String, cfClearance: String? = null) {
         dataStore.edit { prefs ->
             prefs[SESSION_AFFINITY_KEY] = session
             prefs[CSRF_TOKEN_KEY] = token
+            if (cfClearance != null) {
+                prefs[CF_CLEARANCE_KEY] = cfClearance
+            }
         }
     }
 
@@ -38,6 +43,7 @@ class PreferenceRepository @Inject constructor(
         dataStore.edit { prefs ->
             prefs.remove(SESSION_AFFINITY_KEY)
             prefs.remove(CSRF_TOKEN_KEY)
+            prefs.remove(CF_CLEARANCE_KEY)
         }
     }
 

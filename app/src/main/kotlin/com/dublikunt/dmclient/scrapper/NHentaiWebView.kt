@@ -10,7 +10,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-fun NHentaiWebView(onCookiesReceived: (String, String) -> Unit) {
+fun NHentaiWebView(onCookiesReceived: (List<Pair<String, String>>) -> Unit) {
     AndroidView(factory = { context ->
         WebView(context).apply {
             settings.apply {
@@ -27,34 +27,37 @@ fun NHentaiWebView(onCookiesReceived: (String, String) -> Unit) {
                 javaScriptCanOpenWindowsAutomatically = true
             }
 
+            val cookieManager = CookieManager.getInstance()
+            cookieManager.setAcceptCookie(true)
+            cookieManager.setAcceptThirdPartyCookies(this, true)
+
+            fun readCookies(): List<Pair<String, String>> =
+                cookieManager.getCookie(NHentaiApi.BASE_URL)
+                    ?.split("; ")
+                    ?.mapNotNull { cookie ->
+                        val parts = cookie.split("=", limit = 2)
+                        if (parts.size == 2) parts[0].trim() to parts[1].trim() else null
+                    }
+                    ?: emptyList()
+
+            fun hasRequiredCookies(cookies: List<Pair<String, String>>): Boolean =
+                cookies.any { it.first == "session-affinity" } &&
+                    cookies.any { it.first == "csrftoken" }
+
+            var lastSent = emptyList<Pair<String, String>>()
+
+            fun checkAndSend() {
+                val cookies = readCookies()
+                if (!hasRequiredCookies(cookies) || cookies == lastSent) return
+                lastSent = cookies
+                onCookiesReceived(cookies)
+            }
+
             webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
-
-                    url?.let {
-                        val cookieManager = CookieManager.getInstance()
-                        cookieManager.setAcceptCookie(true)
-                        cookieManager.setAcceptThirdPartyCookies(this@apply, true)
-                        val cookies = cookieManager.getCookie(it)
-
-                        var session = ""
-                        var token = ""
-
-                        cookies?.split("; ")?.forEach { cookie ->
-                            val parts = cookie.split("=")
-                            if (parts.size == 2) {
-                                val name = parts[0].trim()
-                                val value = parts[1].trim()
-                                if (name == "session-affinity") {
-                                    session = value
-                                } else if (name == "csrftoken") {
-                                    token = value
-                                }
-                            }
-                        }
-
-                        onCookiesReceived(session, token)
-                    }
+                    checkAndSend()
+                    view?.postDelayed({ checkAndSend() }, 1500)
                 }
             }
             loadUrl(NHentaiApi.BASE_URL)

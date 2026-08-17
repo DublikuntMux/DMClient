@@ -48,6 +48,7 @@ import com.dublikunt.dmclient.database.status.CustomStatus
 import com.dublikunt.dmclient.database.status.GalleryStatus
 import com.dublikunt.dmclient.database.status.GalleryStatusDao
 import com.dublikunt.dmclient.repository.PreferenceRepository
+import com.dublikunt.dmclient.scrapper.NHentaiApi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -71,6 +72,7 @@ class SettingsViewModel @Inject constructor(
     private val galleryHistoryDao: GalleryHistoryDao,
     private val galleryStatusDao: GalleryStatusDao,
     private val searchCacheDao: SearchCacheDao,
+    private val nHentaiApi: NHentaiApi,
 ) : ViewModel() {
     suspend fun getPreferredLanguage(): String =
         preferenceRepository.preferredLanguage.first() ?: "all"
@@ -78,7 +80,10 @@ class SettingsViewModel @Inject constructor(
     fun savePreferredLanguage(language: String) =
         viewModelScope.launch { preferenceRepository.savePreferredLanguage(language) }
 
-    fun deleteTokens() = viewModelScope.launch { preferenceRepository.deleteTokens() }
+    fun deleteTokens() = viewModelScope.launch {
+        preferenceRepository.deleteTokens()
+        nHentaiApi.clearCookies()
+    }
     fun savePinCode(pin: String) = viewModelScope.launch { preferenceRepository.savePinCode(pin) }
 
     fun clearSearchCache(filesDir: File) = viewModelScope.launch(Dispatchers.IO) {

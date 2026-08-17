@@ -30,4 +30,8 @@ class EasyCookieJar : CookieJar {
             cookieStore[url.host] = existing.filterNot { it.name == name } + cookie
         }
     }
+
+    fun clear() {
+        synchronized(lock) { cookieStore.clear() }
+    }
 }
