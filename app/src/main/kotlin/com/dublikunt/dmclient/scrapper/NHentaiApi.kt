@@ -41,11 +41,13 @@ class NHentaiApi @Inject constructor(
 
     fun clearCookies() = cookieJar.clear()
 
-    private fun fetchData(url: String, retryCount: Int = 4): String? {
+    private fun fetchData(url: String, retryCount: Int = 4, api: Boolean = false): String? {
         var currentRetry = 0
         while (currentRetry < retryCount) {
             try {
-                val request = Request.Builder().url(url).apply { setupHeaders(this) }.build()
+                val request = Request.Builder().url(url)
+                    .apply { if (api) setupApiHeaders(this) else setupHeaders(this) }
+                    .build()
                 client.newCall(request).execute().use { response ->
                     if (response.code == 403) {
                         _authRequired.tryEmit(Unit)
@@ -273,34 +275,17 @@ class NHentaiApi @Inject constructor(
         }
     }
 
-    private fun fetchAllEntries(endpoint: String, singularType: String): List<String> {
+    private fun fetchAllEntries(singularType: String): List<String> {
         val entries = mutableListOf<String>()
         var currentPage = 1
         var maxPages = 1
 
         do {
-            val url = "$BASE_URL/$endpoint/?page=$currentPage"
-            val responseBody = fetchData(url) ?: break
-            val doc = Jsoup.parse(responseBody)
-
-            val script = doc.select("script[data-sveltekit-fetched]")
-                .firstOrNull { it.attr("data-url").contains("/api/v2/tags/$singularType") }
-                ?: break
+            val url = "$BASE_URL/api/v2/tags/$singularType?sort=popular&page=$currentPage"
+            val responseBody = fetchData(url, api = true) ?: break
 
             try {
-                val data = script.data()
-                val innerJson: JSONObject
-
-                val tryObject = try {
-                    JSONObject(data)
-                } catch (_: Exception) {
-                    null
-                }
-                innerJson = if (tryObject != null && tryObject.has("body")) {
-                    JSONObject(tryObject.getString("body"))
-                } else {
-                    JSONObject(data)
-                }
+                val innerJson = JSONObject(responseBody)
 
                 if (currentPage == 1) {
                     maxPages = innerJson.optInt("num_pages", 1)
@@ -323,10 +308,10 @@ class NHentaiApi @Inject constructor(
         return entries.distinct()
     }
 
-    fun getAllTags(): List<String> = fetchAllEntries("tags", "tag")
-    fun getAllArtists(): List<String> = fetchAllEntries("artists", "artist")
-    fun getAllCharacters(): List<String> = fetchAllEntries("characters", "character")
-    fun getAllParodies(): List<String> = fetchAllEntries("parodies", "parody")
+    fun getAllTags(): List<String> = fetchAllEntries("tags")
+    fun getAllArtists(): List<String> = fetchAllEntries("artists")
+    fun getAllCharacters(): List<String> = fetchAllEntries("characters")
+    fun getAllParodies(): List<String> = fetchAllEntries("parodies")
 
     fun search(
         query: String,
@@ -346,6 +331,30 @@ class NHentaiApi @Inject constructor(
 
         val responseBody = fetchData(url) ?: return emptyList()
         return parseGallerySimpleInfo(responseBody)
+    }
+
+    private fun setupApiHeaders(builder: Request.Builder) {
+        builder.apply {
+            header("User-Agent", USER_AGENT)
+            header("Accept", "application/json, text/plain, */*")
+            header("Accept-Language", "en;q=0.9")
+            header("Sec-GPC", "1")
+            header("Connection", "keep-alive")
+            header("Sec-Fetch-Dest", "empty")
+            header("Sec-Fetch-Mode", "cors")
+            header("Sec-Fetch-Site", "same-origin")
+            header("Priority", "u=1, i")
+            header("TE", "trailers")
+            header("Sec-CH-UA", "\"Not;A=Brand\";v=\"8\", \"Chromium\";v=\"150\", \"Google Chrome\";v=\"150\"")
+            header("Sec-CH-UA-Arch", "\"\"")
+            header("Sec-CH-UA-Bitness", "\"\"")
+            header("Sec-CH-UA-Full-Version", "\"150.0.7871.232\"")
+            header("Sec-CH-UA-Full-Version-List", "\"Not;A=Brand\";v=\"8.0.0.0\", \"Chromium\";v=\"150.0.7871.232\", \"Google Chrome\";v=\"150.0.7871.232\"")
+            header("Sec-CH-UA-Mobile", "?1")
+            header("Sec-CH-UA-Model", "\"\"")
+            header("Sec-CH-UA-Platform", "\"Android\"")
+            header("Sec-CH-UA-Platform-Version", "\"17.0.0\"")
+        }
     }
 
     private fun setupHeaders(builder: Request.Builder) {
