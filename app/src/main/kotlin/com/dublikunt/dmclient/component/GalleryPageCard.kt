@@ -35,6 +35,7 @@ fun GalleryPageCard(imageUrl: String, pageNumber: Int, onClick: () -> Unit) {
             AsyncImage(
                 model = ImageRequest.Builder(context)
                     .data(imageUrl)
+                    .size(512)
                     .build(),
                 contentDescription = "Page $pageNumber",
                 modifier = Modifier.fillMaxWidth(),

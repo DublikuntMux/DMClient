@@ -53,6 +53,7 @@ fun GalleryCard(
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(gallery.thumb)
+                    .size(512)
                     .build(),
                 contentDescription = gallery.name,
                 contentScale = ContentScale.Crop,
