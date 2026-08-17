@@ -52,7 +52,6 @@ fun MarkdownText(text: String, modifier: Modifier = Modifier) {
     )
 }
 
-@Composable
 fun parseMarkdownToAnnotatedString(markdown: String): AnnotatedString {
     val builder = AnnotatedString.Builder()
 

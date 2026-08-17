@@ -58,6 +58,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
 import com.dublikunt.dmclient.component.GalleryCard
 import com.dublikunt.dmclient.component.StatusColorPicker
+import com.dublikunt.dmclient.database.history.GalleryHistory
 import com.dublikunt.dmclient.database.status.CustomStatus
 import com.dublikunt.dmclient.database.status.GalleryStatusDao
 import com.dublikunt.dmclient.database.status.GalleryStatusWithCustomStatus
@@ -76,9 +77,8 @@ class StatusesViewModel @Inject constructor(
     private val historyRepository: HistoryRepository,
     private val statusDao: GalleryStatusDao,
 ) : ViewModel() {
-    private val _historyList =
-        MutableStateFlow<List<com.dublikunt.dmclient.database.history.GalleryHistory>>(emptyList())
-    val historyList: StateFlow<List<com.dublikunt.dmclient.database.history.GalleryHistory>> =
+    private val _historyList = MutableStateFlow<List<GalleryHistory>>(emptyList())
+    val historyList: StateFlow<List<GalleryHistory>> =
         _historyList.asStateFlow()
 
     private val _statusMap = MutableStateFlow<Map<Int, GalleryStatusWithCustomStatus?>>(emptyMap())
@@ -94,7 +94,7 @@ class StatusesViewModel @Inject constructor(
         }
     }
 
-    fun removeGalleryFromHistory(gallery: com.dublikunt.dmclient.database.history.GalleryHistory) {
+    fun removeGalleryFromHistory(gallery: GalleryHistory) {
         viewModelScope.launch(Dispatchers.IO) {
             historyRepository.deleteHistory(gallery)
             _historyList.value = historyRepository.getAllHistory()
@@ -288,7 +288,7 @@ private fun ManageStatusesDialog(
                                     contentDescription = "Edit status"
                                 ); Spacer(Modifier.width(8.dp)); Text("Edit")
                             }
-                            Spacer(Modifier.padding(horizontal = 2.dp))
+                            Spacer(Modifier.width(2.dp))
                             TextButton(
                                 onClick = { onDelete(status.id) },
                                 colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)

@@ -36,7 +36,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
@@ -400,12 +399,12 @@ fun concatenateStrings(
     tags: List<String>,
     artists: List<String>,
     characters: List<String>,
-    selectedParodies: SnapshotStateList<String>
+    parodies: List<String>
 ): String {
     val sb = StringBuilder(query)
     tags.forEach { sb.append(" tag:\"$it\"") }
     artists.forEach { sb.append(" artist:\"$it\"") }
     characters.forEach { sb.append(" character:\"$it\"") }
-    selectedParodies.forEach { sb.append(" parody:\"$it\"") }
+    parodies.forEach { sb.append(" parody:\"$it\"") }
     return sb.toString().trim().replace(" ", "+")
 }

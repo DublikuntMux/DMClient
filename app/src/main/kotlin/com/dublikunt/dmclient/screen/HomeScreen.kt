@@ -37,6 +37,7 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import com.dublikunt.dmclient.component.ErrorScreen
 import com.dublikunt.dmclient.component.GalleryCard
 import com.dublikunt.dmclient.component.LoadingScreen
+import com.dublikunt.dmclient.database.history.GalleryHistory
 import com.dublikunt.dmclient.database.status.GalleryStatusDao
 import com.dublikunt.dmclient.database.status.GalleryStatusWithCustomStatus
 import com.dublikunt.dmclient.paging.HomePagingSource
@@ -133,7 +134,7 @@ class HomeViewModel @Inject constructor(
     fun addGalleryToHistory(gallery: GallerySimpleInfo) {
         viewModelScope.launch {
             historyRepository.insertHistory(
-                com.dublikunt.dmclient.database.history.GalleryHistory(
+                GalleryHistory(
                     gallery.id,
                     gallery.thumb,
                     gallery.name

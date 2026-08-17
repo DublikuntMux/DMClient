@@ -42,6 +42,7 @@ import androidx.navigation.NavController
 import com.dublikunt.dmclient.component.settings.SettingsButton
 import com.dublikunt.dmclient.component.settings.SettingsButtonType
 import com.dublikunt.dmclient.component.settings.SettingsDropdownButton
+import com.dublikunt.dmclient.database.history.GalleryHistory
 import com.dublikunt.dmclient.database.history.GalleryHistoryDao
 import com.dublikunt.dmclient.database.search.SearchCacheDao
 import com.dublikunt.dmclient.database.status.CustomStatus
@@ -61,7 +62,7 @@ import javax.inject.Inject
 
 @Serializable
 data class BackupData(
-    val history: List<com.dublikunt.dmclient.database.history.GalleryHistory>,
+    val history: List<GalleryHistory>,
     val galleryStatuses: List<GalleryStatus>,
     val customStatuses: List<CustomStatus>
 )
@@ -301,7 +302,7 @@ fun SettingsScreen(
                 Column {
                     OutlinedTextField(
                         value = pinInput,
-                        onValueChange = { pinInput = it.filter { ch -> ch.isDigit() } },
+                        onValueChange = { pinInput = it.filter(Char::isDigit) },
                         label = { Text("Enter PIN (4–15 digits)") },
                         isError = pinInputError != null,
                         singleLine = true
