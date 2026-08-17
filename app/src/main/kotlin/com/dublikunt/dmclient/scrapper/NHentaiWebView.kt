@@ -40,15 +40,11 @@ fun NHentaiWebView(onCookiesReceived: (List<Pair<String, String>>) -> Unit) {
                     }
                     ?: emptyList()
 
-            fun hasRequiredCookies(cookies: List<Pair<String, String>>): Boolean =
-                cookies.any { it.first == "session-affinity" } &&
-                    cookies.any { it.first == "csrftoken" }
-
             var lastSent = emptyList<Pair<String, String>>()
 
             fun checkAndSend() {
                 val cookies = readCookies()
-                if (!hasRequiredCookies(cookies) || cookies == lastSent) return
+                if (cookies == lastSent) return
                 lastSent = cookies
                 onCookiesReceived(cookies)
             }
@@ -56,8 +52,10 @@ fun NHentaiWebView(onCookiesReceived: (List<Pair<String, String>>) -> Unit) {
             webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
-                    checkAndSend()
-                    view?.postDelayed({ checkAndSend() }, 1500)
+                    if (url?.startsWith(NHentaiApi.BASE_URL) == true) {
+                        checkAndSend()
+                        view?.postDelayed({ checkAndSend() }, 1500)
+                    }
                 }
             }
             loadUrl(NHentaiApi.BASE_URL)

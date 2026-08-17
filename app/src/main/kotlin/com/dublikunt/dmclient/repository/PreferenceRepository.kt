@@ -29,13 +29,14 @@ class PreferenceRepository @Inject constructor(
         it[MAX_IMAGE_CACHE_SIZE_KEY]?.toLongOrNull()
     }
 
-    suspend fun saveTokens(session: String, token: String, cfClearance: String? = null) {
+    suspend fun saveTokens(cookies: List<Pair<String, String>>) {
         dataStore.edit { prefs ->
-            prefs[SESSION_AFFINITY_KEY] = session
-            prefs[CSRF_TOKEN_KEY] = token
-            if (cfClearance != null) {
-                prefs[CF_CLEARANCE_KEY] = cfClearance
-            }
+            val session = cookies.firstOrNull { it.first == "session-affinity" }?.second
+            val token = cookies.firstOrNull { it.first == "csrftoken" }?.second
+            val clearance = cookies.firstOrNull { it.first == "cf_clearance" }?.second
+            if (session != null) prefs[SESSION_AFFINITY_KEY] = session else prefs.remove(SESSION_AFFINITY_KEY)
+            if (token != null) prefs[CSRF_TOKEN_KEY] = token else prefs.remove(CSRF_TOKEN_KEY)
+            if (clearance != null) prefs[CF_CLEARANCE_KEY] = clearance else prefs.remove(CF_CLEARANCE_KEY)
         }
     }
 

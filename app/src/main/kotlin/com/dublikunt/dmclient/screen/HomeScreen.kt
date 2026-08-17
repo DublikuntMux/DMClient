@@ -98,17 +98,13 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             val lang = preferenceRepository.preferredLanguage.first()
             _language.value = ContentLanguage.fromString(lang ?: "all")
-            val session = preferenceRepository.sessionAffinity.first()
-            val token = preferenceRepository.csrfToken.first()
-            if (!session.isNullOrEmpty() && !token.isNullOrEmpty()) {
-                val cfClearance = preferenceRepository.cfClearance.first()
-                nHentaiApi.setCookies(
-                    listOfNotNull(
-                        "session-affinity" to session,
-                        "csrftoken" to token,
-                        cfClearance?.let { "cf_clearance" to it }
-                    )
-                )
+            val cookies = listOfNotNull(
+                preferenceRepository.sessionAffinity.first()?.let { "session-affinity" to it },
+                preferenceRepository.csrfToken.first()?.let { "csrftoken" to it },
+                preferenceRepository.cfClearance.first()?.let { "cf_clearance" to it }
+            )
+            if (cookies.isNotEmpty()) {
+                nHentaiApi.setCookies(cookies)
                 _tokenFetched.value = FetchStatus.Fetched
             } else {
                 _tokenFetched.value = FetchStatus.NotFetched
@@ -148,11 +144,7 @@ class HomeViewModel @Inject constructor(
 
     fun saveTokensAndFetch(cookies: List<Pair<String, String>>) {
         viewModelScope.launch {
-            val session = cookies.firstOrNull { it.first == "session-affinity" }?.second
-            val token = cookies.firstOrNull { it.first == "csrftoken" }?.second
-            if (session == null || token == null) return@launch
-            val cfClearance = cookies.firstOrNull { it.first == "cf_clearance" }?.second
-            preferenceRepository.saveTokens(session, token, cfClearance)
+            preferenceRepository.saveTokens(cookies)
             nHentaiApi.setCookies(cookies)
             _tokenFetched.value = FetchStatus.Fetched
         }
