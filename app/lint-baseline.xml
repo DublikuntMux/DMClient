@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<issues format="6" by="lint 9.3.1" type="baseline" client="gradle" dependencies="false" name="AGP (9.3.1)" variant="all" version="9.3.1">
+
+    <issue
+        id="ConfigurationScreenWidthHeight"
+        message="Using Configuration.screenWidthDp instead of LocalWindowInfo.current.containerSize"
+        errorLine1="    val screenWidthDp = configuration.screenWidthDp.dp"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/dublikunt/dmclient/component/GalleryPageViewer.kt"
+            line="48"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="This folder configuration (`v26`) is unnecessary; `minSdkVersion` is 28. Merge all the resources in this folder into `mipmap-anydpi`.">
+        <location
+            file="src/main/res/mipmap-anydpi-v26"/>
+    </issue>
+
+    <issue
+        id="IconDuplicates"
+        message="The following unrelated icon files have identical contents: ic_launcher_background.png, ic_launcher_round_background.png">
+        <location
+            file="src/main/res/mipmap-hdpi/ic_launcher_round_background.png"/>
+        <location
+            file="src/main/res/mipmap-hdpi/ic_launcher_background.png"/>
+    </issue>
+
+    <issue
+        id="IconDuplicates"
+        message="The following unrelated icon files have identical contents: ic_launcher_background.png, ic_launcher_round_background.png">
+        <location
+            file="src/main/res/mipmap-mdpi/ic_launcher_round_background.png"/>
+        <location
+            file="src/main/res/mipmap-mdpi/ic_launcher_background.png"/>
+    </issue>
+
+    <issue
+        id="IconDuplicates"
+        message="The following unrelated icon files have identical contents: ic_launcher_background.png, ic_launcher_round_background.png">
+        <location
+            file="src/main/res/mipmap-xhdpi/ic_launcher_round_background.png"/>
+        <location
+            file="src/main/res/mipmap-xhdpi/ic_launcher_background.png"/>
+    </issue>
+
+    <issue
+        id="IconDuplicates"
+        message="The following unrelated icon files have identical contents: ic_launcher_background.png, ic_launcher_round_background.png">
+        <location
+            file="src/main/res/mipmap-xxhdpi/ic_launcher_round_background.png"/>
+        <location
+            file="src/main/res/mipmap-xxhdpi/ic_launcher_background.png"/>
+    </issue>
+
+    <issue
+        id="IconDuplicates"
+        message="The following unrelated icon files have identical contents: ic_launcher_background.png, ic_launcher_round_background.png">
+        <location
+            file="src/main/res/mipmap-xxxhdpi/ic_launcher_round_background.png"/>
+        <location
+            file="src/main/res/mipmap-xxxhdpi/ic_launcher_background.png"/>
+    </issue>
+
+    <issue
+        id="IconDuplicates"
+        message="The following unrelated icon files have identical contents: ic_launcher_foreground.png, ic_launcher_monochrome.png, ic_launcher_round_foreground.png, ic_launcher_round_monochrome.png">
+        <location
+            file="src/main/res/mipmap-hdpi/ic_launcher_round_monochrome.png"/>
+        <location
+            file="src/main/res/mipmap-hdpi/ic_launcher_round_foreground.png"/>
+        <location
+            file="src/main/res/mipmap-hdpi/ic_launcher_monochrome.png"/>
+        <location
+            file="src/main/res/mipmap-hdpi/ic_launcher_foreground.png"/>
+    </issue>
+
+    <issue
+        id="IconDuplicates"
+        message="The following unrelated icon files have identical contents: ic_launcher_foreground.png, ic_launcher_monochrome.png, ic_launcher_round_foreground.png, ic_launcher_round_monochrome.png">
+        <location
+            file="src/main/res/mipmap-mdpi/ic_launcher_round_monochrome.png"/>
+        <location
+            file="src/main/res/mipmap-mdpi/ic_launcher_round_foreground.png"/>
+        <location
+            file="src/main/res/mipmap-mdpi/ic_launcher_monochrome.png"/>
+        <location
+            file="src/main/res/mipmap-mdpi/ic_launcher_foreground.png"/>
+    </issue>
+
+    <issue
+        id="IconDuplicates"
+        message="The following unrelated icon files have identical contents: ic_launcher_foreground.png, ic_launcher_monochrome.png, ic_launcher_round_foreground.png, ic_launcher_round_monochrome.png">
+        <location
+            file="src/main/res/mipmap-xhdpi/ic_launcher_round_monochrome.png"/>
+        <location
+            file="src/main/res/mipmap-xhdpi/ic_launcher_round_foreground.png"/>
+        <location
+            file="src/main/res/mipmap-xhdpi/ic_launcher_monochrome.png"/>
+        <location
+            file="src/main/res/mipmap-xhdpi/ic_launcher_foreground.png"/>
+    </issue>
+
+    <issue
+        id="IconDuplicates"
+        message="The following unrelated icon files have identical contents: ic_launcher_foreground.png, ic_launcher_monochrome.png, ic_launcher_round_foreground.png, ic_launcher_round_monochrome.png">
+        <location
+            file="src/main/res/mipmap-xxhdpi/ic_launcher_round_monochrome.png"/>
+        <location
+            file="src/main/res/mipmap-xxhdpi/ic_launcher_round_foreground.png"/>
+        <location
+            file="src/main/res/mipmap-xxhdpi/ic_launcher_monochrome.png"/>
+        <location
+            file="src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png"/>
+    </issue>
+
+    <issue
+        id="IconDuplicates"
+        message="The following unrelated icon files have identical contents: ic_launcher_foreground.png, ic_launcher_monochrome.png, ic_launcher_round_foreground.png, ic_launcher_round_monochrome.png">
+        <location
+            file="src/main/res/mipmap-xxxhdpi/ic_launcher_round_monochrome.png"/>
+        <location
+            file="src/main/res/mipmap-xxxhdpi/ic_launcher_round_foreground.png"/>
+        <location
+            file="src/main/res/mipmap-xxxhdpi/ic_launcher_monochrome.png"/>
+        <location
+            file="src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png"/>
+    </issue>
+
+</issues>
