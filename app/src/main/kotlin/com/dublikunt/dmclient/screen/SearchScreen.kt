@@ -1,6 +1,7 @@
 package com.dublikunt.dmclient.screen
 
 import android.content.Context
+import android.net.Uri
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -211,7 +212,7 @@ fun SearchScreen(
                             selectedCharacters,
                             selectedParodies
                         )
-                        navController.navigate("search?query=${query}")
+                        navController.navigate("search?query=${Uri.encode(query)}")
                     }) {
                         Icon(Icons.Rounded.Search, contentDescription = "Search")
                     }
