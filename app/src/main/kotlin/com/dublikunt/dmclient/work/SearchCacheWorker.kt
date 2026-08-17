@@ -31,35 +31,23 @@ class SearchCacheWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         setForeground(createForegroundInfo("Fetching tags...", 0, 4))
 
-        try {
-            val steps = listOf(
-                "tags",
-                "artists",
-                "characters",
-                "parodies"
-            )
+        val steps = listOf(
+            "tags" to searchRepository::getAllTags,
+            "artists" to searchRepository::getAllArtists,
+            "characters" to searchRepository::getAllCharacters,
+            "parodies" to searchRepository::getAllParodies
+        )
 
-            for ((index, type) in steps.withIndex()) {
-                if (isStopped) return Result.failure()
+        for ((index, step) in steps.withIndex()) {
+            val (type, fetch) = step
+            if (isStopped) return Result.failure()
 
-                val progress = index + 1
-                setForeground(createForegroundInfo("Fetching $type...", progress, 4))
-
-                val result = when (type) {
-                    "tags" -> searchRepository.getAllTags()
-                    "artists" -> searchRepository.getAllArtists()
-                    "characters" -> searchRepository.getAllCharacters()
-                    "parodies" -> searchRepository.getAllParodies()
-                    else -> emptyList()
-                }
-                searchCacheDao.insert(SearchCache(type = type, names = result))
-            }
-
-            return Result.success()
-        } catch (e: Exception) {
-            e.printStackTrace()
-            return Result.failure()
+            val progress = index + 1
+            setForeground(createForegroundInfo("Fetching $type...", progress, 4))
+            searchCacheDao.insert(SearchCache(type = type, names = fetch()))
         }
+
+        return Result.success()
     }
 
     private fun createForegroundInfo(

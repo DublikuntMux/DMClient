@@ -126,9 +126,8 @@ class GalleryViewModel @Inject constructor(
                     val status = statusDao.getStatus(id)
                     val statuses = statusDao.getCustomStatuses()
                     _galleryState.value = GalleryState.Success(gallery, status, statuses)
-                    val workInfos = workManager.getWorkInfosForUniqueWorkLiveData("download_$id")
-                    launch(Dispatchers.Main) {
-                        workInfos.asFlow().collect { infos ->
+                    launch {
+                        workManager.getWorkInfosForUniqueWorkFlow("download_$id").collect { infos ->
                             val isDownloading =
                                 infos.firstOrNull()?.let { !it.state.isFinished } ?: false
                             updateSuccessState { it.copy(isDownloading = isDownloading) }
@@ -179,8 +178,8 @@ class GalleryViewModel @Inject constructor(
             .addTag("archive_${gallery.id}").build()
         workManager.enqueueUniqueWork("archive_${gallery.id}", ExistingWorkPolicy.KEEP, workRequest)
         updateSuccessState { it.copy(isArchiving = true) }
-        viewModelScope.launch(Dispatchers.Main) {
-            workManager.getWorkInfoByIdLiveData(workRequest.id).asFlow().collect { info ->
+        viewModelScope.launch {
+            workManager.getWorkInfoByIdFlow(workRequest.id).collect { info ->
                 if (info?.state?.isFinished == true) updateSuccessState { it.copy(isArchiving = false) }
             }
         }
@@ -197,8 +196,8 @@ class GalleryViewModel @Inject constructor(
             workRequest
         )
         updateSuccessState { it.copy(isDownloading = true) }
-        viewModelScope.launch(Dispatchers.Main) {
-            workManager.getWorkInfoByIdLiveData(workRequest.id).asFlow().collect { info ->
+        viewModelScope.launch {
+            workManager.getWorkInfoByIdFlow(workRequest.id).collect { info ->
                 when (info?.state) {
                     WorkInfo.State.SUCCEEDED -> updateSuccessState {
                         it.copy(
@@ -293,7 +292,7 @@ fun GalleryScreen(
                         onTagClick = onTagClick
                     )
                 }
-                items(gallery.pages) { pageIndex ->
+                items(count = gallery.pages, key = { it }) { pageIndex ->
                     GalleryPageCard(
                         getImageUrl(context, gallery, pageIndex + 1, state.isDownloaded),
                         pageIndex + 1

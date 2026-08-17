@@ -162,9 +162,8 @@ fun HomeScreen(
             FetchStatus.Fetched -> {
                 val items = viewModel.flow.collectAsLazyPagingItems()
 
-                val itemCount = items.itemCount
-                LaunchedEffect(itemCount) {
-                    val ids = (0 until itemCount).mapNotNull { items.peek(it)?.id }
+                LaunchedEffect(items.itemCount) {
+                    val ids = items.itemSnapshotList.items.mapNotNull { it?.id }
                     if (ids.isNotEmpty()) viewModel.loadStatuses(ids)
                 }
 
@@ -180,7 +179,7 @@ fun HomeScreen(
                         columns = GridCells.Adaptive(minSize = 128.dp),
                         state = scrollState
                     ) {
-                        items(count = items.itemCount) { index ->
+                        items(count = items.itemCount, key = { index -> items.peek(index)?.id ?: index }) { index ->
                             val galleryItem = items[index]
                             galleryItem?.let {
                                 GalleryCard(

@@ -2,10 +2,14 @@ package com.dublikunt.dmclient.screen
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -48,7 +52,13 @@ fun DownloadScreen(
         is LoadState.Loading -> LoadingScreen()
         is LoadState.Error -> {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Failed to load downloads.")
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Failed to load downloads.")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(onClick = { items.retry() }) {
+                        Text("Retry")
+                    }
+                }
             }
         }
 
@@ -64,7 +74,7 @@ fun DownloadScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    items(count = items.itemCount) { index ->
+                    items(count = items.itemCount, key = { index -> items.peek(index)?.id ?: index }) { index ->
                         val gallery = items[index]
                         gallery?.let {
                             GalleryCard(

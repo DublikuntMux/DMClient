@@ -55,6 +55,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import java.io.File
 import javax.inject.Inject
 
 @Serializable
@@ -80,10 +81,10 @@ class SettingsViewModel @Inject constructor(
     fun deleteTokens() = viewModelScope.launch { preferenceRepository.deleteTokens() }
     fun savePinCode(pin: String) = viewModelScope.launch { preferenceRepository.savePinCode(pin) }
 
-    fun clearSearchCache(filesDir: java.io.File) = viewModelScope.launch(Dispatchers.IO) {
+    fun clearSearchCache(filesDir: File) = viewModelScope.launch(Dispatchers.IO) {
         searchCacheDao.deleteAll()
         listOf("artists.json", "characters.json", "tags.json", "parodies.json")
-            .forEach { name -> java.io.File(filesDir, name).delete() }
+            .forEach { name -> File(filesDir, name).delete() }
     }
 
     suspend fun exportData(): BackupData = withContext(Dispatchers.IO) {

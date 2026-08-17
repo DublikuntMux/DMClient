@@ -40,7 +40,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import com.dublikunt.dmclient.R
-import kotlin.system.exitProcess
 
 @Composable
 fun LockScreen(onSuccess: () -> Unit, correctPin: String) {
@@ -51,6 +50,7 @@ fun LockScreen(onSuccess: () -> Unit, correctPin: String) {
     val maxAttempts = 3
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val biometricTried = remember { mutableStateOf(false) }
+    var isLocked by remember { mutableStateOf(false) }
 
     val vibrationService = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
 
@@ -63,9 +63,11 @@ fun LockScreen(onSuccess: () -> Unit, correctPin: String) {
         }
     }
 
-    if (attempts >= maxAttempts) {
-        LaunchedEffect(Unit) { exitProcess(0) }
-        return
+    LaunchedEffect(attempts) {
+        if (attempts >= maxAttempts) {
+            isLocked = true
+            errorMessage = "Too many failed attempts. Use biometric authentication."
+        }
     }
 
     Box(
@@ -123,43 +125,57 @@ fun LockScreen(onSuccess: () -> Unit, correctPin: String) {
                 listOf("b", "0", "d")
             )
 
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                numbers.forEach { row ->
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
-                    ) {
-                        row.forEach { item ->
-                            when (item) {
-                                "d" -> MorphingButton(icon = Icons.AutoMirrored.Filled.ArrowBack) {
-                                    if (pin.isNotEmpty()) pin = pin.dropLast(1)
-                                }
-
-                                "b" -> MorphingButton(icon = Icons.Default.Lock) {
-                                    authenticateWithBiometrics(context, onSuccess) {
-                                        errorMessage = it
+            if (isLocked) {
+                Button(
+                    onClick = {
+                        authenticateWithBiometrics(context, onSuccess = onSuccess) {
+                            errorMessage = it
+                        }
+                    },
+                    modifier = Modifier.padding(top = 16.dp)
+                ) {
+                    Icon(Icons.Default.Lock, contentDescription = "Unlock")
+                    Text("Unlock with Biometrics", modifier = Modifier.padding(start = 8.dp))
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    numbers.forEach { row ->
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                        ) {
+                            row.forEach { item ->
+                                when (item) {
+                                    "d" -> MorphingButton(icon = Icons.AutoMirrored.Filled.ArrowBack) {
+                                        if (pin.isNotEmpty()) pin = pin.dropLast(1)
                                     }
-                                }
 
-                                else -> MorphingButton(icon = null, text = item) {
-                                    if (pin.length < requiredPinLength) {
-                                        pin += item
-                                        if (pin.length == requiredPinLength) {
-                                            if (pin == correctPin) {
-                                                onSuccess()
-                                            } else {
-                                                pin = ""
-                                                attempts++
-                                                errorMessage =
-                                                    "Incorrect PIN. ${maxAttempts - attempts} attempt(s) left."
+                                    "b" -> MorphingButton(icon = Icons.Default.Lock) {
+                                        authenticateWithBiometrics(context, onSuccess) {
+                                            errorMessage = it
+                                        }
+                                    }
 
-                                                vibrationService.vibrate(
-                                                    VibrationEffect.createOneShot(
-                                                        300,
-                                                        VibrationEffect.DEFAULT_AMPLITUDE
+                                    else -> MorphingButton(icon = null, text = item) {
+                                        if (pin.length < requiredPinLength) {
+                                            pin += item
+                                            if (pin.length == requiredPinLength) {
+                                                if (pin == correctPin) {
+                                                    onSuccess()
+                                                } else {
+                                                    pin = ""
+                                                    attempts++
+                                                    errorMessage =
+                                                        "Incorrect PIN. ${maxAttempts - attempts} attempt(s) left."
+
+                                                    vibrationService.vibrate(
+                                                        VibrationEffect.createOneShot(
+                                                            300,
+                                                            VibrationEffect.DEFAULT_AMPLITUDE
+                                                        )
                                                     )
-                                                )
+                                                }
                                             }
                                         }
                                     }

@@ -1,5 +1,6 @@
 package com.dublikunt.dmclient
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -107,24 +108,27 @@ class MainActivity : FragmentActivity() {
                     val context = this@MainActivity
                     val cacheSize by preferenceRepository.maxImageCacheSize
                         .collectAsState(initial = 1024L * 1024 * 1024)
-                    val maxCacheSize = cacheSize ?: 1024L * 1024 * 1024
+                    val maxCacheSize = cacheSize ?: (1024L * 1024 * 1024)
 
-                    setSingletonImageLoaderFactory { ctx ->
-                        ImageLoader.Builder(ctx)
-                            .crossfade(true)
-                            .memoryCache {
-                                MemoryCache.Builder()
-                                    .maxSizePercent(ctx, 0.3)
-                                    .build()
-                            }
-                            .diskCache {
-                                DiskCache.Builder()
-                                    .directory(context.cacheDir.resolve("image_cache"))
-                                    .maxSizeBytes(maxCacheSize)
-                                    .build()
-                            }
-                            .build()
+                    val imageLoaderFactory = remember(maxCacheSize) {
+                        { ctx: Context ->
+                            ImageLoader.Builder(ctx)
+                                .crossfade(true)
+                                .memoryCache {
+                                    MemoryCache.Builder()
+                                        .maxSizePercent(ctx, 0.3)
+                                        .build()
+                                }
+                                .diskCache {
+                                    DiskCache.Builder()
+                                        .directory(context.cacheDir.resolve("image_cache"))
+                                        .maxSizeBytes(maxCacheSize)
+                                        .build()
+                                }
+                                .build()
+                        }
                     }
+                    setSingletonImageLoaderFactory(imageLoaderFactory)
                     MainScreen()
                 } else {
                     if (pinCode != null) {

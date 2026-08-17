@@ -33,16 +33,21 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.dublikunt.dmclient.database.search.SearchCacheDao
 import com.dublikunt.dmclient.work.SearchCacheWorker
@@ -114,12 +119,12 @@ class SearchViewModel @Inject constructor(
     private fun enqueueCacheWorker(filesDir: File) {
         _cacheStatus.value = CacheStatus.Fetching
 
-        val request = androidx.work.OneTimeWorkRequestBuilder<SearchCacheWorker>()
+        val request = OneTimeWorkRequestBuilder<SearchCacheWorker>()
             .build()
 
         workManager.enqueueUniqueWork(
             SearchCacheWorker.UNIQUE_WORK_NAME,
-            androidx.work.ExistingWorkPolicy.KEEP,
+            ExistingWorkPolicy.KEEP,
             request
         )
 
@@ -127,9 +132,9 @@ class SearchViewModel @Inject constructor(
             workManager.getWorkInfoByIdFlow(request.id)
                 .collect { workInfo ->
                     val state = workInfo?.state
-                    if (state == androidx.work.WorkInfo.State.SUCCEEDED) {
+                    if (state == WorkInfo.State.SUCCEEDED) {
                         reloadFromDatabase(filesDir)
-                    } else if (state == androidx.work.WorkInfo.State.FAILED) {
+                    } else if (state == WorkInfo.State.FAILED) {
                         _cacheStatus.value = CacheStatus.Error
                     }
                 }
@@ -171,15 +176,15 @@ fun SearchScreen(
     val selectedArtists = remember { mutableStateListOf<String>() }
     val selectedCharacters = remember { mutableStateListOf<String>() }
     val selectedParodies = remember { mutableStateListOf<String>() }
-    val searchQuery = remember { mutableStateOf("") }
-    val tagSearchQuery = remember { mutableStateOf("") }
-    val artistSearchQuery = remember { mutableStateOf("") }
-    val characterSearchQuery = remember { mutableStateOf("") }
-    val parodiesSearchQuery = remember { mutableStateOf("") }
+    val searchQuery = rememberSaveable { mutableStateOf("") }
+    val tagSearchQuery = rememberSaveable { mutableStateOf("") }
+    val artistSearchQuery = rememberSaveable { mutableStateOf("") }
+    val characterSearchQuery = rememberSaveable { mutableStateOf("") }
+    val parodiesSearchQuery = rememberSaveable { mutableStateOf("") }
     val scrollState = rememberLazyGridState()
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
 
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
     LaunchedEffect(Unit) { viewModel.loadData(context.filesDir) }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -337,12 +342,13 @@ fun TagGrid(
             .fillMaxSize()
             .padding(10.dp)
     ) {
-        items(selectedItems) { item -> TagButton(item, selectedItems) }
+        items(selectedItems, key = { it }) { item -> TagButton(item, selectedItems) }
 
-        items.filter {
+        val filteredItems = items.filter {
             it.contains(searchQuery, ignoreCase = true) && !selectedItems.contains(it)
-        }.forEach { item ->
-            item { TagButton(item, selectedItems) }
+        }
+        items(filteredItems, key = { it }) { item ->
+            TagButton(item, selectedItems)
         }
     }
 }
@@ -360,10 +366,10 @@ fun SelectedItemsGrid(
             .fillMaxSize()
             .padding(10.dp)
     ) {
-        items(selectedTags) { item -> TagButton(item, selectedTags) }
-        items(selectedArtists) { item -> TagButton(item, selectedArtists) }
-        items(selectedCharacters) { item -> TagButton(item, selectedCharacters) }
-        items(selectedParodies) { item -> TagButton(item, selectedParodies) }
+        items(selectedTags, key = { it }) { item -> TagButton(item, selectedTags) }
+        items(selectedArtists, key = { it }) { item -> TagButton(item, selectedArtists) }
+        items(selectedCharacters, key = { it }) { item -> TagButton(item, selectedCharacters) }
+        items(selectedParodies, key = { it }) { item -> TagButton(item, selectedParodies) }
     }
 }
 

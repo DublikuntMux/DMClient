@@ -15,7 +15,4 @@ interface SearchCacheDao {
 
     @Query("DELETE FROM search_cache")
     suspend fun deleteAll()
-
-    @Query("SELECT COUNT(*) FROM search_cache")
-    suspend fun count(): Int
 }
