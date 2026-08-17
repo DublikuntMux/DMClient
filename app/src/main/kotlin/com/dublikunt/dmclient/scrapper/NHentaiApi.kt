@@ -41,12 +41,14 @@ class NHentaiApi @Inject constructor(
 
     fun clearCookies() = cookieJar.clear()
 
-    private fun fetchData(url: String, retryCount: Int = 4, api: Boolean = false): String? {
+    private fun fetchData(url: String, retryCount: Int = 4, referer: String? = null): String? {
         var currentRetry = 0
         while (currentRetry < retryCount) {
             try {
                 val request = Request.Builder().url(url)
-                    .apply { if (api) setupApiHeaders(this) else setupHeaders(this) }
+                    .apply {
+                        if (referer != null) setupApiHeaders(this, referer) else setupHeaders(this)
+                    }
                     .build()
                 client.newCall(request).execute().use { response ->
                     if (response.code == 403) {
@@ -275,14 +277,15 @@ class NHentaiApi @Inject constructor(
         }
     }
 
-    private fun fetchAllEntries(singularType: String): List<String> {
+    private fun fetchAllEntries(singularType: String, pagePath: String): List<String> {
         val entries = mutableListOf<String>()
         var currentPage = 1
         var maxPages = 1
+        val referer = "$BASE_URL/$pagePath?sort=popular"
 
         do {
             val url = "$BASE_URL/api/v2/tags/$singularType?sort=popular&page=$currentPage"
-            val responseBody = fetchData(url, api = true) ?: break
+            val responseBody = fetchData(url, referer = referer) ?: break
 
             try {
                 val innerJson = JSONObject(responseBody)
@@ -308,10 +311,10 @@ class NHentaiApi @Inject constructor(
         return entries.distinct()
     }
 
-    fun getAllTags(): List<String> = fetchAllEntries("tags")
-    fun getAllArtists(): List<String> = fetchAllEntries("artists")
-    fun getAllCharacters(): List<String> = fetchAllEntries("characters")
-    fun getAllParodies(): List<String> = fetchAllEntries("parodies")
+    fun getAllTags(): List<String> = fetchAllEntries("tag", "tags")
+    fun getAllArtists(): List<String> = fetchAllEntries("artist", "artists")
+    fun getAllCharacters(): List<String> = fetchAllEntries("character", "characters")
+    fun getAllParodies(): List<String> = fetchAllEntries("parody", "parodies")
 
     fun search(
         query: String,
@@ -333,18 +336,17 @@ class NHentaiApi @Inject constructor(
         return parseGallerySimpleInfo(responseBody)
     }
 
-    private fun setupApiHeaders(builder: Request.Builder) {
+    private fun setupApiHeaders(builder: Request.Builder, referer: String) {
         builder.apply {
             header("User-Agent", USER_AGENT)
-            header("Accept", "application/json, text/plain, */*")
-            header("Accept-Language", "en;q=0.9")
-            header("Sec-GPC", "1")
-            header("Connection", "keep-alive")
+            header("Accept", "*/*")
+            header("Accept-Language", "ru,uk;q=0.9,en-US;q=0.8,en;q=0.7,el;q=0.6,pl;q=0.5,sk;q=0.4,zh-Hans;q=0.3,zh;q=0.2")
+            header("DNT", "1")
+            header("Priority", "u=1, i")
+            header("Referer", referer)
             header("Sec-Fetch-Dest", "empty")
             header("Sec-Fetch-Mode", "cors")
             header("Sec-Fetch-Site", "same-origin")
-            header("Priority", "u=1, i")
-            header("TE", "trailers")
             header("Sec-CH-UA", "\"Not;A=Brand\";v=\"8\", \"Chromium\";v=\"150\", \"Google Chrome\";v=\"150\"")
             header("Sec-CH-UA-Arch", "\"\"")
             header("Sec-CH-UA-Bitness", "\"\"")
