@@ -5,41 +5,29 @@ import okhttp3.CookieJar
 import okhttp3.HttpUrl
 
 class EasyCookieJar : CookieJar {
+    private val lock = Any()
     private val cookieStore: MutableMap<String, List<Cookie>> = mutableMapOf()
 
-    override fun loadForRequest(url: HttpUrl): List<Cookie> {
-        return cookieStore.getOrDefault(url.host, ArrayList())
+    override fun loadForRequest(url: HttpUrl): List<Cookie> = synchronized(lock) {
+        cookieStore.getOrDefault(url.host, emptyList())
     }
 
     override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
-        cookieStore[url.host] = cookies
+        synchronized(lock) { cookieStore[url.host] = cookies }
     }
 
-    fun setCookie(url: HttpUrl, name: String, value: String) {
-        val cookie: Cookie = Cookie.Builder()
+    fun setCookie(url: HttpUrl, name: String, value: String, secure: Boolean = false) {
+        val cookie = Cookie.Builder()
             .domain(url.host)
             .path("/")
             .name(name)
             .value(value)
+            .apply { if (secure) httpOnly().secure() }
             .build()
 
-        val cookies: MutableList<Cookie> = ArrayList()
-        cookies.add(cookie)
-        cookieStore[url.host] = cookies
-    }
-
-    fun setCookieSecure(url: HttpUrl, name: String, value: String) {
-        val cookie: Cookie = Cookie.Builder()
-            .domain(url.host)
-            .path("/")
-            .name(name)
-            .value(value)
-            .httpOnly()
-            .secure()
-            .build()
-
-        val cookies: MutableList<Cookie> = ArrayList()
-        cookies.add(cookie)
-        cookieStore[url.host] = cookies
+        synchronized(lock) {
+            val existing = cookieStore[url.host].orEmpty()
+            cookieStore[url.host] = existing.filterNot { it.name == name } + cookie
+        }
     }
 }

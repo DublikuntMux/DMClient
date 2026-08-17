@@ -1,5 +1,6 @@
 package com.dublikunt.dmclient.scrapper
 
+import android.net.Uri
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -24,7 +25,7 @@ class NHentaiApi @Inject constructor(
 
     fun setTokens(session: String, token: String) {
         val url = BASE_URL.toHttpUrl()
-        cookieJar.setCookieSecure(url, "session-affinity", session)
+        cookieJar.setCookie(url, "session-affinity", session, secure = true)
         cookieJar.setCookie(url, "csrftoken", token)
     }
 
@@ -311,7 +312,7 @@ class NHentaiApi @Inject constructor(
         page: Int? = null,
         language: ContentLanguage = ContentLanguage.All
     ): List<GallerySimpleInfo> {
-        var url = "${BASE_URL}/search/?q=${query}"
+        var url = "${BASE_URL}/search/?q=${Uri.encode(query)}"
         url += when (language) {
             ContentLanguage.All -> ""
             ContentLanguage.English -> "+english"
