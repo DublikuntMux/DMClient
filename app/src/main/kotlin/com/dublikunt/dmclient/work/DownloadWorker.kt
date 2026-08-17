@@ -22,6 +22,7 @@ import dagger.assisted.AssistedInject
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 
 @HiltWorker
 class DownloadWorker @AssistedInject constructor(
@@ -35,9 +36,11 @@ class DownloadWorker @AssistedInject constructor(
         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
     override suspend fun doWork(): Result {
-        val galleryJson = inputData.getString(KEY_GALLERY_JSON) ?: return Result.failure()
+        val payloadPath = inputData.getString(KEY_GALLERY_PATH) ?: return Result.failure()
+        val payloadFile = File(payloadPath)
         val gallery = try {
-            Json.decodeFromString<GalleryFullInfo>(galleryJson)
+            if (!payloadFile.exists()) return Result.failure()
+            Json.decodeFromString<GalleryFullInfo>(payloadFile.readText())
         } catch (e: Exception) {
             e.printStackTrace()
             return Result.failure()
@@ -67,7 +70,7 @@ class DownloadWorker @AssistedInject constructor(
             for (i in 1..gallery.pages) {
                 if (isStopped) break
 
-                val imageType = gallery.images[i - 1]
+                val imageType = gallery.images.getOrNull(i - 1) ?: ImageType.Jpg
                 val ext = when (imageType) {
                     ImageType.Jpg -> "jpg"
                     ImageType.Webp -> "webp"
@@ -78,9 +81,11 @@ class DownloadWorker @AssistedInject constructor(
                 val pageFile = File(galleryDir, "$i.$ext")
                 if (!pageFile.exists()) {
                     val pageUrl = "$baseUrl/$i.$ext"
-                    nHentaiApi.downloadImage(pageUrl)?.use { input ->
+                    val input = nHentaiApi.downloadImage(pageUrl)
+                        ?: throw IOException("Failed to download page $i")
+                    input.use { stream ->
                         FileOutputStream(pageFile).use { output ->
-                            input.copyTo(output)
+                            stream.copyTo(output)
                         }
                     }
                 }
@@ -117,6 +122,7 @@ class DownloadWorker @AssistedInject constructor(
                 characters = gallery.characters
             )
             downloadedDao.insert(downloadedGallery)
+            payloadFile.delete()
 
             return Result.success()
         } catch (e: Exception) {
@@ -162,7 +168,7 @@ class DownloadWorker @AssistedInject constructor(
     }
 
     companion object {
-        const val KEY_GALLERY_JSON = "gallery_json"
+        const val KEY_GALLERY_PATH = "gallery_path"
         const val KEY_PROGRESS = "progress"
     }
 }

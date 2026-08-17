@@ -1,6 +1,7 @@
 package com.dublikunt.dmclient.screen
 
 import android.content.Context
+import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -85,6 +86,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import java.io.File
 import javax.inject.Inject
@@ -172,9 +174,13 @@ class GalleryViewModel @Inject constructor(
     }
 
     fun archiveGallery(gallery: GalleryFullInfo) {
-        val galleryJson = Json.encodeToString(gallery)
         val workRequest = OneTimeWorkRequestBuilder<ArchiveWorker>()
-            .setInputData(workDataOf(ArchiveWorker.KEY_GALLERY_JSON to galleryJson))
+            .setInputData(
+                workDataOf(
+                    ArchiveWorker.KEY_ID to gallery.id,
+                    ArchiveWorker.KEY_NAME to gallery.name
+                )
+            )
             .addTag("archive_${gallery.id}").build()
         workManager.enqueueUniqueWork("archive_${gallery.id}", ExistingWorkPolicy.KEEP, workRequest)
         updateSuccessState { it.copy(isArchiving = true) }
@@ -186,17 +192,21 @@ class GalleryViewModel @Inject constructor(
     }
 
     fun downloadGallery(gallery: GalleryFullInfo) {
-        val galleryJson = Json.encodeToString(gallery)
-        val workRequest = OneTimeWorkRequestBuilder<DownloadWorker>()
-            .setInputData(workDataOf(DownloadWorker.KEY_GALLERY_JSON to galleryJson))
-            .addTag("download_${gallery.id}").build()
-        workManager.enqueueUniqueWork(
-            "download_${gallery.id}",
-            ExistingWorkPolicy.KEEP,
-            workRequest
-        )
-        updateSuccessState { it.copy(isDownloading = true) }
+        val payloadFile = File(context.filesDir, "work_payloads/download_${gallery.id}.json")
         viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                payloadFile.parentFile?.mkdirs()
+                payloadFile.writeText(Json.encodeToString(gallery))
+            }
+            val workRequest = OneTimeWorkRequestBuilder<DownloadWorker>()
+                .setInputData(workDataOf(DownloadWorker.KEY_GALLERY_PATH to payloadFile.absolutePath))
+                .addTag("download_${gallery.id}").build()
+            workManager.enqueueUniqueWork(
+                "download_${gallery.id}",
+                ExistingWorkPolicy.KEEP,
+                workRequest
+            )
+            updateSuccessState { it.copy(isDownloading = true) }
             workManager.getWorkInfoByIdFlow(workRequest.id).collect { info ->
                 when (info?.state) {
                     WorkInfo.State.SUCCEEDED -> updateSuccessState {
@@ -219,6 +229,7 @@ class GalleryViewModel @Inject constructor(
             workManager.cancelUniqueWork("download_$id")
             val galleryDir = File(context.filesDir, "galleries/$id")
             if (galleryDir.exists()) galleryDir.deleteRecursively()
+            File(context.filesDir, "work_payloads/download_$id.json").delete()
             downloadedDao.getById(id)?.let { downloadedDao.delete(it) }
             updateSuccessState { it.copy(isDownloading = false, isDownloaded = false) }
         }
@@ -251,7 +262,7 @@ fun GalleryScreen(
     val scrollState = rememberLazyListState()
 
     val onTagClick: (String) -> Unit = remember(navController) {
-        { name -> navController.navigate("search?query=${name.replace(" ", "+")}") }
+        { name -> navController.navigate("search?query=${Uri.encode(name)}") }
     }
 
     LaunchedEffect(id) { viewModel.fetchGallery(id) }
@@ -510,7 +521,7 @@ private fun getImageUrl(
     pageNumber: Int,
     isDownloaded: Boolean
 ): String {
-    val ext = when (gallery.images[pageNumber - 1]) {
+    val ext = when (gallery.images.getOrNull(pageNumber - 1) ?: ImageType.Jpg) {
         ImageType.Jpg -> "jpg"; ImageType.Webp -> "webp"; ImageType.Png -> "png"
     }
     return if (isDownloaded) File(

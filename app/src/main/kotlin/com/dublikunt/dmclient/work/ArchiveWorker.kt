@@ -12,12 +12,11 @@ import androidx.core.app.NotificationCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
+import androidx.work.workDataOf
 import androidx.work.WorkerParameters
 import com.dublikunt.dmclient.R
-import com.dublikunt.dmclient.scrapper.GalleryFullInfo
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-import kotlinx.serialization.json.Json
 import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileInputStream
@@ -34,26 +33,22 @@ class ArchiveWorker @AssistedInject constructor(
         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
     override suspend fun doWork(): Result {
-        val galleryJson = inputData.getString(KEY_GALLERY_JSON) ?: return Result.failure()
-        val gallery = try {
-            Json.decodeFromString<GalleryFullInfo>(galleryJson)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            return Result.failure()
-        }
+        val galleryId = inputData.getInt(KEY_ID, -1)
+        val galleryName = inputData.getString(KEY_NAME) ?: ""
+        if (galleryId <= 0) return Result.failure()
 
-        val notificationId = gallery.id + 100000
-        setForeground(createForegroundInfo(notificationId, gallery.name))
+        val notificationId = galleryId + 100000
+        setForeground(createForegroundInfo(notificationId, galleryName))
 
         val context = applicationContext
-        val galleryDir = File(context.filesDir, "galleries/${gallery.id}")
+        val galleryDir = File(context.filesDir, "galleries/$galleryId")
 
         if (!galleryDir.exists()) {
             return Result.failure()
         }
 
         val zipFileName =
-            "${gallery.id} - ${gallery.name}.zip".replace(Regex("[\\\\/:*?\"<>|]"), "_")
+            "$galleryId - $galleryName.zip".replace(Regex("[\\\\/:*?\"<>|]"), "_")
 
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -142,6 +137,7 @@ class ArchiveWorker @AssistedInject constructor(
     }
 
     companion object {
-        const val KEY_GALLERY_JSON = "gallery_json"
+        const val KEY_ID = "gallery_id"
+        const val KEY_NAME = "gallery_name"
     }
 }
