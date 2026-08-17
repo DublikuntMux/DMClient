@@ -1,7 +1,6 @@
 package com.dublikunt.dmclient.database.status
 
 import androidx.room.Dao
-import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
@@ -51,7 +50,4 @@ interface GalleryStatusDao {
 
     @Query("DELETE FROM custom_status WHERE id = :statusId")
     suspend fun deleteCustomStatus(statusId: Int)
-
-    @Delete
-    suspend fun deleteState(status: GalleryStatus)
 }

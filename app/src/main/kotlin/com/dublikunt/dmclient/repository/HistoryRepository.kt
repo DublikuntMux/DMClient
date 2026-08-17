@@ -16,7 +16,5 @@ class HistoryRepository @Inject constructor(
 
     suspend fun deleteHistory(gallery: GalleryHistory) = historyDao.deleteHistory(gallery)
 
-    suspend fun deleteAllHistory() = historyDao.deleteAllHistory()
-
     suspend fun insertHistory(history: GalleryHistory) = historyDao.insertHistory(history)
 }

@@ -6,7 +6,6 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface GalleryHistoryDao {
@@ -15,9 +14,6 @@ interface GalleryHistoryDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertHistories(histories: List<GalleryHistory>)
-
-    @Query("SELECT * FROM gallery_history ORDER BY timestamp DESC")
-    fun getHistory(): Flow<List<GalleryHistory>>
 
     @Query("SELECT * FROM gallery_history ORDER BY timestamp DESC")
     fun getAllPagingSource(): PagingSource<Int, GalleryHistory>

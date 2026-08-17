@@ -4,7 +4,6 @@ import com.dublikunt.dmclient.scrapper.ContentLanguage
 import com.dublikunt.dmclient.scrapper.GalleryFullInfo
 import com.dublikunt.dmclient.scrapper.GallerySimpleInfo
 import com.dublikunt.dmclient.scrapper.NHentaiApi
-import java.io.InputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -25,8 +24,4 @@ class SearchRepository @Inject constructor(
     suspend fun getAllParodies(): List<String> = nHentaiApi.getAllParodies()
 
     suspend fun fetchGallery(id: Int): GalleryFullInfo? = nHentaiApi.fetchGallery(id)
-    suspend fun downloadImage(url: String): InputStream? = nHentaiApi.downloadImage(url)
-
-    suspend fun setTokens(session: String, token: String) =
-        nHentaiApi.setTokens(session, token)
 }
