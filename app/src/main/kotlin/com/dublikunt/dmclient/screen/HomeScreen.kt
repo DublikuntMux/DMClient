@@ -202,7 +202,7 @@ fun HomeScreen(
                             columns = GridCells.Adaptive(minSize = 128.dp),
                             state = scrollState
                         ) {
-                            items(count = items.itemCount, key = { index -> items.peek(index)?.id ?: index }) { index ->
+                            items(count = items.itemCount) { index ->
                                 val galleryItem = items[index]
                                 galleryItem?.let {
                                     GalleryCard(

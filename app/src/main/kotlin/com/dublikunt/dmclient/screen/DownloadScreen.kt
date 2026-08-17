@@ -74,7 +74,7 @@ fun DownloadScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    items(count = items.itemCount, key = { index -> items.peek(index)?.id ?: index }) { index ->
+                    items(count = items.itemCount) { index ->
                         val gallery = items[index]
                         gallery?.let {
                             GalleryCard(
