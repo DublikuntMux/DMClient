@@ -2,14 +2,18 @@ package com.dublikunt.dmclient.screen
 
 import android.content.Context
 import android.text.format.Formatter
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
@@ -40,6 +44,9 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dublikunt.dmclient.component.BaseDialog
+import com.dublikunt.dmclient.component.scrollbar.DraggableScrollbar
+import com.dublikunt.dmclient.component.scrollbar.rememberDraggableScroller
+import com.dublikunt.dmclient.component.scrollbar.scrollbarState
 import com.dublikunt.dmclient.component.settings.SettingsButton
 import com.dublikunt.dmclient.component.settings.SettingsButtonType
 import com.dublikunt.dmclient.database.download.DownloadedGallery
@@ -148,105 +155,129 @@ fun StorageScreen(viewModel: StorageViewModel = hiltViewModel()) {
     Scaffold(
         topBar = { TopAppBar(title = { Text("Storage Management") }) }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            item {
-                Text(
-                    "Summary",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        StorageInfoRow(
-                            "Image Cache",
-                            Formatter.formatFileSize(context, imageCacheSize)
-                        )
-                        StorageInfoRow("History", "$historyCount items")
-                        StorageInfoRow("Downloads", "${downloads.size} items")
-                    }
-                }
-            }
-
-            item {
-                Column {
-                    Text("Maximum Cache Size: ${Formatter.formatFileSize(context, maxCacheSize)}")
-                    var sliderValue by remember(maxCacheSize) {
-                        mutableFloatStateOf(maxCacheSize.toFloat())
-                    }
-                    Slider(
-                        value = sliderValue,
-                        onValueChange = { sliderValue = it },
-                        onValueChangeFinished = {
-                            viewModel.setMaxCacheSize(sliderValue.toLong())
-                        },
-                        valueRange = (100f * 1024 * 1024)..(5f * 1024 * 1024 * 1024),
-                        steps = 49
+        val scrollState = rememberLazyListState()
+        val itemsAvailable = downloads.size + 1
+        Box(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(16.dp),
+                state = scrollState,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                item {
+                    Text(
+                        "Summary",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 8.dp)
                     )
-                }
-                SettingsButton(
-                    "Image Cache",
-                    "Clear All",
-                    Icons.Default.Image,
-                    SettingsButtonType.Outlined,
-                    isDestructive = true
-                ) { showClearCacheDialog = true }
-                SettingsButton(
-                    "History",
-                    "Clear All",
-                    Icons.Default.History,
-                    SettingsButtonType.Outlined,
-                    isDestructive = true
-                ) { showClearHistoryDialog = true }
-                SettingsButton(
-                    "Downloads",
-                    "Clear All",
-                    Icons.Default.Download,
-                    SettingsButtonType.Outlined,
-                    isDestructive = true
-                ) { showClearDownloadsDialog = true }
-            }
-
-            items(downloads) { gallery ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .padding(8.dp)
-                            .fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                gallery.title,
-                                style = MaterialTheme.typography.bodyLarge,
-                                maxLines = 1
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            StorageInfoRow(
+                                "Image Cache",
+                                Formatter.formatFileSize(context, imageCacheSize)
                             )
-                            Text(
-                                "${gallery.totalPages} pages",
-                                style = MaterialTheme.typography.bodySmall
-                            )
+                            StorageInfoRow("History", "$historyCount items")
+                            StorageInfoRow("Downloads", "${downloads.size} items")
                         }
-                        IconButton(onClick = { viewModel.deleteDownloadedGallery(gallery) }) {
-                            Icon(
-                                Icons.Default.Delete,
-                                "Delete",
-                                tint = MaterialTheme.colorScheme.error
-                            )
+                    }
+                }
+
+                item {
+                    Column {
+                        Text(
+                            "Maximum Cache Size: ${
+                                Formatter.formatFileSize(
+                                    context,
+                                    maxCacheSize
+                                )
+                            }"
+                        )
+                        var sliderValue by remember(maxCacheSize) {
+                            mutableFloatStateOf(maxCacheSize.toFloat())
+                        }
+                        Slider(
+                            value = sliderValue,
+                            onValueChange = { sliderValue = it },
+                            onValueChangeFinished = {
+                                viewModel.setMaxCacheSize(sliderValue.toLong())
+                            },
+                            valueRange = (100f * 1024 * 1024)..(5f * 1024 * 1024 * 1024),
+                            steps = 49
+                        )
+                    }
+                    SettingsButton(
+                        "Image Cache",
+                        "Clear All",
+                        Icons.Default.Image,
+                        SettingsButtonType.Outlined,
+                        isDestructive = true
+                    ) { showClearCacheDialog = true }
+                    SettingsButton(
+                        "History",
+                        "Clear All",
+                        Icons.Default.History,
+                        SettingsButtonType.Outlined,
+                        isDestructive = true
+                    ) { showClearHistoryDialog = true }
+                    SettingsButton(
+                        "Downloads",
+                        "Clear All",
+                        Icons.Default.Download,
+                        SettingsButtonType.Outlined,
+                        isDestructive = true
+                    ) { showClearDownloadsDialog = true }
+                }
+
+                items(downloads) { gallery ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .padding(8.dp)
+                                .fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    gallery.title,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    maxLines = 1
+                                )
+                                Text(
+                                    "${gallery.totalPages} pages",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                            IconButton(onClick = { viewModel.deleteDownloadedGallery(gallery) }) {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    "Delete",
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
                         }
                     }
                 }
             }
+            scrollState.DraggableScrollbar(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .padding(padding)
+                    .padding(horizontal = 2.dp)
+                    .align(Alignment.CenterEnd),
+                state = scrollState.scrollbarState(itemsAvailable = itemsAvailable),
+                orientation = Orientation.Vertical,
+                onThumbMoved = scrollState.rememberDraggableScroller(
+                    itemsAvailable = itemsAvailable
+                )
+            )
         }
     }
 

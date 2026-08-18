@@ -1,8 +1,10 @@
 package com.dublikunt.dmclient.screen
 
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -36,7 +38,11 @@ import androidx.paging.cachedIn
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.dublikunt.dmclient.component.ErrorScreen
 import com.dublikunt.dmclient.component.GalleryCard
-import com.dublikunt.dmclient.component.LoadingScreen
+import com.dublikunt.dmclient.component.GalleryGridSkeleton
+import com.dublikunt.dmclient.component.GalleryLoadingRowSkeleton
+import com.dublikunt.dmclient.component.scrollbar.DraggableScrollbar
+import com.dublikunt.dmclient.component.scrollbar.rememberDraggableScroller
+import com.dublikunt.dmclient.component.scrollbar.scrollbarState
 import com.dublikunt.dmclient.database.history.GalleryHistory
 import com.dublikunt.dmclient.database.status.GalleryStatusDao
 import com.dublikunt.dmclient.database.status.GalleryStatusWithCustomStatus
@@ -183,63 +189,72 @@ fun HomeScreen(
                 val items = viewModel.flow.collectAsLazyPagingItems()
 
                 LaunchedEffect(items.itemCount) {
-                    val ids = items.itemSnapshotList.items.mapNotNull { it?.id }
+                    val ids = items.itemSnapshotList.items.map { it.id }
                     if (ids.isNotEmpty()) viewModel.loadStatuses(ids)
                 }
 
                 val statusMap by viewModel.statusMap.collectAsState()
 
                 when (val refresh = items.loadState.refresh) {
-                    is LoadState.Loading -> LoadingScreen()
+                    is LoadState.Loading -> GalleryGridSkeleton()
                     is LoadState.Error -> ErrorScreen("Failed to load data. Please try again.") {
                         items.retry()
                     }
 
                     else -> {
-                        LazyVerticalGrid(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(16.dp),
-                            columns = GridCells.Adaptive(minSize = 128.dp),
-                            state = scrollState
-                        ) {
-                            items(count = items.itemCount) { index ->
-                                val galleryItem = items[index]
-                                galleryItem?.let {
-                                    GalleryCard(
-                                        it, navController,
-                                        statusMap[it.id]?.status?.name,
-                                        statusMap[it.id]?.status?.color,
-                                        statusMap[it.id]?.galleryStatus?.favorite ?: false
-                                    ) { viewModel.addGalleryToHistory(it) }
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            LazyVerticalGrid(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(16.dp),
+                                columns = GridCells.Adaptive(minSize = 128.dp),
+                                state = scrollState
+                            ) {
+                                items(count = items.itemCount) { index ->
+                                    val galleryItem = items[index]
+                                    galleryItem?.let {
+                                        GalleryCard(
+                                            it, navController,
+                                            statusMap[it.id]?.status?.name,
+                                            statusMap[it.id]?.status?.color,
+                                            statusMap[it.id]?.galleryStatus?.favorite ?: false
+                                        ) { viewModel.addGalleryToHistory(it) }
+                                    }
                                 }
-                            }
-                            when (val state = items.loadState.append) {
-                                is LoadState.Loading -> item {
-                                    LoadingScreen(
-                                        modifier = Modifier.padding(
-                                            16.dp
+                                when (val state = items.loadState.append) {
+                                    is LoadState.Loading -> item {
+                                        GalleryLoadingRowSkeleton()
+                                    }
+
+                                    is LoadState.Error -> item {
+                                        Text(
+                                            "Failed to load data. Please try again.",
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(16.dp)
                                         )
-                                    )
-                                }
+                                    }
 
-                                is LoadState.Error -> item {
-                                    Text(
-                                        "Failed to load data. Please try again.",
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp)
-                                    )
+                                    else -> {}
                                 }
-
-                                else -> {}
                             }
+                            scrollState.DraggableScrollbar(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .padding(horizontal = 2.dp)
+                                    .align(Alignment.CenterEnd),
+                                state = scrollState.scrollbarState(itemsAvailable = items.itemCount),
+                                orientation = Orientation.Vertical,
+                                onThumbMoved = scrollState.rememberDraggableScroller(
+                                    itemsAvailable = items.itemCount
+                                )
+                            )
                         }
                     }
                 }
             }
 
-            FetchStatus.Check -> LoadingScreen()
+            FetchStatus.Check -> GalleryGridSkeleton()
         }
     }
 }

@@ -1,14 +1,18 @@
 package com.dublikunt.dmclient.screen
 
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,7 +29,10 @@ import androidx.paging.PagingConfig
 import androidx.paging.cachedIn
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.dublikunt.dmclient.component.GalleryCard
-import com.dublikunt.dmclient.component.LoadingScreen
+import com.dublikunt.dmclient.component.GalleryGridSkeleton
+import com.dublikunt.dmclient.component.scrollbar.DraggableScrollbar
+import com.dublikunt.dmclient.component.scrollbar.rememberDraggableScroller
+import com.dublikunt.dmclient.component.scrollbar.scrollbarState
 import com.dublikunt.dmclient.repository.DownloadRepository
 import com.dublikunt.dmclient.scrapper.GallerySimpleInfo
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -49,7 +56,7 @@ fun DownloadScreen(
     val items = viewModel.flow.collectAsLazyPagingItems()
 
     when (items.loadState.refresh) {
-        is LoadState.Loading -> LoadingScreen()
+        is LoadState.Loading -> GalleryGridSkeleton(minSize = 150.dp)
         is LoadState.Error -> {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -68,21 +75,36 @@ fun DownloadScreen(
                     Text("No downloaded galleries found.")
                 }
             } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 150.dp),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    items(count = items.itemCount) { index ->
-                        val gallery = items[index]
-                        gallery?.let {
-                            GalleryCard(
-                                GallerySimpleInfo(it.id, File(it.coverPath).path, it.title),
-                                navController, null, null, false
-                            )
+                val scrollState = rememberLazyGridState()
+                Box(modifier = Modifier.fillMaxSize()) {
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(minSize = 150.dp),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        state = scrollState
+                    ) {
+                        items(count = items.itemCount) { index ->
+                            val gallery = items[index]
+                            gallery?.let {
+                                GalleryCard(
+                                    GallerySimpleInfo(it.id, File(it.coverPath).path, it.title),
+                                    navController, null, null, false
+                                )
+                            }
                         }
                     }
+                    scrollState.DraggableScrollbar(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .padding(horizontal = 2.dp)
+                            .align(Alignment.CenterEnd),
+                        state = scrollState.scrollbarState(itemsAvailable = items.itemCount),
+                        orientation = Orientation.Vertical,
+                        onThumbMoved = scrollState.rememberDraggableScroller(
+                            itemsAvailable = items.itemCount
+                        )
+                    )
                 }
             }
         }

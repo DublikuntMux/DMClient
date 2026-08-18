@@ -7,8 +7,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -28,15 +26,6 @@ private fun BaseStateScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             content = content
         )
-    }
-}
-
-@Composable
-fun LoadingScreen(modifier: Modifier = Modifier, text: String = "Loading...") {
-    BaseStateScreen(modifier = modifier) {
-        CircularProgressIndicator(modifier = Modifier.size(48.dp))
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(text, textAlign = TextAlign.Center)
     }
 }
 

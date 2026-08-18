@@ -2,9 +2,11 @@ package com.dublikunt.dmclient.screen
 
 import android.content.Context
 import android.net.Uri
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -36,6 +38,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
@@ -49,6 +52,9 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import com.dublikunt.dmclient.component.scrollbar.DraggableScrollbar
+import com.dublikunt.dmclient.component.scrollbar.rememberDraggableScroller
+import com.dublikunt.dmclient.component.scrollbar.scrollbarState
 import com.dublikunt.dmclient.database.search.SearchCacheDao
 import com.dublikunt.dmclient.work.SearchCacheWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -335,21 +341,36 @@ fun TagGrid(
     searchQuery: String,
     scrollState: LazyGridState
 ) {
-    LazyVerticalGrid(
-        state = scrollState,
-        columns = GridCells.Adaptive(minSize = 100.dp),
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(10.dp)
-    ) {
-        items(selectedItems, key = { it }) { item -> TagButton(item, selectedItems) }
+    val filteredItems = items.filter {
+        it.contains(searchQuery, ignoreCase = true) && !selectedItems.contains(it)
+    }
+    val itemsAvailable = selectedItems.size + filteredItems.size
 
-        val filteredItems = items.filter {
-            it.contains(searchQuery, ignoreCase = true) && !selectedItems.contains(it)
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyVerticalGrid(
+            state = scrollState,
+            columns = GridCells.Adaptive(minSize = 100.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(10.dp)
+        ) {
+            items(selectedItems, key = { it }) { item -> TagButton(item, selectedItems) }
+
+            items(filteredItems, key = { it }) { item ->
+                TagButton(item, selectedItems)
+            }
         }
-        items(filteredItems, key = { it }) { item ->
-            TagButton(item, selectedItems)
-        }
+        scrollState.DraggableScrollbar(
+            modifier = Modifier
+                .fillMaxHeight()
+                .padding(horizontal = 2.dp)
+                .align(Alignment.CenterEnd),
+            state = scrollState.scrollbarState(itemsAvailable = itemsAvailable),
+            orientation = Orientation.Vertical,
+            onThumbMoved = scrollState.rememberDraggableScroller(
+                itemsAvailable = itemsAvailable
+            )
+        )
     }
 }
 
@@ -360,16 +381,34 @@ fun SelectedItemsGrid(
     selectedCharacters: MutableList<String>,
     selectedParodies: MutableList<String>
 ) {
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 100.dp),
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(10.dp)
-    ) {
-        items(selectedTags, key = { it }) { item -> TagButton(item, selectedTags) }
-        items(selectedArtists, key = { it }) { item -> TagButton(item, selectedArtists) }
-        items(selectedCharacters, key = { it }) { item -> TagButton(item, selectedCharacters) }
-        items(selectedParodies, key = { it }) { item -> TagButton(item, selectedParodies) }
+    val scrollState = rememberLazyGridState()
+    val itemsAvailable = selectedTags.size + selectedArtists.size +
+            selectedCharacters.size + selectedParodies.size
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyVerticalGrid(
+            state = scrollState,
+            columns = GridCells.Adaptive(minSize = 100.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(10.dp)
+        ) {
+            items(selectedTags, key = { it }) { item -> TagButton(item, selectedTags) }
+            items(selectedArtists, key = { it }) { item -> TagButton(item, selectedArtists) }
+            items(selectedCharacters, key = { it }) { item -> TagButton(item, selectedCharacters) }
+            items(selectedParodies, key = { it }) { item -> TagButton(item, selectedParodies) }
+        }
+        scrollState.DraggableScrollbar(
+            modifier = Modifier
+                .fillMaxHeight()
+                .padding(horizontal = 2.dp)
+                .align(Alignment.CenterEnd),
+            state = scrollState.scrollbarState(itemsAvailable = itemsAvailable),
+            orientation = Orientation.Vertical,
+            onThumbMoved = scrollState.rememberDraggableScroller(
+                itemsAvailable = itemsAvailable
+            )
+        )
     }
 }
 

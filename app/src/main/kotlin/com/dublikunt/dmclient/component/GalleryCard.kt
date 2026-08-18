@@ -21,11 +21,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import coil3.compose.AsyncImage
-import coil3.request.ImageRequest
 import com.dublikunt.dmclient.scrapper.GallerySimpleInfo
 
 @Composable
@@ -50,13 +47,11 @@ fun GalleryCard(
         Box(
             modifier = Modifier.fillMaxSize()
         ) {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(gallery.thumb)
-                    .size(512)
-                    .build(),
+            GalleryImage(
+                model = gallery.thumb,
                 contentDescription = gallery.name,
                 contentScale = ContentScale.Crop,
+                size = 512,
                 modifier = Modifier
                     .clip(RoundedCornerShape(1.dp))
                     .fillMaxSize()

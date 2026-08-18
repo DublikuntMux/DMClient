@@ -2,13 +2,17 @@ package com.dublikunt.dmclient.screen
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
@@ -32,6 +36,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -39,6 +44,9 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
+import com.dublikunt.dmclient.component.scrollbar.DraggableScrollbar
+import com.dublikunt.dmclient.component.scrollbar.rememberDraggableScroller
+import com.dublikunt.dmclient.component.scrollbar.scrollbarState
 import com.dublikunt.dmclient.component.settings.SettingsButton
 import com.dublikunt.dmclient.component.settings.SettingsButtonType
 import com.dublikunt.dmclient.component.settings.SettingsDropdownButton
@@ -85,6 +93,7 @@ class SettingsViewModel @Inject constructor(
         preferenceRepository.deleteTokens()
         nHentaiApi.clearCookies()
     }
+
     fun savePinCode(pin: String) = viewModelScope.launch { preferenceRepository.savePinCode(pin) }
 
     fun clearSearchCache(filesDir: File) = viewModelScope.launch(Dispatchers.IO) {
@@ -170,76 +179,90 @@ fun SettingsScreen(
     }
 
     Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-                .padding(paddingValues),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            item {
-                Text("Settings", style = MaterialTheme.typography.headlineMedium)
+        val scrollState = rememberLazyListState()
+        Box(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+                    .padding(paddingValues),
+                state = scrollState,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                item {
+                    Text("Settings", style = MaterialTheme.typography.headlineMedium)
 
-                SettingsSectionHeader("General")
-                val languages = listOf("all", "english", "japanese", "chinese")
-                SettingsDropdownButton(
-                    "Preferred Language",
-                    selectedLanguage,
-                    languages
-                ) { newLanguage ->
-                    selectedLanguage = newLanguage
-                    scope.launch { viewModel.savePreferredLanguage(newLanguage) }
+                    SettingsSectionHeader("General")
+                    val languages = listOf("all", "english", "japanese", "chinese")
+                    SettingsDropdownButton(
+                        "Preferred Language",
+                        selectedLanguage,
+                        languages
+                    ) { newLanguage ->
+                        selectedLanguage = newLanguage
+                        scope.launch { viewModel.savePreferredLanguage(newLanguage) }
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+                    SettingsSectionHeader("Security")
+                    SettingsButton(
+                        "Set or Change PIN Code",
+                        "Set",
+                        Icons.Filled.Lock,
+                        SettingsButtonType.Filled
+                    ) {
+                        pinInput = ""; pinInputError = null; showPinDialog = true
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+                    SettingsSectionHeader("Data")
+                    SettingsButton(
+                        "Storage Management",
+                        "Open",
+                        Icons.Filled.Storage,
+                        SettingsButtonType.Outlined
+                    ) { navController.navigate("storage") }
+                    SettingsButton(
+                        "Export Data",
+                        "Export",
+                        Icons.Filled.Upload,
+                        SettingsButtonType.FilledTonal
+                    ) { exportLauncher.launch("dmclient_backup.json") }
+                    SettingsButton(
+                        "Import Data",
+                        "Import",
+                        Icons.Filled.Download,
+                        SettingsButtonType.FilledTonal
+                    ) { importLauncher.launch(arrayOf("application/json")) }
+
+                    Spacer(Modifier.height(16.dp))
+                    SettingsSectionHeader("Danger Zone")
+                    SettingsButton(
+                        "Delete Token",
+                        "Delete",
+                        Icons.Filled.Delete,
+                        SettingsButtonType.Text,
+                        isDestructive = true
+                    ) { showDeleteTokenDialog = true }
+                    SettingsButton(
+                        "Clear Search Cache",
+                        "Delete",
+                        Icons.Filled.Delete,
+                        SettingsButtonType.Text,
+                        isDestructive = true
+                    ) { showClearSearchCacheDialog = true }
                 }
-
-                Spacer(Modifier.height(16.dp))
-                SettingsSectionHeader("Security")
-                SettingsButton(
-                    "Set or Change PIN Code",
-                    "Set",
-                    Icons.Filled.Lock,
-                    SettingsButtonType.Filled
-                ) {
-                    pinInput = ""; pinInputError = null; showPinDialog = true
-                }
-
-                Spacer(Modifier.height(16.dp))
-                SettingsSectionHeader("Data")
-                SettingsButton(
-                    "Storage Management",
-                    "Open",
-                    Icons.Filled.Storage,
-                    SettingsButtonType.Outlined
-                ) { navController.navigate("storage") }
-                SettingsButton(
-                    "Export Data",
-                    "Export",
-                    Icons.Filled.Upload,
-                    SettingsButtonType.FilledTonal
-                ) { exportLauncher.launch("dmclient_backup.json") }
-                SettingsButton(
-                    "Import Data",
-                    "Import",
-                    Icons.Filled.Download,
-                    SettingsButtonType.FilledTonal
-                ) { importLauncher.launch(arrayOf("application/json")) }
-
-                Spacer(Modifier.height(16.dp))
-                SettingsSectionHeader("Danger Zone")
-                SettingsButton(
-                    "Delete Token",
-                    "Delete",
-                    Icons.Filled.Delete,
-                    SettingsButtonType.Text,
-                    isDestructive = true
-                ) { showDeleteTokenDialog = true }
-                SettingsButton(
-                    "Clear Search Cache",
-                    "Delete",
-                    Icons.Filled.Delete,
-                    SettingsButtonType.Text,
-                    isDestructive = true
-                ) { showClearSearchCacheDialog = true }
             }
+            scrollState.DraggableScrollbar(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .padding(paddingValues)
+                    .padding(horizontal = 2.dp)
+                    .align(Alignment.CenterEnd),
+                state = scrollState.scrollbarState(itemsAvailable = 1),
+                orientation = Orientation.Vertical,
+                onThumbMoved = scrollState.rememberDraggableScroller(itemsAvailable = 1)
+            )
         }
     }
 

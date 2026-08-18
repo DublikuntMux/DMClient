@@ -1,8 +1,10 @@
 package com.dublikunt.dmclient.screen
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -30,6 +32,9 @@ import androidx.paging.PagingConfig
 import androidx.paging.cachedIn
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.dublikunt.dmclient.component.GalleryCard
+import com.dublikunt.dmclient.component.scrollbar.DraggableScrollbar
+import com.dublikunt.dmclient.component.scrollbar.rememberDraggableScroller
+import com.dublikunt.dmclient.component.scrollbar.scrollbarState
 import com.dublikunt.dmclient.database.history.GalleryHistory
 import com.dublikunt.dmclient.database.status.GalleryStatusDao
 import com.dublikunt.dmclient.database.status.GalleryStatusWithCustomStatus
@@ -88,38 +93,51 @@ fun HistoryScreen(
 
     val statusMap by viewModel.statusMap.collectAsState()
 
-    LazyVerticalGrid(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        columns = GridCells.Adaptive(minSize = 128.dp),
-        state = scrollState,
-    ) {
-        items(count = items.itemCount) { index ->
-            val history = items[index]
-            history?.let { h ->
-                Box(modifier = Modifier.fillMaxSize()) {
-                    GalleryCard(
-                        GallerySimpleInfo(h.id, h.coverUrl, h.name),
-                        navController,
-                        statusMap[h.id]?.status?.name,
-                        statusMap[h.id]?.status?.color,
-                        statusMap[h.id]?.galleryStatus?.favorite ?: false
-                    )
-                    Column(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .background(
-                                color = MaterialTheme.colorScheme.background.copy(alpha = 0.6f),
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                    ) {
-                        IconButton(onClick = { viewModel.removeGalleryFromHistory(h) }) {
-                            Icon(Icons.Rounded.Delete, contentDescription = "Delete")
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyVerticalGrid(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            columns = GridCells.Adaptive(minSize = 128.dp),
+            state = scrollState,
+        ) {
+            items(count = items.itemCount) { index ->
+                val history = items[index]
+                history?.let { h ->
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        GalleryCard(
+                            GallerySimpleInfo(h.id, h.coverUrl, h.name),
+                            navController,
+                            statusMap[h.id]?.status?.name,
+                            statusMap[h.id]?.status?.color,
+                            statusMap[h.id]?.galleryStatus?.favorite ?: false
+                        )
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .background(
+                                    color = MaterialTheme.colorScheme.background.copy(alpha = 0.6f),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                        ) {
+                            IconButton(onClick = { viewModel.removeGalleryFromHistory(h) }) {
+                                Icon(Icons.Rounded.Delete, contentDescription = "Delete")
+                            }
                         }
                     }
                 }
             }
         }
+        scrollState.DraggableScrollbar(
+            modifier = Modifier
+                .fillMaxHeight()
+                .padding(horizontal = 2.dp)
+                .align(Alignment.CenterEnd),
+            state = scrollState.scrollbarState(itemsAvailable = items.itemCount),
+            orientation = Orientation.Vertical,
+            onThumbMoved = scrollState.rememberDraggableScroller(
+                itemsAvailable = items.itemCount
+            )
+        )
     }
 }

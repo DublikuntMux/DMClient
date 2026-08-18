@@ -14,16 +14,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
-import coil3.request.ImageRequest
 
 @Composable
 fun GalleryPageCard(imageUrl: String, pageNumber: Int, onClick: () -> Unit) {
-    val context = LocalContext.current
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -32,12 +27,10 @@ fun GalleryPageCard(imageUrl: String, pageNumber: Int, onClick: () -> Unit) {
             .clickable { onClick() }
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            AsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(imageUrl)
-                    .size(512)
-                    .build(),
+            GalleryImage(
+                model = imageUrl,
                 contentDescription = "Page $pageNumber",
+                size = 512,
                 modifier = Modifier.fillMaxWidth(),
                 contentScale = ContentScale.Crop
             )

@@ -3,12 +3,14 @@ package com.dublikunt.dmclient.screen
 import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -48,13 +50,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.asFlow
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
 import androidx.work.ExistingWorkPolicy
@@ -62,13 +62,15 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.workDataOf
-import coil3.compose.AsyncImage
-import coil3.request.ImageRequest
 import com.dublikunt.dmclient.component.ErrorScreen
+import com.dublikunt.dmclient.component.GalleryDetailSkeleton
+import com.dublikunt.dmclient.component.GalleryImage
 import com.dublikunt.dmclient.component.GalleryPageCard
 import com.dublikunt.dmclient.component.GalleryPageViewer
-import com.dublikunt.dmclient.component.LoadingScreen
 import com.dublikunt.dmclient.component.StatusColorPicker
+import com.dublikunt.dmclient.component.scrollbar.DraggableScrollbar
+import com.dublikunt.dmclient.component.scrollbar.rememberDraggableScroller
+import com.dublikunt.dmclient.component.scrollbar.scrollbarState
 import com.dublikunt.dmclient.database.download.DownloadedGalleryDao
 import com.dublikunt.dmclient.database.status.CustomStatus
 import com.dublikunt.dmclient.database.status.GalleryStatus
@@ -268,47 +270,61 @@ fun GalleryScreen(
     LaunchedEffect(id) { viewModel.fetchGallery(id) }
 
     when (val state = galleryState) {
-        is GalleryState.Loading -> LoadingScreen()
+        is GalleryState.Loading -> GalleryDetailSkeleton()
         is GalleryState.Error -> ErrorScreen(state.message) { viewModel.fetchGallery(id) }
         is GalleryState.Success -> {
             val gallery = state.gallery
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(vertical = 16.dp),
-                state = scrollState
-            ) {
-                item {
-                    GalleryHeader(
-                        state = state,
-                        onUpdateStatus = { newStatusId, isFav ->
-                            viewModel.updateStatus(
-                                id,
-                                newStatusId,
-                                isFav
-                            )
-                        },
-                        onCreateStatus = { name, color ->
-                            viewModel.createCustomStatus(
-                                name,
-                                color
-                            )
-                        },
-                        onEditStatus = { viewModel.updateCustomStatus(it) },
-                        onArchive = { viewModel.archiveGallery(gallery) },
-                        onDownloadOrDelete = {
-                            if (state.isDownloaded) viewModel.deleteGallery(gallery.id)
-                            else viewModel.downloadGallery(gallery)
-                        },
-                        onTagClick = onTagClick
+            Box(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(vertical = 16.dp),
+                    state = scrollState
+                ) {
+                    item {
+                        GalleryHeader(
+                            state = state,
+                            onUpdateStatus = { newStatusId, isFav ->
+                                viewModel.updateStatus(
+                                    id,
+                                    newStatusId,
+                                    isFav
+                                )
+                            },
+                            onCreateStatus = { name, color ->
+                                viewModel.createCustomStatus(
+                                    name,
+                                    color
+                                )
+                            },
+                            onEditStatus = { viewModel.updateCustomStatus(it) },
+                            onArchive = { viewModel.archiveGallery(gallery) },
+                            onDownloadOrDelete = {
+                                if (state.isDownloaded) viewModel.deleteGallery(gallery.id)
+                                else viewModel.downloadGallery(gallery)
+                            },
+                            onTagClick = onTagClick
+                        )
+                    }
+                    items(count = gallery.pages, key = { it }) { pageIndex ->
+                        GalleryPageCard(
+                            getImageUrl(context, gallery, pageIndex + 1, state.isDownloaded),
+                            pageIndex + 1
+                        ) { viewModel.selectPage(pageIndex + 1) }
+                    }
+                }
+                val itemsAvailable = gallery.pages + 1
+                scrollState.DraggableScrollbar(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .padding(horizontal = 2.dp)
+                        .align(Alignment.CenterEnd),
+                    state = scrollState.scrollbarState(itemsAvailable = itemsAvailable),
+                    orientation = Orientation.Vertical,
+                    onThumbMoved = scrollState.rememberDraggableScroller(
+                        itemsAvailable = itemsAvailable
                     )
-                }
-                items(count = gallery.pages, key = { it }) { pageIndex ->
-                    GalleryPageCard(
-                        getImageUrl(context, gallery, pageIndex + 1, state.isDownloaded),
-                        pageIndex + 1
-                    ) { viewModel.selectPage(pageIndex + 1) }
-                }
+                )
             }
             state.selectedPage?.let { currentPage ->
                 BackHandler { viewModel.selectPage(null) }
@@ -342,14 +358,13 @@ private fun GalleryHeader(
             .padding(16.dp),
         verticalArrangement = Arrangement.Top
     ) {
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current).data(gallery.thumb).build(),
+        GalleryImage(
+            model = gallery.thumb,
             contentDescription = gallery.name,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(200.dp)
-                .clip(RoundedCornerShape(12.dp)),
-            contentScale = ContentScale.Crop
+                .clip(RoundedCornerShape(12.dp))
         )
         Text(
             gallery.name,

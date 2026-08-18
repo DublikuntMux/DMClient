@@ -20,12 +20,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
-import coil3.request.ImageRequest
 
 @Composable
 fun GalleryPageViewer(
@@ -37,7 +33,6 @@ fun GalleryPageViewer(
     onPreviousPage: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset(0f, 0f)) }
     val maxScale = 5f
@@ -84,10 +79,8 @@ fun GalleryPageViewer(
             },
         contentAlignment = Alignment.Center
     ) {
-        AsyncImage(
-            model = ImageRequest.Builder(context)
-                .data(imageUrl)
-                .build(),
+        GalleryImage(
+            model = imageUrl,
             contentDescription = "Fullscreen Page $pageIndex",
             modifier = Modifier
                 .graphicsLayer(

@@ -1,11 +1,13 @@
 package com.dublikunt.dmclient.screen
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -58,6 +60,9 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
 import com.dublikunt.dmclient.component.GalleryCard
 import com.dublikunt.dmclient.component.StatusColorPicker
+import com.dublikunt.dmclient.component.scrollbar.DraggableScrollbar
+import com.dublikunt.dmclient.component.scrollbar.rememberDraggableScroller
+import com.dublikunt.dmclient.component.scrollbar.scrollbarState
 import com.dublikunt.dmclient.database.history.GalleryHistory
 import com.dublikunt.dmclient.database.status.CustomStatus
 import com.dublikunt.dmclient.database.status.GalleryStatusDao
@@ -149,8 +154,14 @@ fun StatusesScreen(
 
     LaunchedEffect(Unit) { viewModel.loadData() }
 
+    val FAVORITES_TAB_ID = -1
     val tabStatusIds =
-        remember(customStatuses) { listOf<Int?>(null) + customStatuses.map { it.id } }
+        remember(customStatuses) {
+            listOf<Int?>(
+                null,
+                FAVORITES_TAB_ID
+            ) + customStatuses.map { it.id }
+        }
     if (selectedTab >= tabStatusIds.size) selectedTab = 0
 
     val selectedStatusId = tabStatusIds.getOrNull(selectedTab)
@@ -160,8 +171,11 @@ fun StatusesScreen(
             status != null && (searchQuery.isBlank() || galleryHistory.name.contains(
                 searchQuery,
                 ignoreCase = true
-            )) &&
-                    (selectedStatusId == null || status.status?.id == selectedStatusId)
+            )) && when (selectedStatusId) {
+                null -> true
+                FAVORITES_TAB_ID -> status.galleryStatus.favorite
+                else -> status.status?.id == selectedStatusId
+            }
         }
     }
 
@@ -196,47 +210,61 @@ fun StatusesScreen(
 
         SecondaryTabRow(selectedTabIndex = selectedTab) {
             Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) { Text("All") }
+            Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }) { Text("Favorited") }
             customStatuses.forEachIndexed { index, status ->
                 Tab(
-                    selected = selectedTab == index + 1,
-                    onClick = { selectedTab = index + 1 }) { Text(status.name) }
+                    selected = selectedTab == index + 2,
+                    onClick = { selectedTab = index + 2 }) { Text(status.name) }
             }
         }
 
         Spacer(Modifier.height(8.dp))
 
-        LazyVerticalGrid(
-            modifier = Modifier.fillMaxSize(),
-            columns = GridCells.Adaptive(minSize = 128.dp),
-            state = scrollState
-        ) {
-            items(filteredHistory) { galleryHistory ->
-                Box(modifier = Modifier.fillMaxSize()) {
-                    GalleryCard(
-                        GallerySimpleInfo(
-                            galleryHistory.id,
-                            galleryHistory.coverUrl,
-                            galleryHistory.name
-                        ),
-                        navController,
-                        statusMap[galleryHistory.id]?.status?.name,
-                        statusMap[galleryHistory.id]?.status?.color,
-                        statusMap[galleryHistory.id]?.galleryStatus?.favorite ?: false
-                    )
-                    Column(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .background(
-                                color = MaterialTheme.colorScheme.background.copy(alpha = 0.6f),
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                    ) {
-                        IconButton(onClick = { viewModel.removeGalleryFromHistory(galleryHistory) }) {
-                            Icon(Icons.Rounded.Delete, contentDescription = "Delete")
+        Box(modifier = Modifier.fillMaxSize()) {
+            LazyVerticalGrid(
+                modifier = Modifier.fillMaxSize(),
+                columns = GridCells.Adaptive(minSize = 128.dp),
+                state = scrollState
+            ) {
+                items(filteredHistory) { galleryHistory ->
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        GalleryCard(
+                            GallerySimpleInfo(
+                                galleryHistory.id,
+                                galleryHistory.coverUrl,
+                                galleryHistory.name
+                            ),
+                            navController,
+                            statusMap[galleryHistory.id]?.status?.name,
+                            statusMap[galleryHistory.id]?.status?.color,
+                            statusMap[galleryHistory.id]?.galleryStatus?.favorite ?: false
+                        )
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .background(
+                                    color = MaterialTheme.colorScheme.background.copy(alpha = 0.6f),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                        ) {
+                            IconButton(onClick = { viewModel.removeGalleryFromHistory(galleryHistory) }) {
+                                Icon(Icons.Rounded.Delete, contentDescription = "Delete")
+                            }
                         }
                     }
                 }
             }
+            scrollState.DraggableScrollbar(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .padding(horizontal = 2.dp)
+                    .align(Alignment.CenterEnd),
+                state = scrollState.scrollbarState(itemsAvailable = filteredHistory.size),
+                orientation = Orientation.Vertical,
+                onThumbMoved = scrollState.rememberDraggableScroller(
+                    itemsAvailable = filteredHistory.size
+                )
+            )
         }
     }
 

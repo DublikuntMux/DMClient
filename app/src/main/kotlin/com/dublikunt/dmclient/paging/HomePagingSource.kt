@@ -33,4 +33,5 @@ class HomePagingSource(
             state.closestPageToPosition(anchorPosition)?.let { page ->
                 page.prevKey?.plus(1) ?: page.nextKey?.minus(1)
             }
-        }}
+        }
+}
