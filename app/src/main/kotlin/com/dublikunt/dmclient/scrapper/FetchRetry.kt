@@ -14,7 +14,7 @@ suspend fun <T> withRetries(
     retryCount: Int = DEFAULT_RETRY_COUNT,
     sleep: suspend (Long) -> Unit = { delay(it) },
     log: (String) -> Unit = ::println,
-    attempt: () -> AttemptResult<T>,
+    attempt: suspend () -> AttemptResult<T>,
 ): T? {
     var currentRetry = 0
     while (currentRetry < retryCount) {

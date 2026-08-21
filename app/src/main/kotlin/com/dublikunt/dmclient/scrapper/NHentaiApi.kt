@@ -1,8 +1,10 @@
 package com.dublikunt.dmclient.scrapper
 
 import android.net.Uri
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -63,21 +65,25 @@ class NHentaiApi @Inject constructor(
 
     private suspend fun fetchData(url: String, referer: String? = null): String? =
         withRetries {
-            val request = Request.Builder().url(url).apply {
-                if (referer != null) setupApiHeaders(this, referer) else setupHeaders(this)
-            }.build()
-            client.newCall(request).execute().use { response ->
-                classifyResponse(response) { it.body.string() }
+            withContext(Dispatchers.IO) {
+                val request = Request.Builder().url(url).apply {
+                    if (referer != null) setupApiHeaders(this, referer) else setupHeaders(this)
+                }.build()
+                client.newCall(request).execute().use { response ->
+                    classifyResponse(response) { it.body.string() }
+                }
             }
         }
 
     suspend fun downloadImage(url: String): InputStream? =
         withRetries {
-            val request = Request.Builder().url(url).apply { setupHeaders(this) }.build()
-            val response = client.newCall(request).execute()
-            val result = classifyResponse(response) { it.body.byteStream() }
-            if (result !is AttemptResult.Done || result.value == null) response.close()
-            result
+            withContext(Dispatchers.IO) {
+                val request = Request.Builder().url(url).apply { setupHeaders(this) }.build()
+                val response = client.newCall(request).execute()
+                val result = classifyResponse(response) { it.body.byteStream() }
+                if (result !is AttemptResult.Done || result.value == null) response.close()
+                result
+            }
         }
 
     private fun <T> classifyResponse(
