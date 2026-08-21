@@ -8,6 +8,8 @@ import android.webkit.WebViewClient
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.viewinterop.AndroidView
 
+private const val CLEARANCE_COOKIE = "cf_clearance"
+
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun NHentaiWebView(onCookiesReceived: (List<Pair<String, String>>) -> Unit) {
@@ -18,7 +20,7 @@ fun NHentaiWebView(onCookiesReceived: (List<Pair<String, String>>) -> Unit) {
                 domStorageEnabled = true
                 useWideViewPort = true
                 loadWithOverviewMode = true
-                cacheMode = WebSettings.LOAD_DEFAULT
+                cacheMode = WebSettings.LOAD_NO_CACHE
                 setSupportZoom(true)
                 builtInZoomControls = true
                 displayZoomControls = false
@@ -44,7 +46,8 @@ fun NHentaiWebView(onCookiesReceived: (List<Pair<String, String>>) -> Unit) {
 
             fun checkAndSend() {
                 val cookies = readCookies()
-                if (cookies == lastSent) return
+                val hasClearance = cookies.any { it.first == CLEARANCE_COOKIE }
+                if (!hasClearance || cookies == lastSent) return
                 lastSent = cookies
                 onCookiesReceived(cookies)
             }
@@ -55,9 +58,16 @@ fun NHentaiWebView(onCookiesReceived: (List<Pair<String, String>>) -> Unit) {
                     if (url?.startsWith(NHentaiApi.BASE_URL) == true) {
                         checkAndSend()
                         view?.postDelayed({ checkAndSend() }, 1500)
+                        view?.postDelayed({ checkAndSend() }, 4000)
                     }
                 }
             }
+
+            listOf(CLEARANCE_COOKIE, "csrftoken", "session-affinity").forEach { name ->
+                cookieManager.setCookie(NHentaiApi.BASE_URL, "$name=; Max-Age=0; Path=/")
+            }
+            cookieManager.flush()
+
             loadUrl(NHentaiApi.BASE_URL)
         }
     })

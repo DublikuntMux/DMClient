@@ -119,6 +119,7 @@ class HomeViewModel @Inject constructor(
         }
         viewModelScope.launch {
             nHentaiApi.authRequired.collect {
+                if (_tokenFetched.value != FetchStatus.Fetched) return@collect
                 preferenceRepository.deleteTokens()
                 nHentaiApi.clearCookies()
                 _tokenFetched.value = FetchStatus.NotFetched
