@@ -13,13 +13,12 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.dublikunt.dmclient.R
 import com.dublikunt.dmclient.database.download.DownloadedGallery
-import com.dublikunt.dmclient.database.download.DownloadedGalleryDao
-import com.dublikunt.dmclient.scrapper.GalleryFullInfo
-import com.dublikunt.dmclient.scrapper.ImageType
+import com.dublikunt.dmclient.download.DownloadedGalleryStore
+import com.dublikunt.dmclient.download.DownloadPayload
+import com.dublikunt.dmclient.download.GalleryContentLocator
 import com.dublikunt.dmclient.scrapper.NHentaiApi
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -29,7 +28,7 @@ class DownloadWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted workerParams: WorkerParameters,
     private val nHentaiApi: NHentaiApi,
-    private val downloadedDao: DownloadedGalleryDao
+    private val store: DownloadedGalleryStore
 ) : CoroutineWorker(context, workerParams) {
 
     private val notificationManager =
@@ -38,26 +37,18 @@ class DownloadWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         val payloadPath = inputData.getString(KEY_GALLERY_PATH) ?: return Result.failure()
         val payloadFile = File(payloadPath)
-        val gallery = try {
-            if (!payloadFile.exists()) return Result.failure()
-            Json.decodeFromString<GalleryFullInfo>(payloadFile.readText())
-        } catch (e: Exception) {
-            e.printStackTrace()
-            return Result.failure()
-        }
+        if (!payloadFile.exists()) return Result.failure()
+        val gallery = DownloadPayload.decode(payloadFile.readText()) ?: return Result.failure()
 
         val notificationId = gallery.id
         setForeground(createForegroundInfo(notificationId, gallery.name, 0, gallery.pages))
 
         val context = applicationContext
-        val galleryDir = File(context.filesDir, "galleries/${gallery.id}")
+        val galleryDir = store.galleryDir(gallery.id)
         if (!galleryDir.exists()) galleryDir.mkdirs()
 
         try {
-            val coverFile = File(
-                galleryDir,
-                "cover.${gallery.thumb.split(".").last()}"
-            )
+            val coverFile = store.coverFile(gallery.id, gallery.thumb)
             if (!coverFile.exists()) {
                 nHentaiApi.downloadImage(gallery.thumb)?.use { input ->
                     FileOutputStream(coverFile).use { output ->
@@ -70,17 +61,11 @@ class DownloadWorker @AssistedInject constructor(
             for (i in 1..gallery.pages) {
                 if (isStopped) break
 
-                val imageType = gallery.images.getOrNull(i - 1) ?: ImageType.Jpg
-                val ext = when (imageType) {
-                    ImageType.Jpg -> "jpg"
-                    ImageType.Webp -> "webp"
-                    ImageType.Png -> "png"
-                }
-                val baseUrl = "https://i1.nhentai.net/galleries/${gallery.pagesId}"
-
-                val pageFile = File(galleryDir, "$i.$ext")
+                val pageFile = store.pageFile(gallery.id, i, gallery.images)
                 if (!pageFile.exists()) {
-                    val pageUrl = "$baseUrl/$i.$ext"
+                    val pageUrl = GalleryContentLocator.remotePageUrl(
+                        gallery.pagesId, i, gallery.images
+                    )
                     val input = nHentaiApi.downloadImage(pageUrl)
                         ?: throw IOException("Failed to download page $i")
                     input.use { stream ->
@@ -112,7 +97,7 @@ class DownloadWorker @AssistedInject constructor(
             val downloadedGallery = DownloadedGallery(
                 id = gallery.id,
                 title = gallery.name,
-                coverPath = coverFile.absolutePath,
+                coverPath = GalleryContentLocator.relativeCoverPath(gallery.id, gallery.thumb),
                 totalPages = gallery.pages,
                 pagesId = gallery.pagesId,
                 imageTypes = gallery.images,
@@ -121,7 +106,7 @@ class DownloadWorker @AssistedInject constructor(
                 artists = gallery.artists,
                 characters = gallery.characters
             )
-            downloadedDao.insert(downloadedGallery)
+            store.insert(downloadedGallery)
             payloadFile.delete()
 
             return Result.success()

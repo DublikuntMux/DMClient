@@ -57,11 +57,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
-import androidx.work.ExistingWorkPolicy
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkInfo
-import androidx.work.WorkManager
-import androidx.work.workDataOf
 import com.dublikunt.dmclient.component.ErrorScreen
 import com.dublikunt.dmclient.component.GalleryDetailSkeleton
 import com.dublikunt.dmclient.component.GalleryImage
@@ -71,38 +66,37 @@ import com.dublikunt.dmclient.component.StatusColorPicker
 import com.dublikunt.dmclient.component.scrollbar.DraggableScrollbar
 import com.dublikunt.dmclient.component.scrollbar.rememberDraggableScroller
 import com.dublikunt.dmclient.component.scrollbar.scrollbarState
-import com.dublikunt.dmclient.database.download.DownloadedGalleryDao
 import com.dublikunt.dmclient.database.status.CustomStatus
 import com.dublikunt.dmclient.database.status.GalleryStatus
 import com.dublikunt.dmclient.database.status.GalleryStatusDao
 import com.dublikunt.dmclient.database.status.GalleryStatusWithCustomStatus
-import com.dublikunt.dmclient.repository.SearchRepository
+import com.dublikunt.dmclient.download.DownloadController
+import com.dublikunt.dmclient.download.DownloadPhase
+import com.dublikunt.dmclient.download.DownloadedGalleryStore
+import com.dublikunt.dmclient.download.GalleryContentLocator
 import com.dublikunt.dmclient.scrapper.GalleryFullInfo
-import com.dublikunt.dmclient.scrapper.ImageType
-import com.dublikunt.dmclient.work.ArchiveWorker
-import com.dublikunt.dmclient.work.DownloadWorker
+import com.dublikunt.dmclient.scrapper.NHentaiApi
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
-import java.io.File
 import javax.inject.Inject
 
 @HiltViewModel
 class GalleryViewModel @Inject constructor(
-    private val searchRepository: SearchRepository,
+    private val nHentaiApi: NHentaiApi,
     private val statusDao: GalleryStatusDao,
-    private val downloadedDao: DownloadedGalleryDao,
-    @param:ApplicationContext private val context: Context
+    private val downloadedStore: DownloadedGalleryStore,
+    private val downloadController: DownloadController
 ) : ViewModel() {
-    private val workManager = WorkManager.getInstance(context)
     private val _galleryState = MutableStateFlow<GalleryState>(GalleryState.Loading)
     val galleryState: StateFlow<GalleryState> = _galleryState.asStateFlow()
+
+    private var downloadJob: Job? = null
+    private var archiveJob: Job? = null
 
     private fun updateSuccessState(update: (GalleryState.Success) -> GalleryState.Success) {
         val current = _galleryState.value
@@ -111,12 +105,14 @@ class GalleryViewModel @Inject constructor(
 
     fun fetchGallery(id: Int) {
         viewModelScope.launch(Dispatchers.IO) {
-            val downloaded = downloadedDao.getById(id)
+            val downloaded = downloadedStore.getById(id)
             if (downloaded != null) {
                 val status = statusDao.getStatus(id)
                 val statuses = statusDao.getCustomStatuses()
                 val gallery = GalleryFullInfo(
-                    id = downloaded.id, thumb = downloaded.coverPath, name = downloaded.title,
+                    id = downloaded.id,
+                    thumb = downloadedStore.resolveCover(downloaded.coverPath),
+                    name = downloaded.title,
                     parodies = downloaded.parodies, tags = downloaded.tags,
                     artists = downloaded.artists, characters = downloaded.characters,
                     pages = downloaded.totalPages, pagesId = downloaded.pagesId,
@@ -125,21 +121,36 @@ class GalleryViewModel @Inject constructor(
                 _galleryState.value =
                     GalleryState.Success(gallery, status, statuses, isDownloaded = true)
             } else {
-                val gallery = searchRepository.fetchGallery(id)
+                val gallery = nHentaiApi.fetchGallery(id)
                 if (gallery != null) {
                     val status = statusDao.getStatus(id)
                     val statuses = statusDao.getCustomStatuses()
                     _galleryState.value = GalleryState.Success(gallery, status, statuses)
-                    launch {
-                        workManager.getWorkInfosForUniqueWorkFlow("download_$id").collect { infos ->
-                            val isDownloading =
-                                infos.firstOrNull()?.let { !it.state.isFinished } ?: false
-                            updateSuccessState { it.copy(isDownloading = isDownloading) }
-                        }
-                    }
+                    watchDownload(id)
                 } else {
                     _galleryState.value =
                         GalleryState.Error("Failed to load gallery. Please try again.")
+                }
+            }
+        }
+    }
+
+    private fun watchDownload(id: Int) {
+        downloadJob?.cancel()
+        downloadJob = viewModelScope.launch {
+            downloadController.observe(id).collect { phase ->
+                when (phase) {
+                    DownloadPhase.Succeeded -> updateSuccessState {
+                        it.copy(isDownloading = false, isDownloaded = true)
+                    }
+
+                    DownloadPhase.Failed, DownloadPhase.Idle -> updateSuccessState {
+                        it.copy(isDownloading = false)
+                    }
+
+                    DownloadPhase.Running -> updateSuccessState {
+                        it.copy(isDownloading = true)
+                    }
                 }
             }
         }
@@ -176,63 +187,31 @@ class GalleryViewModel @Inject constructor(
     }
 
     fun archiveGallery(gallery: GalleryFullInfo) {
-        val workRequest = OneTimeWorkRequestBuilder<ArchiveWorker>()
-            .setInputData(
-                workDataOf(
-                    ArchiveWorker.KEY_ID to gallery.id,
-                    ArchiveWorker.KEY_NAME to gallery.name
-                )
-            )
-            .addTag("archive_${gallery.id}").build()
-        workManager.enqueueUniqueWork("archive_${gallery.id}", ExistingWorkPolicy.KEEP, workRequest)
+        archiveJob?.cancel()
+        downloadController.archive(gallery.id, gallery.name)
         updateSuccessState { it.copy(isArchiving = true) }
-        viewModelScope.launch {
-            workManager.getWorkInfoByIdFlow(workRequest.id).collect { info ->
-                if (info?.state?.isFinished == true) updateSuccessState { it.copy(isArchiving = false) }
-            }
-        }
-    }
+        archiveJob = viewModelScope.launch {
+            downloadController.observeArchive(gallery.id).collect { phase ->
+                when (phase) {
+                    DownloadPhase.Succeeded, DownloadPhase.Failed ->
+                        updateSuccessState { it.copy(isArchiving = false) }
 
-    fun downloadGallery(gallery: GalleryFullInfo) {
-        val payloadFile = File(context.filesDir, "work_payloads/download_${gallery.id}.json")
-        viewModelScope.launch {
-            withContext(Dispatchers.IO) {
-                payloadFile.parentFile?.mkdirs()
-                payloadFile.writeText(Json.encodeToString(gallery))
-            }
-            val workRequest = OneTimeWorkRequestBuilder<DownloadWorker>()
-                .setInputData(workDataOf(DownloadWorker.KEY_GALLERY_PATH to payloadFile.absolutePath))
-                .addTag("download_${gallery.id}").build()
-            workManager.enqueueUniqueWork(
-                "download_${gallery.id}",
-                ExistingWorkPolicy.KEEP,
-                workRequest
-            )
-            updateSuccessState { it.copy(isDownloading = true) }
-            workManager.getWorkInfoByIdFlow(workRequest.id).collect { info ->
-                when (info?.state) {
-                    WorkInfo.State.SUCCEEDED -> updateSuccessState {
-                        it.copy(
-                            isDownloading = false,
-                            isDownloaded = true
-                        )
-                    }
-
-                    WorkInfo.State.FAILED -> updateSuccessState { it.copy(isDownloading = false) }
                     else -> {}
                 }
             }
         }
     }
 
+    fun downloadGallery(gallery: GalleryFullInfo) {
+        watchDownload(gallery.id)
+        updateSuccessState { it.copy(isDownloading = true) }
+        viewModelScope.launch { downloadController.start(gallery) }
+    }
+
     fun deleteGallery(id: Int) {
         viewModelScope.launch(Dispatchers.IO) {
             updateSuccessState { it.copy(isDownloading = true) }
-            workManager.cancelUniqueWork("download_$id")
-            val galleryDir = File(context.filesDir, "galleries/$id")
-            if (galleryDir.exists()) galleryDir.deleteRecursively()
-            File(context.filesDir, "work_payloads/download_$id.json").delete()
-            downloadedDao.getById(id)?.let { downloadedDao.delete(it) }
+            downloadController.delete(id)
             updateSuccessState { it.copy(isDownloading = false, isDownloaded = false) }
         }
     }
@@ -535,13 +514,8 @@ private fun getImageUrl(
     gallery: GalleryFullInfo,
     pageNumber: Int,
     isDownloaded: Boolean
-): String {
-    val ext = when (gallery.images.getOrNull(pageNumber - 1) ?: ImageType.Jpg) {
-        ImageType.Jpg -> "jpg"; ImageType.Webp -> "webp"; ImageType.Png -> "png"
-    }
-    return if (isDownloaded) File(
-        context.filesDir,
-        "galleries/${gallery.id}/$pageNumber.$ext"
-    ).absolutePath
-    else "https://i1.nhentai.net/galleries/${gallery.pagesId}/$pageNumber.$ext"
-}
+): String =
+    if (isDownloaded) GalleryContentLocator.localPageAbsolutePath(
+        context.filesDir, gallery.id, pageNumber, gallery.images
+    )
+    else GalleryContentLocator.remotePageUrl(gallery.pagesId, pageNumber, gallery.images)

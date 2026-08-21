@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
@@ -33,18 +34,18 @@ import com.dublikunt.dmclient.component.GalleryGridSkeleton
 import com.dublikunt.dmclient.component.scrollbar.DraggableScrollbar
 import com.dublikunt.dmclient.component.scrollbar.rememberDraggableScroller
 import com.dublikunt.dmclient.component.scrollbar.scrollbarState
-import com.dublikunt.dmclient.repository.DownloadRepository
+import com.dublikunt.dmclient.database.download.DownloadedGalleryDao
+import com.dublikunt.dmclient.download.GalleryContentLocator
 import com.dublikunt.dmclient.scrapper.GallerySimpleInfo
 import dagger.hilt.android.lifecycle.HiltViewModel
-import java.io.File
 import javax.inject.Inject
 
 @HiltViewModel
 class DownloadViewModel @Inject constructor(
-    downloadRepository: DownloadRepository
+    downloadedGalleryDao: DownloadedGalleryDao
 ) : ViewModel() {
     val flow = Pager(PagingConfig(pageSize = 25)) {
-        downloadRepository.getAllPagingSource()
+        downloadedGalleryDao.getAllPagingSource()
     }.flow.cachedIn(viewModelScope)
 }
 
@@ -53,6 +54,7 @@ fun DownloadScreen(
     navController: NavHostController,
     viewModel: DownloadViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
     val items = viewModel.flow.collectAsLazyPagingItems()
 
     when (items.loadState.refresh) {
@@ -88,7 +90,11 @@ fun DownloadScreen(
                             val gallery = items[index]
                             gallery?.let {
                                 GalleryCard(
-                                    GallerySimpleInfo(it.id, File(it.coverPath).path, it.title),
+                                    GallerySimpleInfo(
+                                        it.id,
+                                        GalleryContentLocator.resolveCover(context.filesDir, it.coverPath),
+                                        it.title
+                                    ),
                                     navController, null, null, false
                                 )
                             }

@@ -44,6 +44,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
+import com.dublikunt.dmclient.auth.NhentaiSession
 import com.dublikunt.dmclient.component.scrollbar.DraggableScrollbar
 import com.dublikunt.dmclient.component.scrollbar.rememberDraggableScroller
 import com.dublikunt.dmclient.component.scrollbar.scrollbarState
@@ -56,8 +57,7 @@ import com.dublikunt.dmclient.database.search.SearchCacheDao
 import com.dublikunt.dmclient.database.status.CustomStatus
 import com.dublikunt.dmclient.database.status.GalleryStatus
 import com.dublikunt.dmclient.database.status.GalleryStatusDao
-import com.dublikunt.dmclient.repository.PreferenceRepository
-import com.dublikunt.dmclient.scrapper.NHentaiApi
+import com.dublikunt.dmclient.prefs.PreferenceRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -81,7 +81,7 @@ class SettingsViewModel @Inject constructor(
     private val galleryHistoryDao: GalleryHistoryDao,
     private val galleryStatusDao: GalleryStatusDao,
     private val searchCacheDao: SearchCacheDao,
-    private val nHentaiApi: NHentaiApi,
+    private val session: NhentaiSession,
 ) : ViewModel() {
     suspend fun getPreferredLanguage(): String =
         preferenceRepository.preferredLanguage.first() ?: "all"
@@ -89,10 +89,7 @@ class SettingsViewModel @Inject constructor(
     fun savePreferredLanguage(language: String) =
         viewModelScope.launch { preferenceRepository.savePreferredLanguage(language) }
 
-    fun deleteTokens() = viewModelScope.launch {
-        preferenceRepository.deleteTokens()
-        nHentaiApi.clearCookies()
-    }
+    fun deleteTokens() = viewModelScope.launch { session.wipe() }
 
     fun savePinCode(pin: String) = viewModelScope.launch { preferenceRepository.savePinCode(pin) }
 

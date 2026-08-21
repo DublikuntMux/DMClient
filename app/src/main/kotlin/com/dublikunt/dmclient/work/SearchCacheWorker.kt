@@ -13,7 +13,7 @@ import androidx.work.WorkerParameters
 import com.dublikunt.dmclient.R
 import com.dublikunt.dmclient.database.search.SearchCache
 import com.dublikunt.dmclient.database.search.SearchCacheDao
-import com.dublikunt.dmclient.repository.SearchRepository
+import com.dublikunt.dmclient.scrapper.NHentaiApi
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 
@@ -21,7 +21,7 @@ import dagger.assisted.AssistedInject
 class SearchCacheWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted workerParams: WorkerParameters,
-    private val searchRepository: SearchRepository,
+    private val nHentaiApi: NHentaiApi,
     private val searchCacheDao: SearchCacheDao
 ) : CoroutineWorker(context, workerParams) {
 
@@ -32,10 +32,10 @@ class SearchCacheWorker @AssistedInject constructor(
         setForeground(createForegroundInfo("Fetching tags...", 0, 4))
 
         val steps = listOf(
-            "tags" to searchRepository::getAllTags,
-            "artists" to searchRepository::getAllArtists,
-            "characters" to searchRepository::getAllCharacters,
-            "parodies" to searchRepository::getAllParodies
+            "tags" to nHentaiApi::getAllTags,
+            "artists" to nHentaiApi::getAllArtists,
+            "characters" to nHentaiApi::getAllCharacters,
+            "parodies" to nHentaiApi::getAllParodies
         )
 
         for ((index, step) in steps.withIndex()) {

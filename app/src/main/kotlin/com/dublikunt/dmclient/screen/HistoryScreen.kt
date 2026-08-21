@@ -36,45 +36,30 @@ import com.dublikunt.dmclient.component.scrollbar.DraggableScrollbar
 import com.dublikunt.dmclient.component.scrollbar.rememberDraggableScroller
 import com.dublikunt.dmclient.component.scrollbar.scrollbarState
 import com.dublikunt.dmclient.database.history.GalleryHistory
-import com.dublikunt.dmclient.database.status.GalleryStatusDao
-import com.dublikunt.dmclient.database.status.GalleryStatusWithCustomStatus
-import com.dublikunt.dmclient.repository.HistoryRepository
+import com.dublikunt.dmclient.database.history.GalleryHistoryDao
+import com.dublikunt.dmclient.status.GalleryStatusBook
 import com.dublikunt.dmclient.scrapper.GallerySimpleInfo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class HistoryViewModel @Inject constructor(
-    private val historyRepository: HistoryRepository,
-    private val statusDao: GalleryStatusDao,
+    private val galleryHistoryDao: GalleryHistoryDao,
+    private val statusBook: GalleryStatusBook,
 ) : ViewModel() {
     val flow = Pager(PagingConfig(pageSize = 25)) {
-        historyRepository.getAllPagingSource()
+        galleryHistoryDao.getAllPagingSource()
     }.flow.cachedIn(viewModelScope)
 
-    private val _statusMap = MutableStateFlow<Map<Int, GalleryStatusWithCustomStatus?>>(emptyMap())
-    val statusMap: StateFlow<Map<Int, GalleryStatusWithCustomStatus?>> = _statusMap.asStateFlow()
-
-    private val loadedStatusIds = mutableSetOf<Int>()
+    val statusMap get() = statusBook.statuses
 
     fun removeGalleryFromHistory(gallery: GalleryHistory) {
-        viewModelScope.launch(Dispatchers.IO) { historyRepository.deleteHistory(gallery) }
+        viewModelScope.launch(Dispatchers.IO) { galleryHistoryDao.deleteHistory(gallery) }
     }
 
-    fun loadStatuses(ids: List<Int>) {
-        val newIds = ids.filter { it !in loadedStatusIds }
-        if (newIds.isEmpty()) return
-        loadedStatusIds.addAll(newIds)
-        viewModelScope.launch(Dispatchers.IO) {
-            val statuses = statusDao.getStatuses(newIds)
-            _statusMap.value = _statusMap.value + statuses.associateBy { it.galleryStatus.id }
-        }
-    }
+    fun loadStatuses(ids: List<Int>) = statusBook.load(ids)
 }
 
 @Composable
@@ -108,9 +93,9 @@ fun HistoryScreen(
                         GalleryCard(
                             GallerySimpleInfo(h.id, h.coverUrl, h.name),
                             navController,
-                            statusMap[h.id]?.status?.name,
-                            statusMap[h.id]?.status?.color,
-                            statusMap[h.id]?.galleryStatus?.favorite ?: false
+                            statusMap[h.id]?.name,
+                            statusMap[h.id]?.color,
+                            statusMap[h.id]?.favorite ?: false
                         )
                         Column(
                             modifier = Modifier

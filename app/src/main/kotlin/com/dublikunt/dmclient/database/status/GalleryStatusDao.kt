@@ -19,10 +19,6 @@ interface GalleryStatusDao {
     suspend fun getAllGalleryStatusEntities(): List<GalleryStatus>
 
     @Transaction
-    @Query("SELECT * FROM gallery_status")
-    suspend fun getAllStatuses(): List<GalleryStatusWithCustomStatus>
-
-    @Transaction
     @Query("SELECT * FROM gallery_status WHERE id IN (:ids)")
     suspend fun getStatuses(ids: List<Int>): List<GalleryStatusWithCustomStatus>
 
@@ -41,9 +37,6 @@ interface GalleryStatusDao {
 
     @Query("SELECT * FROM custom_status ORDER BY id ASC")
     suspend fun getCustomStatuses(): List<CustomStatus>
-
-    @Query("SELECT * FROM custom_status WHERE id = :id LIMIT 1")
-    suspend fun getCustomStatus(id: Int): CustomStatus?
 
     @Query("UPDATE gallery_status SET statusId = NULL WHERE statusId = :statusId")
     suspend fun clearStatusFromGalleries(statusId: Int)

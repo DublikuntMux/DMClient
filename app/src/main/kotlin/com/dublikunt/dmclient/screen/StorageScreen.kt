@@ -50,9 +50,10 @@ import com.dublikunt.dmclient.component.scrollbar.scrollbarState
 import com.dublikunt.dmclient.component.settings.SettingsButton
 import com.dublikunt.dmclient.component.settings.SettingsButtonType
 import com.dublikunt.dmclient.database.download.DownloadedGallery
+import com.dublikunt.dmclient.database.download.DownloadedGalleryDao
 import com.dublikunt.dmclient.database.history.GalleryHistoryDao
-import com.dublikunt.dmclient.repository.DownloadRepository
-import com.dublikunt.dmclient.repository.PreferenceRepository
+import com.dublikunt.dmclient.download.DownloadController
+import com.dublikunt.dmclient.prefs.PreferenceRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -67,7 +68,8 @@ import javax.inject.Inject
 @HiltViewModel
 class StorageViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
-    private val downloadRepository: DownloadRepository,
+    private val downloadController: DownloadController,
+    private val downloadedGalleryDao: DownloadedGalleryDao,
     private val preferenceRepository: PreferenceRepository,
     private val galleryHistoryDao: GalleryHistoryDao,
 ) : ViewModel() {
@@ -80,7 +82,7 @@ class StorageViewModel @Inject constructor(
     private val _maxCacheSize = MutableStateFlow(1024L * 1024 * 1024)
     val maxCacheSize: StateFlow<Long> = _maxCacheSize.asStateFlow()
 
-    val downloadedGalleries = downloadRepository.getAll()
+    val downloadedGalleries = downloadedGalleryDao.getAll()
 
     init {
         refreshStats()
@@ -119,15 +121,13 @@ class StorageViewModel @Inject constructor(
 
     fun clearAllDownloads() {
         viewModelScope.launch(Dispatchers.IO) {
-            downloadRepository.deleteAll()
-            File(context.filesDir, "galleries").deleteRecursively()
+            downloadController.deleteAllDownloads()
         }
     }
 
     fun deleteDownloadedGallery(gallery: DownloadedGallery) {
         viewModelScope.launch(Dispatchers.IO) {
-            downloadRepository.delete(gallery)
-            File(gallery.coverPath).parentFile?.deleteRecursively()
+            downloadController.delete(gallery.id)
         }
     }
 

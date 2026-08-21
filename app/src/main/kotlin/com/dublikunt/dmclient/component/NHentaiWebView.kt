@@ -1,4 +1,4 @@
-package com.dublikunt.dmclient.scrapper
+package com.dublikunt.dmclient.component
 
 import android.annotation.SuppressLint
 import android.webkit.CookieManager
@@ -7,8 +7,9 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.viewinterop.AndroidView
-
-private const val CLEARANCE_COOKIE = "cf_clearance"
+import com.dublikunt.dmclient.auth.SessionCookies
+import com.dublikunt.dmclient.auth.hasClearance
+import com.dublikunt.dmclient.scrapper.NHentaiApi
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -46,8 +47,7 @@ fun NHentaiWebView(onCookiesReceived: (List<Pair<String, String>>) -> Unit) {
 
             fun checkAndSend() {
                 val cookies = readCookies()
-                val hasClearance = cookies.any { it.first == CLEARANCE_COOKIE }
-                if (!hasClearance || cookies == lastSent) return
+                if (!hasClearance(cookies) || cookies == lastSent) return
                 lastSent = cookies
                 onCookiesReceived(cookies)
             }
@@ -63,7 +63,11 @@ fun NHentaiWebView(onCookiesReceived: (List<Pair<String, String>>) -> Unit) {
                 }
             }
 
-            listOf(CLEARANCE_COOKIE, "csrftoken", "session-affinity").forEach { name ->
+            listOf(
+                SessionCookies.CLEARANCE,
+                SessionCookies.CSRF_TOKEN,
+                SessionCookies.SESSION_AFFINITY
+            ).forEach { name ->
                 cookieManager.setCookie(NHentaiApi.BASE_URL, "$name=; Max-Age=0; Path=/")
             }
             cookieManager.flush()

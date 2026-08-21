@@ -14,6 +14,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import com.dublikunt.dmclient.R
+import com.dublikunt.dmclient.download.DownloadedGalleryStore
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import java.io.BufferedInputStream
@@ -25,7 +26,8 @@ import java.util.zip.ZipOutputStream
 @HiltWorker
 class ArchiveWorker @AssistedInject constructor(
     @Assisted context: Context,
-    @Assisted workerParams: WorkerParameters
+    @Assisted workerParams: WorkerParameters,
+    private val store: DownloadedGalleryStore
 ) : CoroutineWorker(context, workerParams) {
 
     private val notificationManager =
@@ -40,7 +42,7 @@ class ArchiveWorker @AssistedInject constructor(
         setForeground(createForegroundInfo(notificationId, galleryName))
 
         val context = applicationContext
-        val galleryDir = File(context.filesDir, "galleries/$galleryId")
+        val galleryDir = store.galleryDir(galleryId)
 
         if (!galleryDir.exists()) {
             return Result.failure()

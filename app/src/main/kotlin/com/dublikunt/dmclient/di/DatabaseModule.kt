@@ -6,11 +6,13 @@ import com.dublikunt.dmclient.database.download.DownloadedGalleryDao
 import com.dublikunt.dmclient.database.history.GalleryHistoryDao
 import com.dublikunt.dmclient.database.search.SearchCacheDao
 import com.dublikunt.dmclient.database.status.GalleryStatusDao
+import com.dublikunt.dmclient.status.GalleryStatusBook
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineScope
 import javax.inject.Singleton
 
 @Module
@@ -34,4 +36,10 @@ object DatabaseModule {
 
     @Provides
     fun provideSearchCacheDao(db: AppDatabase): SearchCacheDao = db.searchCacheDao()
+
+    @Provides
+    fun provideGalleryStatusBook(
+        statusDao: GalleryStatusDao,
+        @ApplicationScope scope: CoroutineScope
+    ): GalleryStatusBook = GalleryStatusBook(statusDao, scope)
 }

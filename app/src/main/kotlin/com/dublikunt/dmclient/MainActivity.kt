@@ -64,7 +64,7 @@ import coil3.disk.directory
 import coil3.memory.MemoryCache
 import coil3.request.crossfade
 import com.dublikunt.dmclient.component.AppUpdateChecker
-import com.dublikunt.dmclient.repository.PreferenceRepository
+import com.dublikunt.dmclient.prefs.PreferenceRepository
 import com.dublikunt.dmclient.screen.DownloadScreen
 import com.dublikunt.dmclient.screen.GalleryScreen
 import com.dublikunt.dmclient.screen.HistoryScreen

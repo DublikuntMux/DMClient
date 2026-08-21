@@ -115,4 +115,9 @@ dependencies {
     implementation(libs.hilt.navigation.compose)
     implementation(libs.hilt.work)
     ksp(libs.hilt.work.compiler)
+
+    testImplementation(libs.junit4)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.json.jvm)
+    testImplementation(libs.androidx.paging.common)
 }

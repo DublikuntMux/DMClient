@@ -36,52 +36,46 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.cachedIn
 import androidx.paging.compose.collectAsLazyPagingItems
+import com.dublikunt.dmclient.auth.NhentaiSession
+import com.dublikunt.dmclient.auth.SessionStatus
 import com.dublikunt.dmclient.component.ErrorScreen
 import com.dublikunt.dmclient.component.GalleryCard
 import com.dublikunt.dmclient.component.GalleryGridSkeleton
 import com.dublikunt.dmclient.component.GalleryLoadingRowSkeleton
+import com.dublikunt.dmclient.component.NHentaiWebView
 import com.dublikunt.dmclient.component.scrollbar.DraggableScrollbar
 import com.dublikunt.dmclient.component.scrollbar.rememberDraggableScroller
 import com.dublikunt.dmclient.component.scrollbar.scrollbarState
 import com.dublikunt.dmclient.database.history.GalleryHistory
-import com.dublikunt.dmclient.database.status.GalleryStatusDao
-import com.dublikunt.dmclient.database.status.GalleryStatusWithCustomStatus
-import com.dublikunt.dmclient.paging.HomePagingSource
-import com.dublikunt.dmclient.repository.HistoryRepository
-import com.dublikunt.dmclient.repository.HomeRepository
-import com.dublikunt.dmclient.repository.PreferenceRepository
+import com.dublikunt.dmclient.database.history.GalleryHistoryDao
+import com.dublikunt.dmclient.paging.RemotePagingSource
+import com.dublikunt.dmclient.prefs.PreferenceRepository
 import com.dublikunt.dmclient.scrapper.ContentLanguage
 import com.dublikunt.dmclient.scrapper.GallerySimpleInfo
 import com.dublikunt.dmclient.scrapper.NHentaiApi
-import com.dublikunt.dmclient.scrapper.NHentaiWebView
+import com.dublikunt.dmclient.status.GalleryStatusBook
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionState
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-enum class FetchStatus {
-    Check, Fetched, NotFetched
-}
-
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val homeRepository: HomeRepository,
-    private val historyRepository: HistoryRepository,
-    private val preferenceRepository: PreferenceRepository,
     private val nHentaiApi: NHentaiApi,
-    private val galleryStatusDao: GalleryStatusDao,
+    private val galleryHistoryDao: GalleryHistoryDao,
+    private val preferenceRepository: PreferenceRepository,
+    private val session: NhentaiSession,
+    private val statusBook: GalleryStatusBook,
 ) : ViewModel() {
     private val _language = MutableStateFlow(ContentLanguage.All)
     private val _authGeneration = MutableStateFlow(0)
@@ -89,58 +83,38 @@ class HomeViewModel @Inject constructor(
     @OptIn(ExperimentalCoroutinesApi::class)
     val flow = combine(_language, _authGeneration) { lang, _ -> lang }.flatMapLatest { lang ->
         Pager(PagingConfig(pageSize = 25)) {
-            HomePagingSource(homeRepository, lang)
+            RemotePagingSource { page -> nHentaiApi.fetchMainPage(page, lang) }
         }.flow
     }.cachedIn(viewModelScope)
 
-    private val _tokenFetched = MutableStateFlow(FetchStatus.Check)
-    val tokenFetched: StateFlow<FetchStatus> = _tokenFetched.asStateFlow()
+    val sessionStatus: StateFlow<SessionStatus> = session.status
 
-    private val _statusMap = MutableStateFlow<Map<Int, GalleryStatusWithCustomStatus?>>(emptyMap())
-    val statusMap: StateFlow<Map<Int, GalleryStatusWithCustomStatus?>> = _statusMap.asStateFlow()
-
-    private val loadedStatusIds = mutableSetOf<Int>()
+    val statusMap get() = statusBook.statuses
 
     init {
         viewModelScope.launch {
             val lang = preferenceRepository.preferredLanguage.first()
             _language.value = ContentLanguage.fromString(lang ?: "all")
-            val cookies = listOfNotNull(
-                preferenceRepository.sessionAffinity.first()?.let { "session-affinity" to it },
-                preferenceRepository.csrfToken.first()?.let { "csrftoken" to it },
-                preferenceRepository.cfClearance.first()?.let { "cf_clearance" to it }
-            )
-            if (cookies.isNotEmpty()) {
-                nHentaiApi.setCookies(cookies)
-                _tokenFetched.value = FetchStatus.Fetched
-            } else {
-                _tokenFetched.value = FetchStatus.NotFetched
-            }
         }
         viewModelScope.launch {
-            nHentaiApi.authRequired.collect {
-                if (_tokenFetched.value != FetchStatus.Fetched) return@collect
-                preferenceRepository.deleteTokens()
-                nHentaiApi.clearCookies()
-                _tokenFetched.value = FetchStatus.NotFetched
-                _authGeneration.value++
+            var wasActive = false
+            session.status.collect { status ->
+                if (status == SessionStatus.Active) {
+                    wasActive = true
+                } else if (status == SessionStatus.NeedsChallenge && wasActive) {
+                    wasActive = false
+                    statusBook.reset()
+                    _authGeneration.value++
+                }
             }
         }
     }
 
-    fun loadStatuses(ids: List<Int>) {
-        val newIds = ids.filter { it !in loadedStatusIds }
-        if (newIds.isEmpty()) return
-        loadedStatusIds.addAll(newIds)
-        viewModelScope.launch(Dispatchers.IO) {
-            val statuses = galleryStatusDao.getStatuses(newIds)
-            _statusMap.value += statuses.associateBy { it.galleryStatus.id }
-        }
-    }
+    fun loadStatuses(ids: List<Int>) = statusBook.load(ids)
 
     fun addGalleryToHistory(gallery: GallerySimpleInfo) {
         viewModelScope.launch {
-            historyRepository.insertHistory(
+            galleryHistoryDao.insertHistory(
                 GalleryHistory(
                     gallery.id,
                     gallery.thumb,
@@ -150,12 +124,8 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun saveTokensAndFetch(cookies: List<Pair<String, String>>) {
-        viewModelScope.launch {
-            preferenceRepository.saveTokens(cookies)
-            nHentaiApi.setCookies(cookies)
-            _tokenFetched.value = FetchStatus.Fetched
-        }
+    fun onCookiesReceived(cookies: List<Pair<String, String>>) {
+        viewModelScope.launch { session.adopt(cookies) }
     }
 }
 
@@ -165,7 +135,7 @@ fun HomeScreen(
     navController: NavHostController,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
-    val tokenFetched by viewModel.tokenFetched.collectAsState()
+    val sessionStatus by viewModel.sessionStatus.collectAsState()
 
     @Suppress("InlinedApi")
     val notificationPermissionState =
@@ -181,12 +151,12 @@ fun HomeScreen(
         }
         PermissionRequestScreen(notificationPermissionState, onSkip = { permissionSkipped = true })
     } else {
-        when (tokenFetched) {
-            FetchStatus.NotFetched -> {
-                NHentaiWebView { cookies -> viewModel.saveTokensAndFetch(cookies) }
+        when (sessionStatus) {
+            SessionStatus.NeedsChallenge -> {
+                NHentaiWebView { cookies -> viewModel.onCookiesReceived(cookies) }
             }
 
-            FetchStatus.Fetched -> {
+            SessionStatus.Active -> {
                 val items = viewModel.flow.collectAsLazyPagingItems()
 
                 LaunchedEffect(items.itemCount) {
@@ -216,9 +186,9 @@ fun HomeScreen(
                                     galleryItem?.let {
                                         GalleryCard(
                                             it, navController,
-                                            statusMap[it.id]?.status?.name,
-                                            statusMap[it.id]?.status?.color,
-                                            statusMap[it.id]?.galleryStatus?.favorite ?: false
+                                            statusMap[it.id]?.name,
+                                            statusMap[it.id]?.color,
+                                            statusMap[it.id]?.favorite ?: false
                                         ) { viewModel.addGalleryToHistory(it) }
                                     }
                                 }
@@ -255,7 +225,7 @@ fun HomeScreen(
                 }
             }
 
-            FetchStatus.Check -> GalleryGridSkeleton()
+            SessionStatus.Checking -> GalleryGridSkeleton()
         }
     }
 }

@@ -35,20 +35,16 @@ import com.dublikunt.dmclient.component.scrollbar.DraggableScrollbar
 import com.dublikunt.dmclient.component.scrollbar.rememberDraggableScroller
 import com.dublikunt.dmclient.component.scrollbar.scrollbarState
 import com.dublikunt.dmclient.database.history.GalleryHistory
-import com.dublikunt.dmclient.database.status.GalleryStatusDao
-import com.dublikunt.dmclient.database.status.GalleryStatusWithCustomStatus
-import com.dublikunt.dmclient.paging.SearchResultPagingSource
-import com.dublikunt.dmclient.repository.HistoryRepository
-import com.dublikunt.dmclient.repository.PreferenceRepository
-import com.dublikunt.dmclient.repository.SearchRepository
+import com.dublikunt.dmclient.database.history.GalleryHistoryDao
+import com.dublikunt.dmclient.paging.RemotePagingSource
+import com.dublikunt.dmclient.prefs.PreferenceRepository
 import com.dublikunt.dmclient.scrapper.ContentLanguage
 import com.dublikunt.dmclient.scrapper.GallerySimpleInfo
+import com.dublikunt.dmclient.scrapper.NHentaiApi
+import com.dublikunt.dmclient.status.GalleryStatusBook
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
@@ -59,10 +55,10 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SearchResultViewModel @Inject constructor(
-    private val searchRepository: SearchRepository,
+    private val nHentaiApi: NHentaiApi,
     private val preferenceRepository: PreferenceRepository,
-    private val galleryStatusDao: GalleryStatusDao,
-    private val historyRepository: HistoryRepository,
+    private val statusBook: GalleryStatusBook,
+    private val galleryHistoryDao: GalleryHistoryDao,
 ) : ViewModel() {
     private val _language = MutableStateFlow(ContentLanguage.All)
     private val _query = MutableStateFlow("")
@@ -72,14 +68,11 @@ class SearchResultViewModel @Inject constructor(
         if (q.isEmpty()) null else Pair(q, l)
     }.filterNotNull().distinctUntilChanged().flatMapLatest { (query, lang) ->
         Pager(PagingConfig(pageSize = 25)) {
-            SearchResultPagingSource(searchRepository, query, lang)
+            RemotePagingSource { page -> nHentaiApi.search(query, page, lang) }
         }.flow
     }.cachedIn(viewModelScope)
 
-    private val _statusMap = MutableStateFlow<Map<Int, GalleryStatusWithCustomStatus?>>(emptyMap())
-    val statusMap: StateFlow<Map<Int, GalleryStatusWithCustomStatus?>> = _statusMap.asStateFlow()
-
-    private val loadedStatusIds = mutableSetOf<Int>()
+    val statusMap get() = statusBook.statuses
 
     init {
         viewModelScope.launch {
@@ -90,25 +83,16 @@ class SearchResultViewModel @Inject constructor(
 
     fun setQuery(query: String) {
         if (_query.value != query) {
-            loadedStatusIds.clear()
-            _statusMap.value = emptyMap()
+            statusBook.reset()
             _query.value = query
         }
     }
 
-    fun loadStatuses(ids: List<Int>) {
-        val newIds = ids.filter { it !in loadedStatusIds }
-        if (newIds.isEmpty()) return
-        loadedStatusIds.addAll(newIds)
-        viewModelScope.launch(Dispatchers.IO) {
-            val statuses = galleryStatusDao.getStatuses(newIds)
-            _statusMap.value = _statusMap.value + statuses.associateBy { it.galleryStatus.id }
-        }
-    }
+    fun loadStatuses(ids: List<Int>) = statusBook.load(ids)
 
     fun addGalleryToHistory(gallery: GallerySimpleInfo) {
         viewModelScope.launch {
-            historyRepository.insertHistory(
+            galleryHistoryDao.insertHistory(
                 GalleryHistory(
                     gallery.id,
                     gallery.thumb,
@@ -164,9 +148,9 @@ fun SearchResultScreen(
                             galleryItem?.let {
                                 GalleryCard(
                                     it, navController,
-                                    statusMap[it.id]?.status?.name,
-                                    statusMap[it.id]?.status?.color,
-                                    statusMap[it.id]?.galleryStatus?.favorite ?: false
+                                    statusMap[it.id]?.name,
+                                    statusMap[it.id]?.color,
+                                    statusMap[it.id]?.favorite ?: false
                                 ) { viewModel.addGalleryToHistory(it) }
                             }
                         }

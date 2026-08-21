@@ -64,10 +64,10 @@ import com.dublikunt.dmclient.component.scrollbar.DraggableScrollbar
 import com.dublikunt.dmclient.component.scrollbar.rememberDraggableScroller
 import com.dublikunt.dmclient.component.scrollbar.scrollbarState
 import com.dublikunt.dmclient.database.history.GalleryHistory
+import com.dublikunt.dmclient.database.history.GalleryHistoryDao
 import com.dublikunt.dmclient.database.status.CustomStatus
 import com.dublikunt.dmclient.database.status.GalleryStatusDao
-import com.dublikunt.dmclient.database.status.GalleryStatusWithCustomStatus
-import com.dublikunt.dmclient.repository.HistoryRepository
+import com.dublikunt.dmclient.status.GalleryStatusBook
 import com.dublikunt.dmclient.scrapper.GallerySimpleInfo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -79,30 +79,30 @@ import javax.inject.Inject
 
 @HiltViewModel
 class StatusesViewModel @Inject constructor(
-    private val historyRepository: HistoryRepository,
+    private val galleryHistoryDao: GalleryHistoryDao,
     private val statusDao: GalleryStatusDao,
+    private val statusBook: GalleryStatusBook,
 ) : ViewModel() {
     private val _historyList = MutableStateFlow<List<GalleryHistory>>(emptyList())
     val historyList: StateFlow<List<GalleryHistory>> =
         _historyList.asStateFlow()
 
-    private val _statusMap = MutableStateFlow<Map<Int, GalleryStatusWithCustomStatus?>>(emptyMap())
-    val statusMap: StateFlow<Map<Int, GalleryStatusWithCustomStatus?>> = _statusMap.asStateFlow()
+    val statusMap get() = statusBook.statuses
 
     private val _customStatuses = MutableStateFlow<List<CustomStatus>>(emptyList())
     val customStatuses: StateFlow<List<CustomStatus>> = _customStatuses.asStateFlow()
 
     fun loadData() {
         viewModelScope.launch(Dispatchers.IO) {
-            _historyList.value = historyRepository.getAllHistory()
+            _historyList.value = galleryHistoryDao.getAllHistory()
             refreshStatuses()
         }
     }
 
     fun removeGalleryFromHistory(gallery: GalleryHistory) {
         viewModelScope.launch(Dispatchers.IO) {
-            historyRepository.deleteHistory(gallery)
-            _historyList.value = historyRepository.getAllHistory()
+            galleryHistoryDao.deleteHistory(gallery)
+            _historyList.value = galleryHistoryDao.getAllHistory()
             refreshStatuses()
         }
     }
@@ -130,12 +130,10 @@ class StatusesViewModel @Inject constructor(
     }
 
     private suspend fun refreshStatuses() {
-        val historyIds = historyRepository.getAllHistory().map { it.id }
-        val statuses = if (historyIds.isEmpty()) emptyList()
-        else statusDao.getStatuses(historyIds)
-        val allCustomStatuses = statusDao.getCustomStatuses()
-        _statusMap.value = statuses.associateBy { it.galleryStatus.id }
-        _customStatuses.value = allCustomStatuses
+        val historyIds = _historyList.value.map { it.id }
+        statusBook.reset()
+        if (historyIds.isNotEmpty()) statusBook.load(historyIds)
+        _customStatuses.value = statusDao.getCustomStatuses()
     }
 }
 
@@ -173,8 +171,8 @@ fun StatusesScreen(
                 ignoreCase = true
             )) && when (selectedStatusId) {
                 null -> true
-                FAVORITES_TAB_ID -> status.galleryStatus.favorite
-                else -> status.status?.id == selectedStatusId
+                FAVORITES_TAB_ID -> status.favorite
+                else -> status.statusId == selectedStatusId
             }
         }
     }
@@ -235,9 +233,9 @@ fun StatusesScreen(
                                 galleryHistory.name
                             ),
                             navController,
-                            statusMap[galleryHistory.id]?.status?.name,
-                            statusMap[galleryHistory.id]?.status?.color,
-                            statusMap[galleryHistory.id]?.galleryStatus?.favorite ?: false
+                            statusMap[galleryHistory.id]?.name,
+                            statusMap[galleryHistory.id]?.color,
+                            statusMap[galleryHistory.id]?.favorite ?: false
                         )
                         Column(
                             modifier = Modifier
