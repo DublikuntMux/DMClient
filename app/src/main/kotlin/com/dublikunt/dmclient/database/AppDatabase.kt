@@ -63,8 +63,6 @@ abstract class AppDatabase : RoomDatabase() {
 
         private fun createIndices(db: SupportSQLiteDatabase) {
             db.execSQL("CREATE INDEX IF NOT EXISTS index_gallery_history_timestamp ON gallery_history(timestamp DESC)")
-            db.execSQL("CREATE INDEX IF NOT EXISTS index_gallery_status_id ON gallery_status(id)")
-            db.execSQL("CREATE INDEX IF NOT EXISTS index_gallery_status_favorite ON gallery_status(favorite) WHERE favorite = 1")
             db.execSQL("CREATE INDEX IF NOT EXISTS index_downloaded_galleries_timestamp ON downloaded_galleries(timestamp DESC)")
         }
 
@@ -90,6 +88,8 @@ abstract class AppDatabase : RoomDatabase() {
 
         val MIGRATION_7_8 = object : Migration(7, 8) {
             override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP INDEX IF EXISTS index_gallery_status_id")
+                db.execSQL("DROP INDEX IF EXISTS index_gallery_status_favorite")
                 db.execSQL(
                     """
                     UPDATE downloaded_galleries
