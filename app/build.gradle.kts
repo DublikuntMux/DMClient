@@ -31,8 +31,8 @@ android {
         applicationId = "com.dublikunt.dmclient"
         minSdk = 28
         targetSdk = 37
-        versionCode = 11
-        versionName = "1.0.1"
+        versionCode = 12
+        versionName = "1.1.0"
         multiDexEnabled = true
     }
 
