@@ -64,6 +64,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.io.File
 import javax.inject.Inject
+import kotlin.math.roundToInt
 
 @HiltViewModel
 class StorageViewModel @Inject constructor(
@@ -79,7 +80,7 @@ class StorageViewModel @Inject constructor(
     private val _historyCount = MutableStateFlow(0)
     val historyCount: StateFlow<Int> = _historyCount.asStateFlow()
 
-    private val _maxCacheSize = MutableStateFlow(1024L * 1024 * 1024)
+    private val _maxCacheSize = MutableStateFlow(PreferenceRepository.DEFAULT_MAX_IMAGE_CACHE_SIZE)
     val maxCacheSize: StateFlow<Long> = _maxCacheSize.asStateFlow()
 
     val downloadedGalleries = downloadedGalleryDao.getAll()
@@ -87,8 +88,9 @@ class StorageViewModel @Inject constructor(
     init {
         refreshStats()
         viewModelScope.launch {
-            _maxCacheSize.value =
-                preferenceRepository.maxImageCacheSize.first() ?: (1024L * 1024 * 1024)
+            _maxCacheSize.value = PreferenceRepository.coerceImageCacheSize(
+                preferenceRepository.maxImageCacheSize.first()
+            )
         }
     }
 
@@ -186,27 +188,48 @@ fun StorageScreen(viewModel: StorageViewModel = hiltViewModel()) {
                 }
 
                 item {
+                    val cacheSizeOptions = PreferenceRepository.IMAGE_CACHE_SIZE_OPTIONS
+                    val currentIndex = cacheSizeOptions.indexOf(maxCacheSize)
+                        .takeIf { it >= 0 }
+                        ?: cacheSizeOptions.indices.minByOrNull {
+                            kotlin.math.abs(cacheSizeOptions[it] - maxCacheSize)
+                        } ?: 3
                     Column {
                         Text(
-                            "Maximum Cache Size: ${
-                                Formatter.formatFileSize(
-                                    context,
-                                    maxCacheSize
-                                )
-                            }"
+                            "Maximum Cache Size: ${formatCachePreset(maxCacheSize)}"
                         )
-                        var sliderValue by remember(maxCacheSize) {
-                            mutableFloatStateOf(maxCacheSize.toFloat())
+                        var sliderIndex by remember(maxCacheSize) {
+                            mutableFloatStateOf(currentIndex.toFloat())
                         }
-                        Slider(
-                            value = sliderValue,
-                            onValueChange = { sliderValue = it },
-                            onValueChangeFinished = {
-                                viewModel.setMaxCacheSize(sliderValue.toLong())
-                            },
-                            valueRange = (100f * 1024 * 1024)..(5f * 1024 * 1024 * 1024),
-                            steps = 49
+                        val selectedSize =
+                            cacheSizeOptions[sliderIndex.roundToInt().coerceIn(cacheSizeOptions.indices)]
+                        Text(
+                            "Selected: ${formatCachePreset(selectedSize)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        Slider(
+                            value = sliderIndex,
+                            onValueChange = { sliderIndex = it },
+                            onValueChangeFinished = {
+                                viewModel.setMaxCacheSize(selectedSize)
+                            },
+                            valueRange = 0f..(cacheSizeOptions.size - 1).toFloat(),
+                            steps = cacheSizeOptions.size - 2
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                formatCachePreset(cacheSizeOptions.first()),
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                            Text(
+                                formatCachePreset(cacheSizeOptions.last()),
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
                     }
                     SettingsButton(
                         "Image Cache",
@@ -310,9 +333,19 @@ fun StorageScreen(viewModel: StorageViewModel = hiltViewModel()) {
     )
 }
 
+private fun formatCachePreset(sizeBytes: Long): String {
+    val gb = 1024L * 1024 * 1024
+    val mb = 1024L * 1024
+    return when {
+        sizeBytes >= gb && sizeBytes % gb == 0L -> "${sizeBytes / gb} GB"
+        sizeBytes >= gb -> String.format(java.util.Locale.US, "%.1f GB", sizeBytes.toDouble() / gb)
+        sizeBytes % mb == 0L -> "${sizeBytes / mb} MB"
+        else -> "${sizeBytes / mb} MB"
+    }
+}
+
 @Composable
-fun StorageInfoRow(label: String, value: String) {
-    Row(
+fun StorageInfoRow(label: String, value: String) {    Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
