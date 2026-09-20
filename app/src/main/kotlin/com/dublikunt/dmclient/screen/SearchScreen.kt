@@ -56,6 +56,8 @@ import com.dublikunt.dmclient.component.scrollbar.DraggableScrollbar
 import com.dublikunt.dmclient.component.scrollbar.rememberDraggableScroller
 import com.dublikunt.dmclient.component.scrollbar.scrollbarState
 import com.dublikunt.dmclient.database.search.SearchCacheDao
+import com.dublikunt.dmclient.search.SearchBundleImporter
+import com.dublikunt.dmclient.search.SearchDataBundle
 import com.dublikunt.dmclient.work.SearchCacheWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -101,26 +103,94 @@ class SearchViewModel @Inject constructor(
         viewModelScope.launch {
             _cacheStatus.value = CacheStatus.Loading
 
-            val cachedTags = searchCacheDao.getByType("tags")
-            val cachedArtists = searchCacheDao.getByType("artists")
-            val cachedCharacters = searchCacheDao.getByType("characters")
-            val cachedParodies = searchCacheDao.getByType("parodies")
+            if (reloadFromDatabase()) return@launch
 
-            cachedTags?.let { _tags.value = it.names }
-            cachedArtists?.let { _artists.value = it.names }
-            cachedCharacters?.let { _characters.value = it.names }
-            cachedParodies?.let { _parodies.value = it.names }
+            // Prefer a prebuilt snapshot (produced by :search-export) over a
+            // per-device network crawl: downloaded file first, bundled asset second.
+            if (seedFromDownloadedBundle(filesDir)) return@launch
+            if (seedFromBundledAsset()) return@launch
 
-            val allCached = cachedTags != null && cachedArtists != null &&
-                    cachedCharacters != null && cachedParodies != null
-
-            if (allCached) {
-                _cacheStatus.value = CacheStatus.Ready
-            } else {
-                enqueueCacheWorker(filesDir)
-            }
+            enqueueCacheWorker(filesDir)
         }
     }
+
+    suspend fun importBundleStream(stream: java.io.InputStream): SearchDataBundle? =
+        withContext(Dispatchers.IO) {
+            try {
+                val bundle = SearchBundleImporter.seedFromStream(searchCacheDao, stream)
+                _tags.value = bundle.tags
+                _artists.value = bundle.artists
+                _characters.value = bundle.characters
+                _parodies.value = bundle.parodies
+                _cacheStatus.value = CacheStatus.Ready
+                bundle
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _cacheStatus.value = CacheStatus.Error
+                null
+            }
+        }
+
+    private suspend fun reloadFromDatabase(): Boolean {
+        val cachedTags = searchCacheDao.getByType("tags")
+        val cachedArtists = searchCacheDao.getByType("artists")
+        val cachedCharacters = searchCacheDao.getByType("characters")
+        val cachedParodies = searchCacheDao.getByType("parodies")
+
+        cachedTags?.let { _tags.value = it.names }
+        cachedArtists?.let { _artists.value = it.names }
+        cachedCharacters?.let { _characters.value = it.names }
+        cachedParodies?.let { _parodies.value = it.names }
+
+        val allCached = cachedTags != null && cachedArtists != null &&
+                cachedCharacters != null && cachedParodies != null
+
+        if (allCached) {
+            _cacheStatus.value = CacheStatus.Ready
+        }
+        return allCached
+    }
+
+    private suspend fun seedFromDownloadedBundle(filesDir: File): Boolean =
+        withContext(Dispatchers.IO) {
+            val file = File(filesDir, SearchDataBundle.DOWNLOADED_FILE_NAME)
+            if (!file.isFile) return@withContext false
+            try {
+                val bundle = SearchBundleImporter.seedFromFile(searchCacheDao, file)
+                _tags.value = bundle.tags
+                _artists.value = bundle.artists
+                _characters.value = bundle.characters
+                _parodies.value = bundle.parodies
+                _cacheStatus.value = CacheStatus.Ready
+                true
+            } catch (e: Exception) {
+                e.printStackTrace()
+                false
+            }
+        }
+
+    private suspend fun seedFromBundledAsset(): Boolean =
+        withContext(Dispatchers.IO) {
+            try {
+                context.assets.open(SearchDataBundle.BUNDLED_ASSET_NAME).use { stream ->
+                    val bundle = SearchBundleImporter.seedFromStream(searchCacheDao, stream)
+                    _tags.value = bundle.tags
+                    _artists.value = bundle.artists
+                    _characters.value = bundle.characters
+                    _parodies.value = bundle.parodies
+                    _cacheStatus.value = CacheStatus.Ready
+                    true
+                }
+            } catch (_: java.io.FileNotFoundException) {
+                false
+            } catch (_: java.io.IOException) {
+                // Asset not bundled — fall back to the network worker.
+                false
+            } catch (e: Exception) {
+                e.printStackTrace()
+                false
+            }
+        }
 
     private fun enqueueCacheWorker(filesDir: File) {
         _cacheStatus.value = CacheStatus.Fetching
@@ -148,17 +218,7 @@ class SearchViewModel @Inject constructor(
     }
 
     private suspend fun reloadFromDatabase(filesDir: File) {
-        val cachedTags = searchCacheDao.getByType("tags")
-        val cachedArtists = searchCacheDao.getByType("artists")
-        val cachedCharacters = searchCacheDao.getByType("characters")
-        val cachedParodies = searchCacheDao.getByType("parodies")
-
-        cachedTags?.let { _tags.value = it.names }
-        cachedArtists?.let { _artists.value = it.names }
-        cachedCharacters?.let { _characters.value = it.names }
-        cachedParodies?.let { _parodies.value = it.names }
-
-        _cacheStatus.value = CacheStatus.Ready
+        reloadFromDatabase()
 
         withContext(Dispatchers.IO) {
             listOf("artists.json", "characters.json", "tags.json", "parodies.json")

@@ -57,6 +57,8 @@ import com.dublikunt.dmclient.database.status.CustomStatus
 import com.dublikunt.dmclient.database.status.GalleryStatus
 import com.dublikunt.dmclient.database.status.GalleryStatusDao
 import com.dublikunt.dmclient.prefs.PreferenceRepository
+import com.dublikunt.dmclient.search.SearchBundleImporter
+import com.dublikunt.dmclient.search.SearchDataBundle
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -91,9 +93,19 @@ class SettingsViewModel @Inject constructor(
 
     fun clearSearchCache(filesDir: File) = viewModelScope.launch(Dispatchers.IO) {
         searchCacheDao.deleteAll()
-        listOf("artists.json", "characters.json", "tags.json", "parodies.json")
-            .forEach { name -> File(filesDir, name).delete() }
+        listOf(
+            "artists.json",
+            "characters.json",
+            "tags.json",
+            "parodies.json",
+            SearchDataBundle.DOWNLOADED_FILE_NAME
+        ).forEach { name -> File(filesDir, name).delete() }
     }
+
+    suspend fun importSearchBundle(stream: java.io.InputStream): SearchDataBundle =
+        withContext(Dispatchers.IO) {
+            SearchBundleImporter.seedFromStream(searchCacheDao, stream)
+        }
 
     suspend fun exportData(): BackupData = withContext(Dispatchers.IO) {
         val history = galleryHistoryDao.getAllHistory()
@@ -153,6 +165,25 @@ fun SettingsScreen(
                         val backup = Json.decodeFromString<BackupData>(jsonStr)
                         viewModel.importData(backup)
                         showSnackbarMessage = "Import successful"
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        showSnackbarMessage = "Import failed: ${e.message}"
+                    }
+                }
+            }
+        }
+
+    val searchBundleLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            uri?.let {
+                scope.launch(Dispatchers.IO) {
+                    try {
+                        context.contentResolver.openInputStream(it)?.use { input ->
+                            val bundle = viewModel.importSearchBundle(input)
+                            val total = bundle.tags.size + bundle.artists.size +
+                                    bundle.characters.size + bundle.parodies.size
+                            showSnackbarMessage = "Search data imported ($total entries)"
+                        } ?: run { showSnackbarMessage = "Import failed: empty file" }
                     } catch (e: Exception) {
                         e.printStackTrace()
                         showSnackbarMessage = "Import failed: ${e.message}"
@@ -226,6 +257,12 @@ fun SettingsScreen(
                         Icons.Filled.Download,
                         SettingsButtonType.FilledTonal
                     ) { importLauncher.launch(arrayOf("application/json")) }
+                    SettingsButton(
+                        "Import Search Data",
+                        "Import",
+                        Icons.Filled.Download,
+                        SettingsButtonType.FilledTonal
+                    ) { searchBundleLauncher.launch(arrayOf("application/json")) }
 
                     Spacer(Modifier.height(16.dp))
                     SettingsSectionHeader("Danger Zone")

@@ -24,4 +24,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "DMClient"
 include(":app")
- 
+include(":search-export")

@@ -202,7 +202,8 @@ fun StorageScreen(viewModel: StorageViewModel = hiltViewModel()) {
                             mutableFloatStateOf(currentIndex.toFloat())
                         }
                         val selectedSize =
-                            cacheSizeOptions[sliderIndex.roundToInt().coerceIn(cacheSizeOptions.indices)]
+                            cacheSizeOptions[sliderIndex.roundToInt()
+                                .coerceIn(cacheSizeOptions.indices)]
                         Text(
                             "Selected: ${formatCachePreset(selectedSize)}",
                             style = MaterialTheme.typography.bodySmall,
@@ -345,7 +346,8 @@ private fun formatCachePreset(sizeBytes: Long): String {
 }
 
 @Composable
-fun StorageInfoRow(label: String, value: String) {    Row(
+fun StorageInfoRow(label: String, value: String) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
