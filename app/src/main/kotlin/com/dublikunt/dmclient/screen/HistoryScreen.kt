@@ -37,8 +37,8 @@ import com.dublikunt.dmclient.component.scrollbar.rememberDraggableScroller
 import com.dublikunt.dmclient.component.scrollbar.scrollbarState
 import com.dublikunt.dmclient.database.history.GalleryHistory
 import com.dublikunt.dmclient.database.history.GalleryHistoryDao
-import com.dublikunt.dmclient.status.GalleryStatusBook
 import com.dublikunt.dmclient.scrapper.GallerySimpleInfo
+import com.dublikunt.dmclient.status.GalleryStatusBook
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

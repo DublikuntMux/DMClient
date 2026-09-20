@@ -92,7 +92,10 @@ fun DownloadScreen(
                                 GalleryCard(
                                     GallerySimpleInfo(
                                         it.id,
-                                        GalleryContentLocator.resolveCover(context.filesDir, it.coverPath),
+                                        GalleryContentLocator.resolveCover(
+                                            context.filesDir,
+                                            it.coverPath
+                                        ),
                                         it.title
                                     ),
                                     navController, null, null, false

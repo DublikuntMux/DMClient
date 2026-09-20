@@ -34,7 +34,12 @@ object GalleryContentLocator {
     fun coverFile(root: File, galleryId: Int, thumbUrl: String): File =
         File(galleryDir(root, galleryId), coverFileName(thumbUrl))
 
-    fun localPageAbsolutePath(root: File, galleryId: Int, page: Int, images: List<ImageType>): String =
+    fun localPageAbsolutePath(
+        root: File,
+        galleryId: Int,
+        page: Int,
+        images: List<ImageType>
+    ): String =
         pageFile(root, galleryId, page, images).absolutePath
 
     fun resolveCover(root: File, storedRelativePath: String): String =

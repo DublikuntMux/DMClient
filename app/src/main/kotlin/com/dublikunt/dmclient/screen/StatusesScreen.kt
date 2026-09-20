@@ -67,8 +67,8 @@ import com.dublikunt.dmclient.database.history.GalleryHistory
 import com.dublikunt.dmclient.database.history.GalleryHistoryDao
 import com.dublikunt.dmclient.database.status.CustomStatus
 import com.dublikunt.dmclient.database.status.GalleryStatusDao
-import com.dublikunt.dmclient.status.GalleryStatusBook
 import com.dublikunt.dmclient.scrapper.GallerySimpleInfo
+import com.dublikunt.dmclient.status.GalleryStatusBook
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow

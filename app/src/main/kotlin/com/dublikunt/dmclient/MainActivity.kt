@@ -107,8 +107,8 @@ class MainActivity : FragmentActivity() {
                 if (isUnlocked) {
                     val context = this@MainActivity
                     val cacheSize by preferenceRepository.maxImageCacheSize
-                        .collectAsState(initial = 1024L * 1024 * 1024)
-                    val maxCacheSize = cacheSize ?: (1024L * 1024 * 1024)
+                        .collectAsState(initial = PreferenceRepository.DEFAULT_MAX_IMAGE_CACHE_SIZE)
+                    val maxCacheSize = PreferenceRepository.coerceImageCacheSize(cacheSize)
 
                     val imageLoaderFactory = remember(maxCacheSize) {
                         { ctx: Context ->

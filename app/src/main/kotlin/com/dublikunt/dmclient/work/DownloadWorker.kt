@@ -13,8 +13,8 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.dublikunt.dmclient.R
 import com.dublikunt.dmclient.database.download.DownloadedGallery
-import com.dublikunt.dmclient.download.DownloadedGalleryStore
 import com.dublikunt.dmclient.download.DownloadPayload
+import com.dublikunt.dmclient.download.DownloadedGalleryStore
 import com.dublikunt.dmclient.download.GalleryContentLocator
 import com.dublikunt.dmclient.scrapper.NHentaiApi
 import dagger.assisted.Assisted

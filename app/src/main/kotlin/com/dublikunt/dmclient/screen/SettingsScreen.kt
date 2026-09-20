@@ -44,7 +44,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
-import com.dublikunt.dmclient.auth.NhentaiSession
 import com.dublikunt.dmclient.component.scrollbar.DraggableScrollbar
 import com.dublikunt.dmclient.component.scrollbar.rememberDraggableScroller
 import com.dublikunt.dmclient.component.scrollbar.scrollbarState
@@ -81,15 +80,12 @@ class SettingsViewModel @Inject constructor(
     private val galleryHistoryDao: GalleryHistoryDao,
     private val galleryStatusDao: GalleryStatusDao,
     private val searchCacheDao: SearchCacheDao,
-    private val session: NhentaiSession,
 ) : ViewModel() {
     suspend fun getPreferredLanguage(): String =
         preferenceRepository.preferredLanguage.first() ?: "all"
 
     fun savePreferredLanguage(language: String) =
         viewModelScope.launch { preferenceRepository.savePreferredLanguage(language) }
-
-    fun deleteTokens() = viewModelScope.launch { session.wipe() }
 
     fun savePinCode(pin: String) = viewModelScope.launch { preferenceRepository.savePinCode(pin) }
 
@@ -123,7 +119,6 @@ fun SettingsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     var selectedLanguage by remember { mutableStateOf("all") }
-    var showDeleteTokenDialog by remember { mutableStateOf(false) }
     var showClearSearchCacheDialog by remember { mutableStateOf(false) }
     var showPinDialog by remember { mutableStateOf(false) }
     var showSnackbarMessage by remember { mutableStateOf<String?>(null) }
@@ -235,13 +230,6 @@ fun SettingsScreen(
                     Spacer(Modifier.height(16.dp))
                     SettingsSectionHeader("Danger Zone")
                     SettingsButton(
-                        "Delete Token",
-                        "Delete",
-                        Icons.Filled.Delete,
-                        SettingsButtonType.Text,
-                        isDestructive = true
-                    ) { showDeleteTokenDialog = true }
-                    SettingsButton(
                         "Clear Search Cache",
                         "Delete",
                         Icons.Filled.Delete,
@@ -261,32 +249,6 @@ fun SettingsScreen(
                 onThumbMoved = scrollState.rememberDraggableScroller(itemsAvailable = 1)
             )
         }
-    }
-
-    if (showDeleteTokenDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteTokenDialog = false },
-            title = { Text("Confirm Delete") },
-            text = { Text("Are you sure you want to delete token? This action cannot be undone.") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showDeleteTokenDialog = false
-                        viewModel.deleteTokens()
-                        showSnackbarMessage = "Token deleted successfully."
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error,
-                        contentColor = MaterialTheme.colorScheme.onError
-                    )
-                ) { Text("Confirm") }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    showDeleteTokenDialog = false
-                }) { Text("Cancel") }
-            }
-        )
     }
 
     if (showClearSearchCacheDialog) {

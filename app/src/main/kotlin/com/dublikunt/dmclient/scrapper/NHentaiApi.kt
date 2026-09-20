@@ -2,8 +2,6 @@ package com.dublikunt.dmclient.scrapper
 
 import android.net.Uri
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -19,11 +17,8 @@ class NHentaiApi @Inject constructor(
     companion object {
         const val BASE_URL = "https://nhentai.net"
         const val USER_AGENT =
-            "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Mobile Safari/537.36"
+            "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Mobile Safari/537.36"
     }
-
-    private val _authRequired = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
-    val authRequired: SharedFlow<Unit> = _authRequired
 
     suspend fun fetchMainPage(
         page: Int? = null,
@@ -90,11 +85,6 @@ class NHentaiApi @Inject constructor(
         response: Response,
         onSuccess: (Response) -> T
     ): AttemptResult<T?> = when {
-        response.code == 403 -> {
-            _authRequired.tryEmit(Unit)
-            AttemptResult.Done(null)
-        }
-
         response.code == 429 || response.code in 500..599 -> AttemptResult.Retry
         !response.isSuccessful -> AttemptResult.Done(null)
         else -> AttemptResult.Done(onSuccess(response))

@@ -36,13 +36,10 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.cachedIn
 import androidx.paging.compose.collectAsLazyPagingItems
-import com.dublikunt.dmclient.auth.NhentaiSession
-import com.dublikunt.dmclient.auth.SessionStatus
 import com.dublikunt.dmclient.component.ErrorScreen
 import com.dublikunt.dmclient.component.GalleryCard
 import com.dublikunt.dmclient.component.GalleryGridSkeleton
 import com.dublikunt.dmclient.component.GalleryLoadingRowSkeleton
-import com.dublikunt.dmclient.component.NHentaiWebView
 import com.dublikunt.dmclient.component.scrollbar.DraggableScrollbar
 import com.dublikunt.dmclient.component.scrollbar.rememberDraggableScroller
 import com.dublikunt.dmclient.component.scrollbar.scrollbarState
@@ -62,8 +59,6 @@ import com.google.accompanist.permissions.shouldShowRationale
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
@@ -74,20 +69,16 @@ class HomeViewModel @Inject constructor(
     private val nHentaiApi: NHentaiApi,
     private val galleryHistoryDao: GalleryHistoryDao,
     private val preferenceRepository: PreferenceRepository,
-    private val session: NhentaiSession,
     private val statusBook: GalleryStatusBook,
 ) : ViewModel() {
     private val _language = MutableStateFlow(ContentLanguage.All)
-    private val _authGeneration = MutableStateFlow(0)
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val flow = combine(_language, _authGeneration) { lang, _ -> lang }.flatMapLatest { lang ->
+    val flow = _language.flatMapLatest { lang ->
         Pager(PagingConfig(pageSize = 25)) {
             RemotePagingSource { page -> nHentaiApi.fetchMainPage(page, lang) }
         }.flow
     }.cachedIn(viewModelScope)
-
-    val sessionStatus: StateFlow<SessionStatus> = session.status
 
     val statusMap get() = statusBook.statuses
 
@@ -95,18 +86,6 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             val lang = preferenceRepository.preferredLanguage.first()
             _language.value = ContentLanguage.fromString(lang ?: "all")
-        }
-        viewModelScope.launch {
-            var wasActive = false
-            session.status.collect { status ->
-                if (status == SessionStatus.Active) {
-                    wasActive = true
-                } else if (status == SessionStatus.NeedsChallenge && wasActive) {
-                    wasActive = false
-                    statusBook.reset()
-                    _authGeneration.value++
-                }
-            }
         }
     }
 
@@ -123,10 +102,6 @@ class HomeViewModel @Inject constructor(
             )
         }
     }
-
-    fun onCookiesReceived(cookies: List<Pair<String, String>>) {
-        viewModelScope.launch { session.adopt(cookies) }
-    }
 }
 
 @OptIn(ExperimentalPermissionsApi::class)
@@ -135,8 +110,6 @@ fun HomeScreen(
     navController: NavHostController,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
-    val sessionStatus by viewModel.sessionStatus.collectAsState()
-
     @Suppress("InlinedApi")
     val notificationPermissionState =
         rememberPermissionState("android.permission.POST_NOTIFICATIONS")
@@ -151,81 +124,71 @@ fun HomeScreen(
         }
         PermissionRequestScreen(notificationPermissionState, onSkip = { permissionSkipped = true })
     } else {
-        when (sessionStatus) {
-            SessionStatus.NeedsChallenge -> {
-                NHentaiWebView { cookies -> viewModel.onCookiesReceived(cookies) }
+        val items = viewModel.flow.collectAsLazyPagingItems()
+
+        LaunchedEffect(items.itemCount) {
+            val ids = items.itemSnapshotList.items.map { it.id }
+            if (ids.isNotEmpty()) viewModel.loadStatuses(ids)
+        }
+
+        val statusMap by viewModel.statusMap.collectAsState()
+
+        when (val refresh = items.loadState.refresh) {
+            is LoadState.Loading -> GalleryGridSkeleton()
+            is LoadState.Error -> ErrorScreen("Failed to load data. Please try again.") {
+                items.retry()
             }
 
-            SessionStatus.Active -> {
-                val items = viewModel.flow.collectAsLazyPagingItems()
-
-                LaunchedEffect(items.itemCount) {
-                    val ids = items.itemSnapshotList.items.map { it.id }
-                    if (ids.isNotEmpty()) viewModel.loadStatuses(ids)
-                }
-
-                val statusMap by viewModel.statusMap.collectAsState()
-
-                when (val refresh = items.loadState.refresh) {
-                    is LoadState.Loading -> GalleryGridSkeleton()
-                    is LoadState.Error -> ErrorScreen("Failed to load data. Please try again.") {
-                        items.retry()
-                    }
-
-                    else -> {
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            LazyVerticalGrid(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(16.dp),
-                                columns = GridCells.Adaptive(minSize = 128.dp),
-                                state = scrollState
-                            ) {
-                                items(count = items.itemCount) { index ->
-                                    val galleryItem = items[index]
-                                    galleryItem?.let {
-                                        GalleryCard(
-                                            it, navController,
-                                            statusMap[it.id]?.name,
-                                            statusMap[it.id]?.color,
-                                            statusMap[it.id]?.favorite ?: false
-                                        ) { viewModel.addGalleryToHistory(it) }
-                                    }
-                                }
-                                when (val state = items.loadState.append) {
-                                    is LoadState.Loading -> item {
-                                        GalleryLoadingRowSkeleton()
-                                    }
-
-                                    is LoadState.Error -> item {
-                                        Text(
-                                            "Failed to load data. Please try again.",
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(16.dp)
-                                        )
-                                    }
-
-                                    else -> {}
-                                }
+            else -> {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    LazyVerticalGrid(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        columns = GridCells.Adaptive(minSize = 128.dp),
+                        state = scrollState
+                    ) {
+                        items(count = items.itemCount) { index ->
+                            val galleryItem = items[index]
+                            galleryItem?.let {
+                                GalleryCard(
+                                    it, navController,
+                                    statusMap[it.id]?.name,
+                                    statusMap[it.id]?.color,
+                                    statusMap[it.id]?.favorite ?: false
+                                ) { viewModel.addGalleryToHistory(it) }
                             }
-                            scrollState.DraggableScrollbar(
-                                modifier = Modifier
-                                    .fillMaxHeight()
-                                    .padding(horizontal = 2.dp)
-                                    .align(Alignment.CenterEnd),
-                                state = scrollState.scrollbarState(itemsAvailable = items.itemCount),
-                                orientation = Orientation.Vertical,
-                                onThumbMoved = scrollState.rememberDraggableScroller(
-                                    itemsAvailable = items.itemCount
+                        }
+                        when (val state = items.loadState.append) {
+                            is LoadState.Loading -> item {
+                                GalleryLoadingRowSkeleton()
+                            }
+
+                            is LoadState.Error -> item {
+                                Text(
+                                    "Failed to load data. Please try again.",
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp)
                                 )
-                            )
+                            }
+
+                            else -> {}
                         }
                     }
+                    scrollState.DraggableScrollbar(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .padding(horizontal = 2.dp)
+                            .align(Alignment.CenterEnd),
+                        state = scrollState.scrollbarState(itemsAvailable = items.itemCount),
+                        orientation = Orientation.Vertical,
+                        onThumbMoved = scrollState.rememberDraggableScroller(
+                            itemsAvailable = items.itemCount
+                        )
+                    )
                 }
             }
-
-            SessionStatus.Checking -> GalleryGridSkeleton()
         }
     }
 }

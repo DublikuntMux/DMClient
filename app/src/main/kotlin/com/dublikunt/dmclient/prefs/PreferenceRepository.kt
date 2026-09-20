@@ -40,4 +40,26 @@ class PreferenceRepository @Inject constructor(
             prefs[MAX_IMAGE_CACHE_SIZE_KEY] = size.toString()
         }
     }
+
+    companion object {
+        private const val MB = 1024L * 1024
+        private const val GB = 1024L * MB
+
+        const val DEFAULT_MAX_IMAGE_CACHE_SIZE = GB
+
+        val IMAGE_CACHE_SIZE_OPTIONS = listOf(
+            128 * MB,
+            256 * MB,
+            512 * MB,
+            GB,
+            2 * GB,
+            4 * GB
+        )
+
+        fun coerceImageCacheSize(size: Long?): Long {
+            if (size == null) return DEFAULT_MAX_IMAGE_CACHE_SIZE
+            return IMAGE_CACHE_SIZE_OPTIONS.minByOrNull { kotlin.math.abs(it - size) }
+                ?: DEFAULT_MAX_IMAGE_CACHE_SIZE
+        }
+    }
 }
