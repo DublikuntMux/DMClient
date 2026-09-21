@@ -1,6 +1,7 @@
 package com.dublikunt.dmclient.searchexport
 
 import kotlinx.serialization.Serializable
+
 @Serializable
 data class SearchDataBundle(
     val version: Int = CURRENT_VERSION,

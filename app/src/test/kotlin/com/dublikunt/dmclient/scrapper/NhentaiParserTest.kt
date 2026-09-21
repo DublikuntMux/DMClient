@@ -41,7 +41,12 @@ class NhentaiParserTest {
         val inner = """{"result":[${galleryJson(id = 9)}],"num_pages":3}"""
         val html = sveltekitPage(
             "/api/v2/search?query=x",
-            """{"status":200,"statusText":"","headers":{},"body":"${inner.replace("\"", "\\\"")}"}"""
+            """{"status":200,"statusText":"","headers":{},"body":"${
+                inner.replace(
+                    "\"",
+                    "\\\""
+                )
+            }"}"""
         )
 
         val result = NhentaiParser.parseGalleryList(html)
@@ -54,7 +59,13 @@ class NhentaiParserTest {
     fun `title falls back to japanese then unknown`() {
         val html = sveltekitPage(
             "/api/v2/galleries",
-            "[${galleryJson(id = 3, english = "", japanese = "日本語")},${galleryJson(id = 4, english = "", japanese = "")}]"
+            "[${galleryJson(id = 3, english = "", japanese = "日本語")},${
+                galleryJson(
+                    id = 4,
+                    english = "",
+                    japanese = ""
+                )
+            }]"
         )
 
         val result = NhentaiParser.parseGalleryList(html)

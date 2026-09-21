@@ -44,11 +44,26 @@ class DownloadControllerTest {
     @Test
     fun `work state maps onto download phases`() {
         assertEquals(DownloadPhase.Idle, DownloadController.phaseFrom(null))
-        assertEquals(DownloadPhase.Running, DownloadController.phaseFrom(state(WorkInfo.State.ENQUEUED)))
-        assertEquals(DownloadPhase.Running, DownloadController.phaseFrom(state(WorkInfo.State.RUNNING)))
-        assertEquals(DownloadPhase.Succeeded, DownloadController.phaseFrom(state(WorkInfo.State.SUCCEEDED)))
-        assertEquals(DownloadPhase.Failed, DownloadController.phaseFrom(state(WorkInfo.State.FAILED)))
-        assertEquals(DownloadPhase.Failed, DownloadController.phaseFrom(state(WorkInfo.State.CANCELLED)))
+        assertEquals(
+            DownloadPhase.Running,
+            DownloadController.phaseFrom(state(WorkInfo.State.ENQUEUED))
+        )
+        assertEquals(
+            DownloadPhase.Running,
+            DownloadController.phaseFrom(state(WorkInfo.State.RUNNING))
+        )
+        assertEquals(
+            DownloadPhase.Succeeded,
+            DownloadController.phaseFrom(state(WorkInfo.State.SUCCEEDED))
+        )
+        assertEquals(
+            DownloadPhase.Failed,
+            DownloadController.phaseFrom(state(WorkInfo.State.FAILED))
+        )
+        assertEquals(
+            DownloadPhase.Failed,
+            DownloadController.phaseFrom(state(WorkInfo.State.CANCELLED))
+        )
     }
 
     private fun state(s: WorkInfo.State): WorkInfo =

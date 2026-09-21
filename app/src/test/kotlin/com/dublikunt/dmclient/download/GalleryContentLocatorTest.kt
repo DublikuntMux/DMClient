@@ -30,14 +30,20 @@ class GalleryContentLocatorTest {
 
     @Test
     fun `cover file name keeps the thumbnail extension`() {
-        assertEquals("cover.jpg", GalleryContentLocator.coverFileName("https://t.nhentai.net/galleries/1/cover.jpg"))
+        assertEquals(
+            "cover.jpg",
+            GalleryContentLocator.coverFileName("https://t.nhentai.net/galleries/1/cover.jpg")
+        )
         assertEquals("cover.png", GalleryContentLocator.coverFileName("galleries/2/cover.png"))
         assertEquals("cover.jpg", GalleryContentLocator.coverFileName("no-extension"))
     }
 
     @Test
     fun `relative cover path lives inside the gallery folder`() {
-        val path = GalleryContentLocator.relativeCoverPath(galleryId = 42, thumbUrl = "https://t.nhentai.net/galleries/999/cover.webp")
+        val path = GalleryContentLocator.relativeCoverPath(
+            galleryId = 42,
+            thumbUrl = "https://t.nhentai.net/galleries/999/cover.webp"
+        )
 
         assertEquals("galleries/42/cover.webp", path)
     }
@@ -46,8 +52,17 @@ class GalleryContentLocatorTest {
     fun `local paths resolve under a caller-provided root without Context`() {
         val dir = java.io.File("/tmp/filesdir")
 
-        val pagePath = GalleryContentLocator.localPageAbsolutePath(dir, galleryId = 42, page = 3, images = images)
-        val coverFile = GalleryContentLocator.coverFile(dir, galleryId = 42, thumbUrl = "https://t.nhentai.net/galleries/999/cover.jpg")
+        val pagePath = GalleryContentLocator.localPageAbsolutePath(
+            dir,
+            galleryId = 42,
+            page = 3,
+            images = images
+        )
+        val coverFile = GalleryContentLocator.coverFile(
+            dir,
+            galleryId = 42,
+            thumbUrl = "https://t.nhentai.net/galleries/999/cover.jpg"
+        )
         val galleryDir = GalleryContentLocator.galleryDir(dir, galleryId = 42)
 
         assertEquals("/tmp/filesdir/galleries/42/3.png", pagePath)

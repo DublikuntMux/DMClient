@@ -1,7 +1,6 @@
 package com.dublikunt.dmclient.searchexport
 
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
 import kotlin.system.exitProcess

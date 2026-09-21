@@ -19,7 +19,13 @@ class RemotePagingSourceTest {
         val result = RemotePagingSource<String> { page ->
             requested = page
             listOf("a", "b")
-        }.load(PagingSource.LoadParams.Refresh(key = null, loadSize = 25, placeholdersEnabled = false))
+        }.load(
+            PagingSource.LoadParams.Refresh(
+                key = null,
+                loadSize = 25,
+                placeholdersEnabled = false
+            )
+        )
 
         val page = result as PagingSource.LoadResult.Page
         assertEquals(1, requested)
@@ -31,7 +37,13 @@ class RemotePagingSourceTest {
     @Test
     fun `later pages link in both directions`() = runTest {
         val result = RemotePagingSource<Int> { page -> List(25) { page } }
-            .load(PagingSource.LoadParams.Refresh(key = 3, loadSize = 25, placeholdersEnabled = false))
+            .load(
+                PagingSource.LoadParams.Refresh(
+                    key = 3,
+                    loadSize = 25,
+                    placeholdersEnabled = false
+                )
+            )
 
         val page = result as PagingSource.LoadResult.Page
         assertEquals(2, page.prevKey)
@@ -41,7 +53,13 @@ class RemotePagingSourceTest {
     @Test
     fun `empty page ends the stream`() = runTest {
         val result = RemotePagingSource<Int> { emptyList() }
-            .load(PagingSource.LoadParams.Refresh(key = 5, loadSize = 25, placeholdersEnabled = false))
+            .load(
+                PagingSource.LoadParams.Refresh(
+                    key = 5,
+                    loadSize = 25,
+                    placeholdersEnabled = false
+                )
+            )
 
         val page = result as PagingSource.LoadResult.Page
         assertEquals(emptyList<Int>(), page.data)
@@ -52,7 +70,13 @@ class RemotePagingSourceTest {
     @Test
     fun `loader failure surfaces as LoadResult error`() = runTest {
         val result = RemotePagingSource<Int> { throw java.io.IOException("offline") }
-            .load(PagingSource.LoadParams.Refresh(key = null, loadSize = 25, placeholdersEnabled = false))
+            .load(
+                PagingSource.LoadParams.Refresh(
+                    key = null,
+                    loadSize = 25,
+                    placeholdersEnabled = false
+                )
+            )
 
         assertTrue(result is PagingSource.LoadResult.Error)
     }

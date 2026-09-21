@@ -1,5 +1,8 @@
 package com.dublikunt.dmclient.screen
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.gestures.Orientation
@@ -50,6 +53,7 @@ import com.dublikunt.dmclient.component.scrollbar.scrollbarState
 import com.dublikunt.dmclient.component.settings.SettingsButton
 import com.dublikunt.dmclient.component.settings.SettingsButtonType
 import com.dublikunt.dmclient.component.settings.SettingsDropdownButton
+import com.dublikunt.dmclient.crash.CrashReporter
 import com.dublikunt.dmclient.database.history.GalleryHistory
 import com.dublikunt.dmclient.database.history.GalleryHistoryDao
 import com.dublikunt.dmclient.database.search.SearchCacheDao
@@ -263,6 +267,32 @@ fun SettingsScreen(
                         Icons.Filled.Download,
                         SettingsButtonType.FilledTonal
                     ) { searchBundleLauncher.launch(arrayOf("application/json")) }
+
+                    Spacer(Modifier.height(16.dp))
+                    SettingsSectionHeader("Support")
+                    SettingsButton(
+                        "Copy Last Crash Report",
+                        "Copy",
+                        null,
+                        SettingsButtonType.Outlined
+                    ) {
+                        scope.launch(Dispatchers.IO) {
+                            val report = CrashReporter.consumePendingReport(context)
+                            withContext(Dispatchers.Main) {
+                                if (report.isNullOrBlank()) {
+                                    showSnackbarMessage = "No crash report found"
+                                } else {
+                                    val clipboard =
+                                        context.getSystemService(Context.CLIPBOARD_SERVICE)
+                                                as ClipboardManager
+                                    clipboard.setPrimaryClip(
+                                        ClipData.newPlainText("DMClient crash report", report)
+                                    )
+                                    showSnackbarMessage = "Crash report copied to clipboard"
+                                }
+                            }
+                        }
+                    }
 
                     Spacer(Modifier.height(16.dp))
                     SettingsSectionHeader("Danger Zone")
