@@ -44,6 +44,7 @@ class SearchDataRepository @Inject internal constructor(
     private enum class RefreshState { Idle, Refreshing, Failed }
     private val refreshState = MutableStateFlow(RefreshState.Idle)
     private val refreshLock = Mutex()
+    @Volatile private var checkedThisSession = false
 
     init {
         WorkManager.getInstance(context).cancelUniqueWork("search_data_refresh")
@@ -59,9 +60,11 @@ class SearchDataRepository @Inject internal constructor(
         )
     }
 
-    /** Downloads suggestions when missing or older than seven days. */
+    /** Downloads suggestions when missing, or once per session when older than seven days. */
     suspend fun ensureSeeded() = withContext(Dispatchers.IO) {
-        if (shouldRefreshSearchData(db.searchEntries().count(), settings.read().searchDataUpdatedAt,
+        val count = db.searchEntries().count()
+        if (count > 0 && checkedThisSession) return@withContext
+        if (shouldRefreshSearchData(count, settings.read().searchDataUpdatedAt,
                 System.currentTimeMillis())) refresh()
     }
 
@@ -77,6 +80,7 @@ class SearchDataRepository @Inject internal constructor(
                     val bundle = SearchBundleImporter.parse(response.body.byteStream())
                     currentCoroutineContext().ensureActive()
                     if (bundle.generatedAt != settings.read().searchDataUpdatedAt) replaceBundle(bundle)
+                    checkedThisSession = true
                 }
             } catch (error: CancellationException) {
                 throw error
