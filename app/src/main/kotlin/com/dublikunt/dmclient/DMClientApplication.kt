@@ -6,6 +6,7 @@ import androidx.hilt.work.HiltWorkerFactory
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.Configuration
 import coil3.ImageLoader
+import coil3.request.crossfade
 import coil3.SingletonImageLoader
 import coil3.disk.DiskCache
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
@@ -37,6 +38,7 @@ class DMClientApplication : Application(), Configuration.Provider, SingletonImag
     override fun newImageLoader(context: Context): ImageLoader {
         val cacheSize = runBlocking { settings.read().imageCacheSize }
         return ImageLoader.Builder(context)
+            .crossfade(true)
             .components { add(OkHttpNetworkFetcherFactory(callFactory = { client })) }
             .diskCache { DiskCache.Builder().directory(context.cacheDir.resolve("image_cache").toOkioPath()).maxSizeBytes(cacheSize).build() }
             .build()

@@ -20,7 +20,7 @@ data class AppSettings(
     val keepScreenOn: Boolean = true,
     val recordHistory: Boolean = true,
     val secureScreen: Boolean = false,
-    val lockTimeout: LockTimeout = LockTimeout.Immediate,
+    val lockTimeout: LockTimeout = LockTimeout.OneMinute,
     val checkUpdates: Boolean = true,
     val imageCacheSize: Long = 1024L * 1024 * 1024,
     val searchDataUpdatedAt: Long? = null,

@@ -123,7 +123,7 @@ class AppLockManager @Inject constructor(
         backgroundAt = null
     }
 
-    /** Persists a salted PBKDF2 hash for a 4–12 digit PIN and locks the app. */
+    /** Persists a salted PBKDF2 hash for a 4–12 digit PIN; the current session stays unlocked. */
     suspend fun setPin(pin: String) = withContext(Dispatchers.IO) {
         require(pin.length in 4..12 && pin.all { it in '0'..'9' }) { "PIN must contain 4–12 digits" }
         val hashed = PinHasher.hash(pin)
@@ -132,7 +132,7 @@ class AppLockManager @Inject constructor(
             credential.value = hashed
             attempts.reset()
             initialized = true
-            mutableState.value = LockState.Locked()
+            mutableState.value = LockState.Unlocked
         }
     }
 

@@ -86,7 +86,7 @@ class SettingsRepository @Inject constructor(
         keepScreenOn = prefs[keepScreenOn] ?: true,
         recordHistory = prefs[recordHistory] ?: true,
         secureScreen = prefs[secureScreen] ?: false,
-        lockTimeout = enum(prefs[lockTimeout], LockTimeout.Immediate),
+        lockTimeout = enum(prefs[lockTimeout], LockTimeout.OneMinute),
         checkUpdates = prefs[checkUpdates] ?: true,
         imageCacheSize = prefs[cacheSize]?.toLongOrNull()?.let { size ->
             IMAGE_CACHE_SIZE_OPTIONS.minBy { kotlin.math.abs(it - size) }
