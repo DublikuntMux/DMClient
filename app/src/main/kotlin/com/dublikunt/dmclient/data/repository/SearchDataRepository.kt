@@ -1,28 +1,33 @@
 package com.dublikunt.dmclient.data.repository
 
 import android.content.Context
-import androidx.work.Constraints
-import androidx.work.ExistingWorkPolicy
-import androidx.work.NetworkType
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkInfo
+import android.util.Log
 import androidx.work.WorkManager
 import com.dublikunt.dmclient.data.db.AppDatabase
 import com.dublikunt.dmclient.data.search.SearchBundleImporter
 import com.dublikunt.dmclient.data.search.SearchDataBundle
 import com.dublikunt.dmclient.data.search.SearchDataStore
+import com.dublikunt.dmclient.data.search.shouldRefreshSearchData
 import com.dublikunt.dmclient.data.settings.SettingsRepository
-import com.dublikunt.dmclient.data.work.SearchDataWorker
+import com.dublikunt.dmclient.di.ApplicationScope
+import com.dublikunt.dmclient.network.ApiException
 import com.dublikunt.dmclient.network.Tag
 import com.dublikunt.dmclient.network.TagType
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import java.io.File
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import java.io.InputStream
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -32,49 +37,81 @@ class SearchDataRepository @Inject internal constructor(
     private val db: AppDatabase,
     private val settings: SettingsRepository,
     private val storage: SearchDataStore,
-    @ApplicationContext private val context: Context,
+    private val client: OkHttpClient,
+    @ApplicationScope private val scope: CoroutineScope,
+    @ApplicationContext context: Context,
 ) {
-    private val work = WorkManager.getInstance(context)
-    private val seedLock = Mutex()
-    /** Observes per-type row counts, the last refresh timestamp, and worker activity/failure. */
-    val status: Flow<SearchDataStatus> = combine(db.searchEntries().counts(), settings.settings, work.getWorkInfosForUniqueWorkFlow(SearchDataWorker.UNIQUE_WORK_NAME)) { counts, prefs, infos ->
+    private enum class RefreshState { Idle, Refreshing, Failed }
+    private val refreshState = MutableStateFlow(RefreshState.Idle)
+    private val refreshLock = Mutex()
+
+    init {
+        WorkManager.getInstance(context).cancelUniqueWork("search_data_refresh")
+    }
+
+    /** Observes per-type row counts, the bundle timestamp, and download activity/failure. */
+    val status: Flow<SearchDataStatus> = combine(db.searchEntries().counts(), settings.settings, refreshState) { counts, prefs, state ->
         SearchDataStatus(
             TagType.entries.associateWith { type -> counts.firstOrNull { it.type == type.key }?.count ?: 0 },
             prefs.searchDataUpdatedAt,
-            infos.any { !it.state.isFinished },
-            infos.firstOrNull()?.state == WorkInfo.State.FAILED,
+            state == RefreshState.Refreshing,
+            state == RefreshState.Failed,
         )
     }
 
-    /** Imports the previously downloaded v1 bundle only when the table is empty. */
+    /** Downloads suggestions when missing or older than seven days. */
     suspend fun ensureSeeded() = withContext(Dispatchers.IO) {
-        seedLock.withLock {
-            val file = File(context.filesDir, SearchDataBundle.DOWNLOADED_FILE_NAME)
-            if (db.searchEntries().count() == 0 && file.isFile) file.inputStream().use { importBundle(it) }
-        }
+        if (shouldRefreshSearchData(db.searchEntries().count(), settings.read().searchDataUpdatedAt,
+                System.currentTimeMillis())) refresh()
     }
 
-    /** Enqueues unique search-data crawling work with a connected-network constraint. */
+    /** Downloads one bundle at a time for the application's lifetime. */
     fun refresh() {
-        val request = OneTimeWorkRequestBuilder<SearchDataWorker>()
-            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()).build()
-        work.enqueueUniqueWork(SearchDataWorker.UNIQUE_WORK_NAME, ExistingWorkPolicy.KEEP, request)
+        if (!refreshLock.tryLock()) return
+        refreshState.value = RefreshState.Refreshing
+        scope.launch(Dispatchers.IO) {
+            try {
+                val request = Request.Builder().url(SearchDataBundle.REMOTE_URL).build()
+                client.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) throw ApiException.Http(response.code)
+                    val bundle = SearchBundleImporter.parse(response.body.byteStream())
+                    currentCoroutineContext().ensureActive()
+                    if (bundle.generatedAt != settings.read().searchDataUpdatedAt) replaceBundle(bundle)
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                Log.w("SearchDataRepository", "Tag list download failed", error)
+                refreshState.value = RefreshState.Failed
+            }
+        }.invokeOnCompletion {
+            refreshState.compareAndSet(RefreshState.Refreshing, RefreshState.Idle)
+            refreshLock.unlock()
+        }
     }
 
     /** Replaces the four bundle types atomically and returns the distinct imported row count; caller closes stream. */
     suspend fun importBundle(stream: InputStream): Int = withContext(Dispatchers.IO) {
-        val bundle = SearchBundleImporter.parse(stream)
-        val entries = SearchBundleImporter.entries(bundle)
-        storage.replace(entries, listOf(TagType.Tag, TagType.Artist, TagType.Character, TagType.Parody).map { it.key },
-            bundle.generatedAt.takeIf { it > 0 } ?: System.currentTimeMillis())
-        entries.size
+        refreshLock.withLock {
+            val count = replaceBundle(SearchBundleImporter.parse(stream))
+            refreshState.value = RefreshState.Idle
+            count
+        }
     }
 
-    /** Cancels refresh work, removes search rows and downloaded seed files, and resets the timestamp. */
+    private suspend fun replaceBundle(bundle: SearchDataBundle): Int {
+        val entries = SearchBundleImporter.entries(bundle)
+        storage.replace(entries, listOf(TagType.Tag, TagType.Artist, TagType.Character, TagType.Parody).map { it.key },
+            bundle.generatedAt)
+        return entries.size
+    }
+
+    /** Waits for any active refresh, then removes search rows and resets the timestamp. */
     suspend fun clear() = withContext(Dispatchers.IO) {
-        work.cancelUniqueWork(SearchDataWorker.UNIQUE_WORK_NAME).result.get()
-        storage.clear()
-        listOf("search-data.json", "tags.json", "artists.json", "characters.json", "parodies.json").forEach { File(context.filesDir, it).delete() }
+        refreshLock.withLock {
+            storage.clear()
+            refreshState.value = RefreshState.Idle
+        }
     }
 
     /** Returns SQL-limited suggestions across all types, prefix matches first; blank queries return no rows. */
