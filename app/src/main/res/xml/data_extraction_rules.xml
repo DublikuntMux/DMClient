@@ -1,15 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
     <cloud-backup>
-        <include domain="database" path="main_database" />
-        <include domain="database" path="main_database-shm" />
-        <include domain="database" path="main_database-wal" />
-        <include domain="file" path="datastore/" />
+        <include
+            domain="database"
+            path="main_database" />
+        <include
+            domain="database"
+            path="main_database-shm" />
+        <include
+            domain="database"
+            path="main_database-wal" />
+        <include
+            domain="file"
+            path="datastore/" />
     </cloud-backup>
     <device-transfer>
-        <include domain="database" path="main_database" />
-        <include domain="database" path="main_database-shm" />
-        <include domain="database" path="main_database-wal" />
-        <include domain="file" path="datastore/" />
+        <include
+            domain="database"
+            path="main_database" />
+        <include
+            domain="database"
+            path="main_database-shm" />
+        <include
+            domain="database"
+            path="main_database-wal" />
+        <include
+            domain="file"
+            path="datastore/" />
     </device-transfer>
 </data-extraction-rules>

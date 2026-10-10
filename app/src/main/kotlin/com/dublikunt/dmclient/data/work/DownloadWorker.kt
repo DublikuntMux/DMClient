@@ -44,11 +44,26 @@ class DownloadWorker @AssistedInject internal constructor(
             try {
                 val detail = Json.decodeFromString<GalleryDetail>(row.detailJson)
                 db.downloads().start(id)
-                setForeground(notifications.foreground(id, "downloads", "Downloading ${detail.title}", row.downloadedPages, detail.pageCount))
+                setForeground(
+                    notifications.foreground(
+                        id,
+                        "downloads",
+                        "Downloading ${detail.title}",
+                        row.downloadedPages,
+                        detail.pageCount
+                    )
+                )
                 val directory = GalleryContentLocator.galleryDir(files.root, id)
                 if (!directory.exists() && !directory.mkdirs()) throw IOException("Cannot create gallery directory")
                 download(detail.coverUrl, File(files.root, row.coverPath))
-                val pageFiles = (1..detail.pageCount).associateWith { GalleryContentLocator.pageFile(files.root, id, it, detail.pageTypes) }
+                val pageFiles = (1..detail.pageCount).associateWith {
+                    GalleryContentLocator.pageFile(
+                        files.root,
+                        id,
+                        it,
+                        detail.pageTypes
+                    )
+                }
                 var completed = pageFiles.values.count { it.isFile && it.length() > 0 }
                 db.downloads().progress(id, completed)
                 var lastUpdate = 0L
@@ -57,13 +72,29 @@ class DownloadWorker @AssistedInject internal constructor(
                 coroutineScope {
                     pageFiles.filterValues { !it.isFile || it.length() == 0L }.map { (page, file) ->
                         async {
-                            semaphore.withPermit { download(GalleryContentLocator.remotePageUrl(detail.mediaId, page, detail.pageTypes), file) }
+                            semaphore.withPermit {
+                                download(
+                                    GalleryContentLocator.remotePageUrl(
+                                        detail.mediaId,
+                                        page,
+                                        detail.pageTypes
+                                    ), file
+                                )
+                            }
                             progressLock.withLock {
                                 completed++
                                 val now = System.currentTimeMillis()
                                 if (now - lastUpdate >= 500 || completed == detail.pageCount) {
                                     db.downloads().progress(id, completed)
-                                    setForeground(notifications.foreground(id, "downloads", "Downloading ${detail.title}", completed, detail.pageCount))
+                                    setForeground(
+                                        notifications.foreground(
+                                            id,
+                                            "downloads",
+                                            "Downloading ${detail.title}",
+                                            completed,
+                                            detail.pageCount
+                                        )
+                                    )
                                     lastUpdate = now
                                 }
                             }
@@ -89,16 +120,20 @@ class DownloadWorker @AssistedInject internal constructor(
         val partial = File(target.parentFile, "${target.name}.part")
         try {
             api.openImage(url).use { body ->
-                body.byteStream().use { input -> partial.outputStream().use { output ->
-                    val buffer = ByteArray(32 * 1024)
-                    while (true) {
-                        currentCoroutineContext().ensureActive()
-                        val count = input.read(buffer)
-                        if (count < 0) break
-                        output.write(buffer, 0, count)
+                body.byteStream().use { input ->
+                    partial.outputStream().use { output ->
+                        val buffer = ByteArray(32 * 1024)
+                        while (true) {
+                            currentCoroutineContext().ensureActive()
+                            val count = input.read(buffer)
+                            if (count < 0) break
+                            output.write(buffer, 0, count)
+                        }
                     }
-                } }
-                if (partial.length() == 0L || (body.contentLength() >= 0 && partial.length() != body.contentLength())) throw IOException("Incomplete image download")
+                }
+                if (partial.length() == 0L || (body.contentLength() >= 0 && partial.length() != body.contentLength())) throw IOException(
+                    "Incomplete image download"
+                )
             }
             currentCoroutineContext().ensureActive()
             if (!partial.renameTo(target)) throw IOException("Cannot save image")
@@ -107,5 +142,7 @@ class DownloadWorker @AssistedInject internal constructor(
         }
     }
 
-    companion object { const val KEY_ID = "gallery_id" }
+    companion object {
+        const val KEY_ID = "gallery_id"
+    }
 }

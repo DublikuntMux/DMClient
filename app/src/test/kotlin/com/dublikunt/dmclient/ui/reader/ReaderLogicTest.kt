@@ -47,8 +47,14 @@ class ReaderLogicTest {
 
     @Test
     fun zoomBoundsUseActualFittedImageRatherThanViewportSize() {
-        assertEquals(ZoomOffset(200f, -400f), clampZoomOffset(300f, -500f, 2f, 400f, 800f, 400f, 800f))
-        assertEquals(ZoomOffset(-200f, 0f), clampZoomOffset(-300f, 400f, 2f, 400f, 800f, 800f, 400f))
+        assertEquals(
+            ZoomOffset(200f, -400f),
+            clampZoomOffset(300f, -500f, 2f, 400f, 800f, 400f, 800f)
+        )
+        assertEquals(
+            ZoomOffset(-200f, 0f),
+            clampZoomOffset(-300f, 400f, 2f, 400f, 800f, 800f, 400f)
+        )
         assertEquals(ZoomOffset(20f, -30f), clampZoomOffset(20f, -30f, 2f, 400f, 800f, 400f, 800f))
     }
 
@@ -60,7 +66,10 @@ class ReaderLogicTest {
 
     @Test
     fun scalingAroundTapKeepsTheTappedImagePointStationary() {
-        assertEquals(ZoomOffset(-150f, 75f), zoomAroundPoint(ZoomOffset(0f, 0f), 1f, 2.5f, 100f, -50f))
+        assertEquals(
+            ZoomOffset(-150f, 75f),
+            zoomAroundPoint(ZoomOffset(0f, 0f), 1f, 2.5f, 100f, -50f)
+        )
         val initial = ZoomOffset(20f, -30f)
         val zoomed = zoomAroundPoint(initial, 1f, 2.5f, 100f, -50f)
         assertEquals(initial, zoomAroundPoint(zoomed, 2.5f, 1f, 100f, -50f))

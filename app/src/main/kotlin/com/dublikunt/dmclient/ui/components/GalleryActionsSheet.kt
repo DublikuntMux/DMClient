@@ -228,7 +228,13 @@ fun GalleryActionsSheet(
                         if (action.destructive) MaterialTheme.colorScheme.error
                         else MaterialTheme.colorScheme.onSurface
                     ListItem(
-                        leadingContent = { Icon(action.icon, contentDescription = null, tint = tint) },
+                        leadingContent = {
+                            Icon(
+                                action.icon,
+                                contentDescription = null,
+                                tint = tint
+                            )
+                        },
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                         modifier = Modifier
                             .clip(MaterialTheme.shapes.large)

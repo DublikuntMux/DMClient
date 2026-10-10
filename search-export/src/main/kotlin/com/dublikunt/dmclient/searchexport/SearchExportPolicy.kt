@@ -13,7 +13,7 @@ internal object SearchExportPolicy {
     fun requireComplete(type: String, fetchedCount: Int, reportedTotal: Int) {
         require(fetchedCount.toLong() * 100 >= reportedTotal.toLong() * 95) {
             "Incomplete $type data: fetched $fetchedCount of $reportedTotal " +
-                "(${if (reportedTotal == 0) 100 else fetchedCount * 100 / reportedTotal}%; need at least 95%)"
+                    "(${if (reportedTotal == 0) 100 else fetchedCount * 100 / reportedTotal}%; need at least 95%)"
         }
     }
 }

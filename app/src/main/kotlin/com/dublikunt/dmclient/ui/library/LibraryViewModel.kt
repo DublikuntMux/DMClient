@@ -11,7 +11,6 @@ import com.dublikunt.dmclient.data.repository.LibraryRepository
 import com.dublikunt.dmclient.data.settings.SettingsRepository
 import com.dublikunt.dmclient.ui.components.userMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
-import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -29,6 +28,7 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 data class LibraryEntriesState(
     val items: List<LibraryItem> = emptyList(),
@@ -65,6 +65,7 @@ constructor(
                         "all" -> library.entries(LibraryFilter.AllTracked, text)
                         null,
                         "history" -> flowOf(emptyList())
+
                         else -> library.entries(LibraryFilter.Status(filter.toInt()), text)
                     }
                 source

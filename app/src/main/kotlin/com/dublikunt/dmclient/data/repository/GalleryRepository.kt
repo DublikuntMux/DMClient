@@ -39,12 +39,14 @@ class GalleryRepository @Inject constructor(
     /** Uses completed downloads first, refreshes gallery metadata, and records opens when enabled. */
     suspend fun detail(id: Int): GalleryDetail {
         val local = db.downloads().get(id)?.takeIf { it.state == DownloadState.Completed }
-        val detail = local?.let { Json.decodeFromString<GalleryDetail>(it.detailJson) } ?: api.gallery(id)
+        val detail =
+            local?.let { Json.decodeFromString<GalleryDetail>(it.detailJson) } ?: api.gallery(id)
         val recordHistory = settings.read().recordHistory
         db.withTransaction {
             val now = System.currentTimeMillis()
             db.galleries().upsert(detail.entity(now))
-            if (recordHistory) db.history().upsert(HistoryEntity(id, db.history().get(id)?.lastPage ?: 1, now))
+            if (recordHistory) db.history()
+                .upsert(HistoryEntity(id, db.history().get(id)?.lastPage ?: 1, now))
         }
         return detail
     }
@@ -52,7 +54,12 @@ class GalleryRepository @Inject constructor(
     /** Returns a local page File or its remote image URL; page numbering starts at one. */
     fun pageImage(detail: GalleryDetail, page: Int, downloaded: Boolean): Any {
         require(page in 1..detail.pageCount)
-        return if (downloaded) GalleryContentLocator.pageFile(context.filesDir, detail.id, page, detail.pageTypes)
+        return if (downloaded) GalleryContentLocator.pageFile(
+            context.filesDir,
+            detail.id,
+            page,
+            detail.pageTypes
+        )
         else GalleryContentLocator.remotePageUrl(detail.mediaId, page, detail.pageTypes)
     }
 
@@ -66,4 +73,5 @@ class GalleryRepository @Inject constructor(
 
 internal fun GalleryDetail.entity(now: Long = System.currentTimeMillis()): GalleryEntity =
     GalleryEntity(id, title, coverUrl, pageCount, now)
+
 internal fun GalleryEntity.summary(): GallerySummary = GallerySummary(id, title, coverUrl)

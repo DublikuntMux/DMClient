@@ -13,19 +13,28 @@ internal object PinHasher {
 
     fun hash(pin: String): PinCredential {
         val salt = ByteArray(16).also { SecureRandom().nextBytes(it) }
-        return PinCredential(Base64.getEncoder().encodeToString(derive(pin, salt)), Base64.getEncoder().encodeToString(salt))
+        return PinCredential(
+            Base64.getEncoder().encodeToString(derive(pin, salt)),
+            Base64.getEncoder().encodeToString(salt)
+        )
     }
 
     fun verify(pin: String, credential: PinCredential): Boolean = try {
-        MessageDigest.isEqual(Base64.getDecoder().decode(credential.hash), derive(pin, Base64.getDecoder().decode(credential.salt)))
+        MessageDigest.isEqual(
+            Base64.getDecoder().decode(credential.hash),
+            derive(pin, Base64.getDecoder().decode(credential.salt))
+        )
     } catch (_: IllegalArgumentException) {
         false
     }
 
     private fun derive(pin: String, salt: ByteArray): ByteArray {
         val spec = PBEKeySpec(pin.toCharArray(), salt, ITERATIONS, 256)
-        return try { SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).encoded }
-        finally { spec.clearPassword() }
+        return try {
+            SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).encoded
+        } finally {
+            spec.clearPassword()
+        }
     }
 }
 
@@ -53,5 +62,7 @@ internal class PinAttempts(private val clock: () -> Long) {
         cooldownUntil = remaining?.let { clock() + it }
     }
 
-    fun reset() { failedAttempts = 0; cooldownUntil = null }
+    fun reset() {
+        failedAttempts = 0; cooldownUntil = null
+    }
 }

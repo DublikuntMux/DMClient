@@ -8,9 +8,6 @@ import com.dublikunt.dmclient.network.ReleaseInfo
 import com.dublikunt.dmclient.ui.components.userMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import java.io.File
-import javax.inject.Inject
-import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -20,6 +17,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.io.File
+import javax.inject.Inject
+import javax.inject.Singleton
 
 data class UpdateUiState(
     val release: ReleaseInfo? = null,

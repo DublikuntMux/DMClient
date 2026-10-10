@@ -42,18 +42,27 @@ class SearchDataRepository @Inject internal constructor(
     @ApplicationContext context: Context,
 ) {
     private enum class RefreshState { Idle, Refreshing, Failed }
+
     private val refreshState = MutableStateFlow(RefreshState.Idle)
     private val refreshLock = Mutex()
-    @Volatile private var checkedThisSession = false
+
+    @Volatile
+    private var checkedThisSession = false
 
     init {
         WorkManager.getInstance(context).cancelUniqueWork("search_data_refresh")
     }
 
     /** Observes per-type row counts, the bundle timestamp, and download activity/failure. */
-    val status: Flow<SearchDataStatus> = combine(db.searchEntries().counts(), settings.settings, refreshState) { counts, prefs, state ->
+    val status: Flow<SearchDataStatus> = combine(
+        db.searchEntries().counts(),
+        settings.settings,
+        refreshState
+    ) { counts, prefs, state ->
         SearchDataStatus(
-            TagType.entries.associateWith { type -> counts.firstOrNull { it.type == type.key }?.count ?: 0 },
+            TagType.entries.associateWith { type ->
+                counts.firstOrNull { it.type == type.key }?.count ?: 0
+            },
             prefs.searchDataUpdatedAt,
             state == RefreshState.Refreshing,
             state == RefreshState.Failed,
@@ -64,8 +73,11 @@ class SearchDataRepository @Inject internal constructor(
     suspend fun ensureSeeded() = withContext(Dispatchers.IO) {
         val count = db.searchEntries().count()
         if (count > 0 && checkedThisSession) return@withContext
-        if (shouldRefreshSearchData(count, settings.read().searchDataUpdatedAt,
-                System.currentTimeMillis())) refresh()
+        if (shouldRefreshSearchData(
+                count, settings.read().searchDataUpdatedAt,
+                System.currentTimeMillis()
+            )
+        ) refresh()
     }
 
     /** Downloads one bundle at a time for the application's lifetime. */
@@ -79,7 +91,9 @@ class SearchDataRepository @Inject internal constructor(
                     if (!response.isSuccessful) throw ApiException.Http(response.code)
                     val bundle = SearchBundleImporter.parse(response.body.byteStream())
                     currentCoroutineContext().ensureActive()
-                    if (bundle.generatedAt != settings.read().searchDataUpdatedAt) replaceBundle(bundle)
+                    if (bundle.generatedAt != settings.read().searchDataUpdatedAt) replaceBundle(
+                        bundle
+                    )
                     checkedThisSession = true
                 }
             } catch (error: CancellationException) {
@@ -105,8 +119,11 @@ class SearchDataRepository @Inject internal constructor(
 
     private suspend fun replaceBundle(bundle: SearchDataBundle): Int {
         val entries = SearchBundleImporter.entries(bundle)
-        storage.replace(entries, listOf(TagType.Tag, TagType.Artist, TagType.Character, TagType.Parody).map { it.key },
-            bundle.generatedAt)
+        storage.replace(
+            entries,
+            listOf(TagType.Tag, TagType.Artist, TagType.Character, TagType.Parody).map { it.key },
+            bundle.generatedAt
+        )
         return entries.size
     }
 
@@ -122,6 +139,7 @@ class SearchDataRepository @Inject internal constructor(
     suspend fun suggest(query: String, limit: Int = 50): List<Tag> {
         require(limit > 0)
         if (query.isBlank()) return emptyList()
-        return db.searchEntries().suggest(query.trim(), limit).map { row -> Tag(TagType.entries.first { it.key == row.type }, row.name) }
+        return db.searchEntries().suggest(query.trim(), limit)
+            .map { row -> Tag(TagType.entries.first { it.key == row.type }, row.name) }
     }
 }

@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.rounded.Brush
 import androidx.compose.material.icons.rounded.Category
 import androidx.compose.material.icons.rounded.Check
@@ -26,9 +27,9 @@ import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material.icons.rounded.RemoveCircleOutline
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Sell
-import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.rounded.TheaterComedy
 import androidx.compose.material.icons.rounded.Translate
+import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -43,7 +44,6 @@ import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Card
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -105,8 +105,10 @@ internal fun SearchFilters(
                 selected = true,
                 onClick = { onToggleFilter(filter.tag) },
                 label = {
-                    Text(filter.tag.name, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.widthIn(max = 176.dp))
+                    Text(
+                        filter.tag.name, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.widthIn(max = 176.dp)
+                    )
                 },
                 leadingIcon = {
                     Icon(
@@ -138,8 +140,10 @@ internal fun SearchFilters(
                     selected = true,
                     onClick = onEditText,
                     label = {
-                        Text(state.text, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.widthIn(max = 176.dp))
+                        Text(
+                            state.text, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.widthIn(max = 176.dp)
+                        )
                     },
                     leadingIcon = {
                         Icon(Icons.Rounded.Search, null, Modifier.size(InputChipDefaults.IconSize))
@@ -168,7 +172,11 @@ private fun <T> ChoiceChip(
             label = { Text(label(selected)) },
             leadingIcon = { Icon(icon, null, Modifier.size(FilterChipDefaults.IconSize)) },
             trailingIcon = {
-                Icon(Icons.Rounded.KeyboardArrowDown, null, Modifier.size(FilterChipDefaults.IconSize))
+                Icon(
+                    Icons.Rounded.KeyboardArrowDown,
+                    null,
+                    Modifier.size(FilterChipDefaults.IconSize)
+                )
             }
         )
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -180,7 +188,10 @@ private fun <T> ChoiceChip(
                         expanded = false
                     },
                     trailingIcon = {
-                        if (option == selected) Icon(Icons.Rounded.Check, contentDescription = "Selected")
+                        if (option == selected) Icon(
+                            Icons.Rounded.Check,
+                            contentDescription = "Selected"
+                        )
                     }
                 )
             }
@@ -223,7 +234,10 @@ internal fun SearchSuggestions(
                 leadingContent = { Icon(tag.type.icon(), contentDescription = null) },
                 trailingContent = {
                     IconButton(onClick = { onExclude(tag) }) {
-                        Icon(Icons.Rounded.RemoveCircleOutline, contentDescription = "Exclude ${tag.name}")
+                        Icon(
+                            Icons.Rounded.RemoveCircleOutline,
+                            contentDescription = "Exclude ${tag.name}"
+                        )
                     }
                 },
                 modifier = Modifier.clickable { onInclude(tag) }
@@ -244,7 +258,8 @@ internal fun SearchIdleState(
         message = "Type a title or pick tags. Long-press a result for quick actions.",
         modifier = modifier.verticalScroll(rememberScrollState()),
         action = if (status != null &&
-            (status.refreshing || status.failed || status.counts.values.sum() == 0)) {
+            (status.refreshing || status.failed || status.counts.values.sum() == 0)
+        ) {
             { SearchDataCard(status, onRefresh) }
         } else null
     )
@@ -255,7 +270,9 @@ internal fun SearchIdleState(
 private fun SearchDataCard(status: SearchDataStatus, onRefresh: () -> Unit) {
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             when {
@@ -263,15 +280,21 @@ private fun SearchDataCard(status: SearchDataStatus, onRefresh: () -> Unit) {
                     LinearWavyProgressIndicator(modifier = Modifier.fillMaxWidth())
                     Text("Downloading tag list…", style = MaterialTheme.typography.bodyMedium)
                 }
+
                 status.failed -> {
-                    Text("Couldn't download the tag list.",
+                    Text(
+                        "Couldn't download the tag list.",
                         color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyMedium)
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                     FilledTonalButton(onClick = onRefresh) { Text("Retry") }
                 }
+
                 else -> {
-                    Text("Tag suggestions need the tag list.",
-                        style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "Tag suggestions need the tag list.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                     FilledTonalButton(onClick = onRefresh) { Text("Download tag list") }
                 }
             }

@@ -21,8 +21,6 @@ import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
@@ -50,15 +48,18 @@ import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dublikunt.dmclient.network.Tag
 import com.dublikunt.dmclient.ui.components.ErrorState
 import com.dublikunt.dmclient.ui.components.LoadingState
 import com.dublikunt.dmclient.ui.components.userMessage
-import com.dublikunt.dmclient.network.Tag
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun GalleryScreen(onBack: () -> Unit, onRead: (id: Int, page: Int?) -> Unit, onSearchTag: (Tag) -> Unit) {
+fun GalleryScreen(
+    onBack: () -> Unit,
+    onRead: (id: Int, page: Int?) -> Unit,
+    onSearchTag: (Tag) -> Unit
+) {
     val viewModel: GalleryViewModel = hiltViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val grid = rememberLazyGridState()
@@ -73,15 +74,18 @@ fun GalleryScreen(onBack: () -> Unit, onRead: (id: Int, page: Int?) -> Unit, onS
         if (collapsed) MaterialTheme.colorScheme.surfaceContainer else Color.Transparent,
         animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(), label = "gallery_bar"
     )
+
     fun copy(text: String) {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        clipboard.setPrimaryClip(ClipData.newPlainText("Gallery", text))
+        clipboard.primaryClip = ClipData.newPlainText("Gallery", text)
         scope.launch { snackbar.showSnackbar("Copied") }
     }
-    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) viewModel.exportArchive()
-        else scope.launch { snackbar.showSnackbar("Storage permission is needed to export ZIP files") }
-    }
+
+    val permission =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) viewModel.exportArchive()
+            else scope.launch { snackbar.showSnackbar("Storage permission is needed to export ZIP files") }
+        }
     val export: () -> Unit = {
         if (Build.VERSION.SDK_INT == 28 && ContextCompat.checkSelfPermission(
                 context, Manifest.permission.WRITE_EXTERNAL_STORAGE
@@ -115,7 +119,10 @@ fun GalleryScreen(onBack: () -> Unit, onRead: (id: Int, page: Int?) -> Unit, onS
                             onClick = {
                                 val intent = Intent(Intent.ACTION_SEND).apply {
                                     type = "text/plain"
-                                    putExtra(Intent.EXTRA_TEXT, "https://nhentai.net/g/${detail.id}/")
+                                    putExtra(
+                                        Intent.EXTRA_TEXT,
+                                        "https://nhentai.net/g/${detail.id}/"
+                                    )
                                 }
                                 context.startActivity(Intent.createChooser(intent, "Share gallery"))
                             }, shapes = IconButtonDefaults.shapes()
@@ -124,14 +131,21 @@ fun GalleryScreen(onBack: () -> Unit, onRead: (id: Int, page: Int?) -> Unit, onS
                             FilledTonalIconButton(
                                 onClick = { overflow = true }, shapes = IconButtonDefaults.shapes()
                             ) { Icon(Icons.Rounded.MoreVert, "More options") }
-                            DropdownMenu(expanded = overflow, onDismissRequest = { overflow = false }) {
+                            DropdownMenu(
+                                expanded = overflow,
+                                onDismissRequest = { overflow = false }) {
                                 DropdownMenuItem(text = { Text("Copy title") }, onClick = {
                                     overflow = false
                                     copy(detail.title)
                                 })
                                 DropdownMenuItem(text = { Text("Open in browser") }, onClick = {
                                     overflow = false
-                                    context.startActivity(Intent(Intent.ACTION_VIEW, "https://nhentai.net/g/${detail.id}/".toUri()))
+                                    context.startActivity(
+                                        Intent(
+                                            Intent.ACTION_VIEW,
+                                            "https://nhentai.net/g/${detail.id}/".toUri()
+                                        )
+                                    )
                                 })
                             }
                         }
@@ -143,8 +157,11 @@ fun GalleryScreen(onBack: () -> Unit, onRead: (id: Int, page: Int?) -> Unit, onS
         when {
             state.loading -> LoadingState(Modifier.padding(padding))
             state.error != null -> ErrorState(
-                message = state.error!!.userMessage(), onRetry = viewModel::retry, modifier = Modifier.padding(padding)
+                message = state.error!!.userMessage(),
+                onRetry = viewModel::retry,
+                modifier = Modifier.padding(padding)
             )
+
             state.detail != null -> GalleryContent(
                 state = state, grid = grid, headerTopPadding = padding.calculateTopPadding(),
                 contentPadding = PaddingValues(bottom = padding.calculateBottomPadding() + 16.dp),

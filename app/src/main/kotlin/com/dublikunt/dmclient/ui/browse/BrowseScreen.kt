@@ -121,7 +121,10 @@ fun BrowseScreen(onOpenGallery: (Int) -> Unit) {
                                     },
                                     trailingIcon = {
                                         if (language == settings.language) {
-                                            Icon(Icons.Rounded.Check, contentDescription = "Selected")
+                                            Icon(
+                                                Icons.Rounded.Check,
+                                                contentDescription = "Selected"
+                                            )
                                         }
                                     }
                                 )
@@ -133,7 +136,12 @@ fun BrowseScreen(onOpenGallery: (Int) -> Unit) {
         },
         snackbarHost = { SnackbarHost(snackbar) }
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .consumeWindowInsets(padding)
+        ) {
             PullToRefreshBox(
                 isRefreshing = refreshing,
                 onRefresh = galleries::refresh,
@@ -164,7 +172,9 @@ fun BrowseScreen(onOpenGallery: (Int) -> Unit) {
             }
             AnimatedVisibility(
                 visible = showScrollToTop,
-                modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp),
                 enter = fadeIn(MaterialTheme.motionScheme.fastEffectsSpec()) +
                         scaleIn(MaterialTheme.motionScheme.fastSpatialSpec()),
                 exit = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()) +
@@ -184,7 +194,10 @@ fun BrowseScreen(onOpenGallery: (Int) -> Unit) {
             gallery = gallery,
             onDismiss = { selectedGallery = null },
             actions = listOf(
-                GalleryAction("Download", Icons.Rounded.FileDownload) { viewModel.download(gallery) }
+                GalleryAction(
+                    "Download",
+                    Icons.Rounded.FileDownload
+                ) { viewModel.download(gallery) }
             )
         )
     }

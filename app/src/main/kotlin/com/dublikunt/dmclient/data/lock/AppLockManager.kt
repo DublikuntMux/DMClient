@@ -51,8 +51,11 @@ class AppLockManager @Inject constructor(
 
     /** Loading until storage is read; locked state includes elapsed-realtime cooldown deadline. */
     val state: StateFlow<LockState> = mutableState.asStateFlow()
+
     /** Emits PIN presence after storage initialization, without exposing any credential. */
-    val isPinSet: Flow<Boolean> = state.filter { it != LockState.Loading }.map { credential.value != null }.distinctUntilChanged()
+    val isPinSet: Flow<Boolean> =
+        state.filter { it != LockState.Loading }.map { credential.value != null }
+            .distinctUntilChanged()
 
     init {
         scope.launch(Dispatchers.IO) {
@@ -67,14 +70,23 @@ class AppLockManager @Inject constructor(
                 prefs.remove(legacyPin)
             }
             store.data.collect { prefs ->
-                val saved = prefs[pinHash]?.let { hash -> PinCredential(hash, prefs[pinSalt].orEmpty()) }
+                val saved =
+                    prefs[pinHash]?.let { hash -> PinCredential(hash, prefs[pinSalt].orEmpty()) }
                 synchronized(monitor) {
                     if (!initialized || credential.value != saved) {
                         credential.value = saved
                         if (!initialized && saved != null) {
-                            attempts.restore(prefs[pinFailedAttempts] ?: 0, prefs[pinCooldownUntil], System.currentTimeMillis())
+                            attempts.restore(
+                                prefs[pinFailedAttempts] ?: 0,
+                                prefs[pinCooldownUntil],
+                                System.currentTimeMillis()
+                            )
                         } else attempts.reset()
-                        mutableState.value = if (saved == null) LockState.Unlocked else LockState.Locked(attempts.failedAttempts, attempts.cooldownUntil)
+                        mutableState.value =
+                            if (saved == null) LockState.Unlocked else LockState.Locked(
+                                attempts.failedAttempts,
+                                attempts.cooldownUntil
+                            )
                         initialized = true
                         scheduleCooldownReset()
                         scope.launch { credentialLock.withLock { persistAttempts() } }
@@ -95,7 +107,8 @@ class AppLockManager @Inject constructor(
                 true
             } else {
                 attempts.failed()
-                mutableState.value = LockState.Locked(attempts.failedAttempts, attempts.cooldownUntil)
+                mutableState.value =
+                    LockState.Locked(attempts.failedAttempts, attempts.cooldownUntil)
                 scheduleCooldownReset()
                 false
             }
@@ -165,15 +178,22 @@ class AppLockManager @Inject constructor(
         }
     }
 
-    override fun onStart(owner: LifecycleOwner) { onAppForeground() }
-    override fun onStop(owner: LifecycleOwner) { onAppBackground() }
+    override fun onStart(owner: LifecycleOwner) {
+        onAppForeground()
+    }
+
+    override fun onStop(owner: LifecycleOwner) {
+        onAppBackground()
+    }
 
     private suspend fun persistAttempts() = withContext(NonCancellable + Dispatchers.IO) {
         store.edit { prefs ->
             synchronized(monitor) {
                 if (attempts.failedAttempts == 0) prefs.remove(pinFailedAttempts)
                 else prefs[pinFailedAttempts] = attempts.failedAttempts
-                val remaining = attempts.cooldownUntil?.let { (it - SystemClock.elapsedRealtime()).coerceAtLeast(0) }
+                val remaining = attempts.cooldownUntil?.let {
+                    (it - SystemClock.elapsedRealtime()).coerceAtLeast(0)
+                }
                 if (remaining == null || remaining == 0L) prefs.remove(pinCooldownUntil)
                 else prefs[pinCooldownUntil] = System.currentTimeMillis() + remaining
             }

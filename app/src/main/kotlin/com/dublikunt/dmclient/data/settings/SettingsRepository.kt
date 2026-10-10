@@ -30,36 +30,51 @@ class SettingsRepository @Inject constructor(
 
     /** Changes the language used for browsing and search. */
     suspend fun setLanguage(value: ContentLanguage) = set(language, value.name)
+
     /** Selects system, light, or dark appearance. */
     suspend fun setThemeMode(value: ThemeMode) = set(theme, value.name)
+
     /** Enables colors derived from the system wallpaper. */
     suspend fun setDynamicColor(value: Boolean) = set(dynamicColor, value)
+
     /** Enables black surfaces in dark appearance. */
     suspend fun setPureBlack(value: Boolean) = set(pureBlack, value)
+
     /** Changes the gallery grid's minimum cell size. */
     suspend fun setGridDensity(value: GridDensity) = set(grid, value.name)
+
     /** Changes the reader's paging direction or scrolling mode. */
     suspend fun setReaderMode(value: ReaderMode) = set(reader, value.name)
+
     /** Controls whether the reader keeps the display awake. */
     suspend fun setKeepScreenOn(value: Boolean) = set(keepScreenOn, value)
+
     /** Controls recording gallery opens and reading progress. */
     suspend fun setRecordHistory(value: Boolean) = set(recordHistory, value)
+
     /** Controls screen capture and recents privacy. */
     suspend fun setSecureScreen(value: Boolean) = set(secureScreen, value)
+
     /** Selects when returning from the background requires unlocking. */
     suspend fun setLockTimeout(value: LockTimeout) = set(lockTimeout, value.name)
+
     /** Selects the DNS-over-HTTPS resolver used for all app traffic; applies to new connections. */
     suspend fun setSecureDns(value: SecureDns) = set(secureDns, value.name)
+
     /** Controls automatic release checks. */
     suspend fun setCheckUpdates(value: Boolean) = set(checkUpdates, value)
+
     /** Selects the image disk cache limit, applied after restarting the app. */
     suspend fun setImageCacheSize(value: Long) {
         require(value in IMAGE_CACHE_SIZE_OPTIONS)
         set(cacheSize, value.toString())
     }
+
     /** Records a completed search-data refresh, or removes its timestamp. */
     suspend fun setSearchDataUpdatedAt(value: Long?) {
-        store.edit { if (value == null) it.remove(searchUpdatedAt) else it[searchUpdatedAt] = value }
+        store.edit {
+            if (value == null) it.remove(searchUpdatedAt) else it[searchUpdatedAt] = value
+        }
     }
 
     internal suspend fun restore(value: BackupSettings) {
@@ -74,7 +89,9 @@ class SettingsRepository @Inject constructor(
         }
     }
 
-    private suspend fun <T> set(key: Preferences.Key<T>, value: T) { store.edit { it[key] = value } }
+    private suspend fun <T> set(key: Preferences.Key<T>, value: T) {
+        store.edit { it[key] = value }
+    }
 
     private fun decode(prefs: Preferences): AppSettings = AppSettings(
         language = ContentLanguage.entries.firstOrNull {
@@ -103,8 +120,10 @@ class SettingsRepository @Inject constructor(
     companion object {
         /** Default disk cache capacity in bytes. */
         const val DEFAULT_IMAGE_CACHE_SIZE = 1024L * 1024 * 1024
+
         /** Supported image cache limits in bytes, applied after restarting. */
-        val IMAGE_CACHE_SIZE_OPTIONS = listOf(128L, 256L, 512L, 1024L, 2048L, 4096L).map { it * 1024 * 1024 }
+        val IMAGE_CACHE_SIZE_OPTIONS =
+            listOf(128L, 256L, 512L, 1024L, 2048L, 4096L).map { it * 1024 * 1024 }
         private val language = stringPreferencesKey("preferred_language")
         private val theme = stringPreferencesKey("theme_mode")
         private val dynamicColor = booleanPreferencesKey("dynamic_color")

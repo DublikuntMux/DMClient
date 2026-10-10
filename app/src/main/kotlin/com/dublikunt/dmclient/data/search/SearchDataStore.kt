@@ -12,17 +12,21 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-internal class SearchDataStore @Inject constructor(private val db: AppDatabase, private val settings: SettingsRepository) {
+internal class SearchDataStore @Inject constructor(
+    private val db: AppDatabase,
+    private val settings: SettingsRepository
+) {
     private val lock = Mutex()
 
-    suspend fun replace(entries: List<SearchEntryEntity>, types: List<String>, updatedAt: Long) = lock.withLock {
-        currentCoroutineContext().ensureActive()
-        db.withTransaction {
-            types.forEach { db.searchEntries().clearType(it) }
-            db.searchEntries().insert(entries)
+    suspend fun replace(entries: List<SearchEntryEntity>, types: List<String>, updatedAt: Long) =
+        lock.withLock {
+            currentCoroutineContext().ensureActive()
+            db.withTransaction {
+                types.forEach { db.searchEntries().clearType(it) }
+                db.searchEntries().insert(entries)
+            }
+            settings.setSearchDataUpdatedAt(updatedAt)
         }
-        settings.setSearchDataUpdatedAt(updatedAt)
-    }
 
     suspend fun clear() = lock.withLock {
         db.searchEntries().clear()

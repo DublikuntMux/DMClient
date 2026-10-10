@@ -46,26 +46,34 @@ class DownloadRepository @Inject internal constructor(
     private val archiveEnqueueLock = Mutex()
 
     /** Observes persisted download states; coverFile points into internal storage. */
-    val downloads: Flow<List<DownloadItem>> = db.downloads().observeAll().map { rows -> rows.map(::item) }
+    val downloads: Flow<List<DownloadItem>> =
+        db.downloads().observeAll().map { rows -> rows.map(::item) }
 
     init {
         scope.launch(Dispatchers.IO) {
             work.cancelAllWorkByTag("dmclient_download").result.get()
             work.cancelAllWorkByTag("dmclient_archive").result.get()
             File(files.root, "work_payloads").deleteRecursively()
-            File(files.root, "galleries").listFiles()?.filter { it.isDirectory }?.forEach { directory ->
-                val id = directory.name.toIntOrNull() ?: return@forEach
-                files.withGallery(id) {
-                    if (db.downloads().get(id) == null) directory.deleteRecursively()
-                }
-            }
-            db.downloads().all().filter { it.state == DownloadState.Queued || it.state == DownloadState.Downloading }.forEach { row ->
-                files.withGallery(row.galleryId) {
-                    if (db.downloads().get(row.galleryId) != null && work.getWorkInfosForUniqueWork(downloadWorkName(row.galleryId)).get().none { !it.state.isFinished }) {
-                        schedule(row.galleryId, ExistingWorkPolicy.KEEP)
+            File(files.root, "galleries").listFiles()?.filter { it.isDirectory }
+                ?.forEach { directory ->
+                    val id = directory.name.toIntOrNull() ?: return@forEach
+                    files.withGallery(id) {
+                        if (db.downloads().get(id) == null) directory.deleteRecursively()
                     }
                 }
-            }
+            db.downloads().all()
+                .filter { it.state == DownloadState.Queued || it.state == DownloadState.Downloading }
+                .forEach { row ->
+                    files.withGallery(row.galleryId) {
+                        if (db.downloads()
+                                .get(row.galleryId) != null && work.getWorkInfosForUniqueWork(
+                                downloadWorkName(row.galleryId)
+                            ).get().none { !it.state.isFinished }
+                        ) {
+                            schedule(row.galleryId, ExistingWorkPolicy.KEEP)
+                        }
+                    }
+                }
         }
     }
 
@@ -80,12 +88,23 @@ class DownloadRepository @Inject internal constructor(
             if (existing?.state == DownloadState.Completed) return@withGallery
             db.withTransaction {
                 db.galleries().upsert(detail.entity())
-                if (existing == null) db.downloads().upsert(DownloadEntity(
-                    detail.id, Json.encodeToString(detail), GalleryContentLocator.relativeCoverPath(detail.id, detail.coverUrl),
-                    DownloadState.Queued, 0, null, System.currentTimeMillis(), null,
-                )) else db.downloads().queue(detail.id)
+                if (existing == null) db.downloads().upsert(
+                    DownloadEntity(
+                        detail.id,
+                        Json.encodeToString(detail),
+                        GalleryContentLocator.relativeCoverPath(detail.id, detail.coverUrl),
+                        DownloadState.Queued,
+                        0,
+                        null,
+                        System.currentTimeMillis(),
+                        null,
+                    )
+                ) else db.downloads().queue(detail.id)
             }
-            schedule(detail.id, if (existing == null) ExistingWorkPolicy.KEEP else ExistingWorkPolicy.REPLACE)
+            schedule(
+                detail.id,
+                if (existing == null) ExistingWorkPolicy.KEEP else ExistingWorkPolicy.REPLACE
+            )
         }
     }
 
@@ -105,31 +124,56 @@ class DownloadRepository @Inject internal constructor(
         work.cancelUniqueWork(archiveWorkName(id)).result.get()
         files.withGallery(id) {
             db.downloads().delete(id)
-            check(!GalleryContentLocator.galleryDir(files.root, id).exists() || GalleryContentLocator.galleryDir(files.root, id).deleteRecursively()) { "Cannot delete gallery files" }
+            check(
+                !GalleryContentLocator.galleryDir(files.root, id)
+                    .exists() || GalleryContentLocator.galleryDir(files.root, id)
+                    .deleteRecursively()
+            ) { "Cannot delete gallery files" }
         }
     }
+
     /** Deletes a download, including active work and partial files. */
     suspend fun delete(id: Int) = cancel(id)
+
     /** Deletes all persisted downloads and their files. */
-    suspend fun deleteAll() { db.downloads().all().forEach { delete(it.galleryId) } }
+    suspend fun deleteAll() {
+        db.downloads().all().forEach { delete(it.galleryId) }
+    }
 
     /** Starts an archive on collection and emits its state through completion or failure. */
     fun exportArchive(id: Int): Flow<ArchiveState> = flow {
         require(isDownloaded(id)) { "Gallery is not downloaded" }
-        val request = OneTimeWorkRequestBuilder<ArchiveWorker>().setInputData(workDataOf(ArchiveWorker.KEY_ID to id)).build()
+        val request =
+            OneTimeWorkRequestBuilder<ArchiveWorker>().setInputData(workDataOf(ArchiveWorker.KEY_ID to id))
+                .build()
         val workId = withContext(Dispatchers.IO) {
             archiveEnqueueLock.withLock {
-                val existing = work.getWorkInfosForUniqueWork(archiveWorkName(id)).get().firstOrNull { !it.state.isFinished }
+                val existing = work.getWorkInfosForUniqueWork(archiveWorkName(id)).get()
+                    .firstOrNull { !it.state.isFinished }
                 if (existing != null) existing.id else {
-                    work.enqueueUniqueWork(archiveWorkName(id), ExistingWorkPolicy.KEEP, request).result.get()
+                    work.enqueueUniqueWork(
+                        archiveWorkName(id),
+                        ExistingWorkPolicy.KEEP,
+                        request
+                    ).result.get()
                     request.id
                 }
             }
         }
         emitAll(work.getWorkInfoByIdFlow(workId).map { info ->
             when (info?.state) {
-                WorkInfo.State.SUCCEEDED -> ArchiveState.Completed(info.outputData.getString(ArchiveWorker.KEY_URI).orEmpty())
-                WorkInfo.State.FAILED, WorkInfo.State.CANCELLED -> ArchiveState.Failed(info.outputData.getString(ArchiveWorker.KEY_ERROR) ?: "Archive cancelled or failed")
+                WorkInfo.State.SUCCEEDED -> ArchiveState.Completed(
+                    info.outputData.getString(
+                        ArchiveWorker.KEY_URI
+                    ).orEmpty()
+                )
+
+                WorkInfo.State.FAILED, WorkInfo.State.CANCELLED -> ArchiveState.Failed(
+                    info.outputData.getString(
+                        ArchiveWorker.KEY_ERROR
+                    ) ?: "Archive cancelled or failed"
+                )
+
                 WorkInfo.State.RUNNING -> ArchiveState.Running
                 else -> ArchiveState.Queued
             }
@@ -137,20 +181,29 @@ class DownloadRepository @Inject internal constructor(
     }
 
     /** Returns true only for a completed persisted download. */
-    suspend fun isDownloaded(id: Int): Boolean = db.downloads().get(id)?.state == DownloadState.Completed
+    suspend fun isDownloaded(id: Int): Boolean =
+        db.downloads().get(id)?.state == DownloadState.Completed
 
     private fun schedule(id: Int, policy: ExistingWorkPolicy) {
         val request = OneTimeWorkRequestBuilder<DownloadWorker>()
             .setInputData(workDataOf(DownloadWorker.KEY_ID to id))
-            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()).build()
+            .setConstraints(
+                Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
+            ).build()
         work.enqueueUniqueWork(downloadWorkName(id), policy, request).result.get()
     }
 
     private fun item(row: DownloadEntity): DownloadItem {
         val detail = Json.decodeFromString<GalleryDetail>(row.detailJson)
         val cover = File(files.root, row.coverPath)
-        return DownloadItem(GallerySummary(detail.id, detail.title, if (cover.exists()) cover.absolutePath else detail.coverUrl),
-            cover, row.state, row.downloadedPages, detail.pageCount, row.error, row.createdAt)
+        return DownloadItem(
+            GallerySummary(
+                detail.id,
+                detail.title,
+                if (cover.exists()) cover.absolutePath else detail.coverUrl
+            ),
+            cover, row.state, row.downloadedPages, detail.pageCount, row.error, row.createdAt
+        )
     }
 }
 

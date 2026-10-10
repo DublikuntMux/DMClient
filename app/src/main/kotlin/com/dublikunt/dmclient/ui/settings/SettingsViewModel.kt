@@ -16,7 +16,6 @@ import com.dublikunt.dmclient.ui.update.UpdateCheckResult
 import com.dublikunt.dmclient.ui.update.UpdatePromptState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -29,6 +28,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 sealed interface SettingsEvent {
     data class Message(val text: String) : SettingsEvent

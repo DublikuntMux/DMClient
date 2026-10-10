@@ -1,6 +1,5 @@
 package com.dublikunt.dmclient.ui.library
 
-import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -26,6 +25,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.CollectionsBookmark
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -146,7 +146,9 @@ fun LibraryScreen(
                                 ),
                             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                            modifier = Modifier.fillMaxWidth().focusRequester(focus),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(focus),
                             decorationBox = { field ->
                                 Box {
                                     if (query.isEmpty())
@@ -194,7 +196,12 @@ fun LibraryScreen(
             )
         },
     ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .consumeWindowInsets(padding)
+        ) {
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -251,6 +258,7 @@ fun LibraryScreen(
                         is LoadState.Error ->
                             if (history.itemCount == 0)
                                 ErrorState(refresh.error.userMessage(), onRetry = history::retry)
+
                         else -> Unit
                     }
                     if (
@@ -268,14 +276,15 @@ fun LibraryScreen(
                             Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(vertical = 12.dp),
                         ) {
-                            items(history.itemCount, key = history.itemKey { it.gallery.id }) {
-                                index ->
+                            items(
+                                history.itemCount,
+                                key = history.itemKey { it.gallery.id }) { index ->
                                 history[index]?.let { entry ->
                                     val dismiss = rememberSwipeToDismissBoxState()
                                     LaunchedEffect(dismiss.currentValue) {
                                         if (
                                             dismiss.currentValue ==
-                                                SwipeToDismissBoxValue.EndToStart
+                                            SwipeToDismissBoxValue.EndToStart
                                         )
                                             viewModel.removeHistory(entry.gallery.id)
                                     }
@@ -284,7 +293,8 @@ fun LibraryScreen(
                                         enableDismissFromStartToEnd = false,
                                         backgroundContent = {
                                             Box(
-                                                Modifier.fillMaxSize()
+                                                Modifier
+                                                    .fillMaxSize()
                                                     .background(
                                                         MaterialTheme.colorScheme.errorContainer
                                                     )
@@ -315,18 +325,26 @@ fun LibraryScreen(
                             when (val append = history.loadState.append) {
                                 is LoadState.Loading ->
                                     item {
-                                        LoadingIndicator(Modifier.fillMaxWidth().padding(16.dp))
+                                        LoadingIndicator(
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .padding(16.dp)
+                                        )
                                     }
+
                                 is LoadState.Error ->
                                     item { InlineError(append.error.userMessage(), history::retry) }
+
                                 else -> Unit
                             }
                         }
                     }
                 }
+
                 entryState.loading -> LoadingState()
                 entryState.error != null ->
                     ErrorState(entryState.error!!, onRetry = viewModel::retryEntries)
+
                 entries.isEmpty() ->
                     EmptyState(
                         icon =
@@ -342,6 +360,7 @@ fun LibraryScreen(
                                 "Tap the heart on a gallery to save it here."
                             else "Assign a reading status to a gallery to track it.",
                     )
+
                 else ->
                     GalleryGrid(
                         entries,
@@ -407,7 +426,8 @@ private fun HistoryRow(
     }
     Surface(color = MaterialTheme.colorScheme.surface) {
         Row(
-            Modifier.fillMaxWidth()
+            Modifier
+                .fillMaxWidth()
                 .combinedClickable(onClick = onClick, onLongClick = onLongClick)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -416,7 +436,9 @@ private fun HistoryRow(
             GalleryImage(
                 entry.gallery.coverUrl,
                 null,
-                Modifier.size(56.dp, 80.dp).clip(MaterialTheme.shapes.medium),
+                Modifier
+                    .size(56.dp, 80.dp)
+                    .clip(MaterialTheme.shapes.medium),
                 sizePx = 240,
             )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -436,7 +458,9 @@ private fun HistoryRow(
                             (entry.lastPage.toFloat() / entry.pageCount).coerceIn(0f, 1f)
                         else 0f
                     },
-                    modifier = Modifier.fillMaxWidth().height(4.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp),
                 )
                 Text(
                     relativeTime(entry.openedAt, now),

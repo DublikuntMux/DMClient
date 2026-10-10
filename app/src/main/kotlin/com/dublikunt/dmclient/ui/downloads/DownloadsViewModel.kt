@@ -9,7 +9,6 @@ import com.dublikunt.dmclient.data.repository.StorageRepository
 import com.dublikunt.dmclient.data.settings.SettingsRepository
 import com.dublikunt.dmclient.ui.components.userMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
-import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -19,6 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @HiltViewModel
 class DownloadsViewModel

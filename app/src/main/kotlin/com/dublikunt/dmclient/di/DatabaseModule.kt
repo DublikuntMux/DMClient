@@ -20,10 +20,13 @@ import javax.inject.Singleton
 object DatabaseModule {
     @Provides
     @Singleton
-    fun database(@ApplicationContext context: Context): AppDatabase = Room.databaseBuilder(context, AppDatabase::class.java, "main_database")
-        .addMigrations(*historicalMigrations, MIGRATION_8_9)
-        .addCallback(object : RoomDatabase.Callback() {
-            override fun onCreate(db: SupportSQLiteDatabase) { seedDefaultStatuses(db) }
-        })
-        .fallbackToDestructiveMigration(false).build()
+    fun database(@ApplicationContext context: Context): AppDatabase =
+        Room.databaseBuilder(context, AppDatabase::class.java, "main_database")
+            .addMigrations(*historicalMigrations, MIGRATION_8_9)
+            .addCallback(object : RoomDatabase.Callback() {
+                override fun onCreate(db: SupportSQLiteDatabase) {
+                    seedDefaultStatuses(db)
+                }
+            })
+            .fallbackToDestructiveMigration(false).build()
 }

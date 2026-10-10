@@ -5,7 +5,8 @@ import androidx.paging.PagingState
 import com.dublikunt.dmclient.network.PageResult
 import kotlinx.coroutines.CancellationException
 
-internal class RemotePagingSource<T : Any>(private val loadPage: suspend (Int) -> PageResult<T>) : PagingSource<Int, T>() {
+internal class RemotePagingSource<T : Any>(private val loadPage: suspend (Int) -> PageResult<T>) :
+    PagingSource<Int, T>() {
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, T> {
         val page = params.key ?: 1
         return try {
@@ -21,7 +22,8 @@ internal class RemotePagingSource<T : Any>(private val loadPage: suspend (Int) -
         }
     }
 
-    override fun getRefreshKey(state: PagingState<Int, T>): Int? = state.anchorPosition?.let { anchor ->
-        state.closestPageToPosition(anchor)?.let { it.prevKey?.plus(1) ?: it.nextKey?.minus(1) }
-    }
+    override fun getRefreshKey(state: PagingState<Int, T>): Int? =
+        state.anchorPosition?.let { anchor ->
+            state.closestPageToPosition(anchor)?.let { it.prevKey?.plus(1) ?: it.nextKey?.minus(1) }
+        }
 }

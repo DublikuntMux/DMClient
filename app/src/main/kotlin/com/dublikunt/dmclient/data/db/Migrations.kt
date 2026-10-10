@@ -24,38 +24,70 @@ val MIGRATION_8_9 = object : Migration(8, 9) {
         db.execSQL("INSERT INTO galleries SELECT id, name, coverUrl, 0, timestamp FROM gallery_history")
         db.execSQL("INSERT INTO history SELECT id, 1, timestamp FROM gallery_history")
         db.query("SELECT * FROM downloaded_galleries").use { cursor ->
-            fun text(column: String): String = cursor.getString(cursor.getColumnIndexOrThrow(column))
+            fun text(column: String): String =
+                cursor.getString(cursor.getColumnIndexOrThrow(column))
+
             fun int(column: String): Int = cursor.getInt(cursor.getColumnIndexOrThrow(column))
             while (cursor.moveToNext()) {
                 val id = int("id")
                 val time = cursor.getLong(cursor.getColumnIndexOrThrow("timestamp"))
                 val coverPath = text("coverPath")
                 val mediaId = int("pagesId")
-                val coverUrl = "https://t.nhentai.net/galleries/$mediaId/${coverPath.substringAfterLast('/')}"
-                val tags = listOf("parodies" to TagType.Parody, "tags" to TagType.Tag, "artists" to TagType.Artist, "characters" to TagType.Character)
-                    .flatMap { (column, type) -> Json.decodeFromString<List<String>>(text(column)).map { Tag(type, it) } }
-                val detail = GalleryDetail(id, text("title"), null, coverUrl, mediaId, int("totalPages"),
-                    Json.decodeFromString<List<ImageType>>(text("imageTypes")), tags, null, null)
-                db.execSQL("INSERT OR REPLACE INTO galleries (id, title, coverUrl, pageCount, updatedAt) VALUES (?, ?, ?, ?, ?)",
-                    arrayOf<Any?>(id, detail.title, coverUrl, detail.pageCount, time))
-                db.execSQL("INSERT INTO downloads VALUES (?, ?, ?, 'Completed', ?, NULL, ?, ?)",
-                    arrayOf<Any?>(id, Json.encodeToString(detail), coverPath, detail.pageCount, time, time))
+                val coverUrl =
+                    "https://t.nhentai.net/galleries/$mediaId/${coverPath.substringAfterLast('/')}"
+                val tags = listOf(
+                    "parodies" to TagType.Parody,
+                    "tags" to TagType.Tag,
+                    "artists" to TagType.Artist,
+                    "characters" to TagType.Character
+                )
+                    .flatMap { (column, type) ->
+                        Json.decodeFromString<List<String>>(text(column)).map { Tag(type, it) }
+                    }
+                val detail = GalleryDetail(
+                    id, text("title"), null, coverUrl, mediaId, int("totalPages"),
+                    Json.decodeFromString<List<ImageType>>(text("imageTypes")), tags, null, null
+                )
+                db.execSQL(
+                    "INSERT OR REPLACE INTO galleries (id, title, coverUrl, pageCount, updatedAt) VALUES (?, ?, ?, ?, ?)",
+                    arrayOf<Any?>(id, detail.title, coverUrl, detail.pageCount, time)
+                )
+                db.execSQL(
+                    "INSERT INTO downloads VALUES (?, ?, ?, 'Completed', ?, NULL, ?, ?)",
+                    arrayOf<Any?>(
+                        id,
+                        Json.encodeToString(detail),
+                        coverPath,
+                        detail.pageCount,
+                        time,
+                        time
+                    )
+                )
             }
         }
         val now = System.currentTimeMillis()
-        db.query("SELECT * FROM gallery_status WHERE statusId IS NOT NULL OR favorite != 0").use { cursor ->
-            while (cursor.moveToNext()) {
-                val id = cursor.getInt(cursor.getColumnIndexOrThrow("id"))
-                val statusColumn = cursor.getColumnIndexOrThrow("statusId")
-                val statusId = if (cursor.isNull(statusColumn)) null else cursor.getInt(statusColumn)
-                val validStatus = statusId?.takeIf { status ->
-                    db.query("SELECT id FROM statuses WHERE id = ?", arrayOf(status)).use { it.moveToFirst() }
+        db.query("SELECT * FROM gallery_status WHERE statusId IS NOT NULL OR favorite != 0")
+            .use { cursor ->
+                while (cursor.moveToNext()) {
+                    val id = cursor.getInt(cursor.getColumnIndexOrThrow("id"))
+                    val statusColumn = cursor.getColumnIndexOrThrow("statusId")
+                    val statusId =
+                        if (cursor.isNull(statusColumn)) null else cursor.getInt(statusColumn)
+                    val validStatus = statusId?.takeIf { status ->
+                        db.query("SELECT id FROM statuses WHERE id = ?", arrayOf(status))
+                            .use { it.moveToFirst() }
+                    }
+                    val favorite = cursor.getInt(cursor.getColumnIndexOrThrow("favorite"))
+                    db.execSQL(
+                        "INSERT OR IGNORE INTO galleries VALUES (?, ?, '', 0, ?)",
+                        arrayOf<Any?>(id, "Gallery #$id", now)
+                    )
+                    if (validStatus != null || favorite != 0) db.execSQL(
+                        "INSERT INTO library VALUES (?, ?, ?, ?)",
+                        arrayOf<Any?>(id, validStatus, favorite, now)
+                    )
                 }
-                val favorite = cursor.getInt(cursor.getColumnIndexOrThrow("favorite"))
-                db.execSQL("INSERT OR IGNORE INTO galleries VALUES (?, ?, '', 0, ?)", arrayOf<Any?>(id, "Gallery #$id", now))
-                if (validStatus != null || favorite != 0) db.execSQL("INSERT INTO library VALUES (?, ?, ?, ?)", arrayOf<Any?>(id, validStatus, favorite, now))
             }
-        }
         db.query("SELECT type, names FROM search_cache").use { cursor ->
             while (cursor.moveToNext()) {
                 val type = when (cursor.getString(0)) {
@@ -66,11 +98,20 @@ val MIGRATION_8_9 = object : Migration(8, 9) {
                     else -> cursor.getString(0)
                 }
                 Json.decodeFromString<List<String>>(cursor.getString(1)).forEach { name ->
-                    db.execSQL("INSERT OR IGNORE INTO search_entries VALUES (?, ?)", arrayOf(type, name))
+                    db.execSQL(
+                        "INSERT OR IGNORE INTO search_entries VALUES (?, ?)",
+                        arrayOf(type, name)
+                    )
                 }
             }
         }
-        listOf("gallery_history", "gallery_status", "custom_status", "downloaded_galleries", "search_cache")
+        listOf(
+            "gallery_history",
+            "gallery_status",
+            "custom_status",
+            "downloaded_galleries",
+            "search_cache"
+        )
             .forEach { db.execSQL("DROP TABLE $it") }
     }
 }

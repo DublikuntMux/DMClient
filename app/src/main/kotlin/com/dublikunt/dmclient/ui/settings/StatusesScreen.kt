@@ -17,8 +17,6 @@ import androidx.compose.material.icons.rounded.Bookmarks
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -51,7 +49,6 @@ import com.dublikunt.dmclient.ui.components.LoadingState
 import com.dublikunt.dmclient.ui.components.StatusDot
 import com.dublikunt.dmclient.ui.components.StatusEditorDialog
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun StatusesScreen(onBack: () -> Unit) {
     val viewModel: StatusesViewModel = hiltViewModel()
@@ -84,7 +81,10 @@ fun StatusesScreen(onBack: () -> Unit) {
             )
         },
     ) { padding ->
-        val modifier = Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)
+        val modifier = Modifier
+            .fillMaxSize()
+            .padding(padding)
+            .consumeWindowInsets(padding)
         val current = statuses
         when {
             current == null -> LoadingState(modifier)
@@ -95,6 +95,7 @@ fun StatusesScreen(onBack: () -> Unit) {
                     modifier,
                     "Create a status to organize your library.",
                 )
+
             else ->
                 LazyColumn(
                     modifier.padding(horizontal = 16.dp),
@@ -110,16 +111,19 @@ fun StatusesScreen(onBack: () -> Unit) {
                                         bottomStart = MaterialTheme.shapes.extraSmall.bottomStart,
                                         bottomEnd = MaterialTheme.shapes.extraSmall.bottomEnd,
                                     )
+
                                 index == current.lastIndex ->
                                     MaterialTheme.shapes.extraLarge.copy(
                                         topStart = MaterialTheme.shapes.extraSmall.topStart,
                                         topEnd = MaterialTheme.shapes.extraSmall.topEnd,
                                     )
+
                                 else -> MaterialTheme.shapes.extraSmall
                             }
                         Surface(shape = shape, color = MaterialTheme.colorScheme.surfaceContainer) {
                             Row(
-                                Modifier.fillMaxWidth()
+                                Modifier
+                                    .fillMaxWidth()
                                     .clickable { editing = status }
                                     .padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically,

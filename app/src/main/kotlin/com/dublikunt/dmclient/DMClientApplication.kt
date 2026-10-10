@@ -6,10 +6,10 @@ import androidx.hilt.work.HiltWorkerFactory
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.Configuration
 import coil3.ImageLoader
-import coil3.request.crossfade
 import coil3.SingletonImageLoader
 import coil3.disk.DiskCache
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
+import coil3.request.crossfade
 import com.dublikunt.dmclient.crash.CrashReporter
 import com.dublikunt.dmclient.data.lock.AppLockManager
 import com.dublikunt.dmclient.data.repository.DownloadRepository
@@ -22,11 +22,20 @@ import javax.inject.Inject
 
 @HiltAndroidApp
 class DMClientApplication : Application(), Configuration.Provider, SingletonImageLoader.Factory {
-    @Inject lateinit var workerFactory: HiltWorkerFactory
-    @Inject lateinit var client: OkHttpClient
-    @Inject lateinit var settings: SettingsRepository
-    @Inject lateinit var lock: AppLockManager
-    @Inject lateinit var downloads: dagger.Lazy<DownloadRepository>
+    @Inject
+    lateinit var workerFactory: HiltWorkerFactory
+
+    @Inject
+    lateinit var client: OkHttpClient
+
+    @Inject
+    lateinit var settings: SettingsRepository
+
+    @Inject
+    lateinit var lock: AppLockManager
+
+    @Inject
+    lateinit var downloads: dagger.Lazy<DownloadRepository>
 
     override fun onCreate() {
         super.onCreate()
@@ -40,7 +49,10 @@ class DMClientApplication : Application(), Configuration.Provider, SingletonImag
         return ImageLoader.Builder(context)
             .crossfade(true)
             .components { add(OkHttpNetworkFetcherFactory(callFactory = { client })) }
-            .diskCache { DiskCache.Builder().directory(context.cacheDir.resolve("image_cache").toOkioPath()).maxSizeBytes(cacheSize).build() }
+            .diskCache {
+                DiskCache.Builder().directory(context.cacheDir.resolve("image_cache").toOkioPath())
+                    .maxSizeBytes(cacheSize).build()
+            }
             .build()
     }
 

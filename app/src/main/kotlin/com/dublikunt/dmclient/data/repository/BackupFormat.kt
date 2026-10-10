@@ -28,9 +28,20 @@ private data class V1Backup(
     val galleryStatuses: List<V1Mark> = emptyList(),
     val customStatuses: List<V1Status> = emptyList(),
 )
-@Serializable private data class V1History(val id: Int, val coverUrl: String, val name: String, val timestamp: Long)
-@Serializable private data class V1Mark(val id: Int, val statusId: Int?, val favorite: Boolean)
-@Serializable private data class V1Status(val id: Int, val name: String, val color: Int)
+
+@Serializable
+private data class V1History(
+    val id: Int,
+    val coverUrl: String,
+    val name: String,
+    val timestamp: Long
+)
+
+@Serializable
+private data class V1Mark(val id: Int, val statusId: Int?, val favorite: Boolean)
+
+@Serializable
+private data class V1Status(val id: Int, val name: String, val color: Int)
 
 internal object BackupFormat {
     val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
@@ -41,17 +52,43 @@ internal object BackupFormat {
         return when (version) {
             2 -> json.decodeFromString<BackupData>(text)
             1 -> {
-                require(root.containsKey("history") && root.containsKey("galleryStatuses") && root.containsKey("customStatuses")) { "Invalid v1 backup" }
+                require(
+                    root.containsKey("history") && root.containsKey("galleryStatuses") && root.containsKey(
+                        "customStatuses"
+                    )
+                ) { "Invalid v1 backup" }
                 val old = json.decodeFromString<V1Backup>(text)
-                val galleries = old.history.associate { it.id to GalleryEntity(it.id, it.name, it.coverUrl, 0, it.timestamp) }.toMutableMap()
-                old.galleryStatuses.forEach { galleries.putIfAbsent(it.id, GalleryEntity(it.id, "Gallery #${it.id}", "", 0, now)) }
+                val galleries = old.history.associate {
+                    it.id to GalleryEntity(
+                        it.id,
+                        it.name,
+                        it.coverUrl,
+                        0,
+                        it.timestamp
+                    )
+                }.toMutableMap()
+                old.galleryStatuses.forEach {
+                    galleries.putIfAbsent(
+                        it.id,
+                        GalleryEntity(it.id, "Gallery #${it.id}", "", 0, now)
+                    )
+                }
                 BackupData(
                     galleries = galleries.values.toList(),
-                    library = old.galleryStatuses.filter { it.statusId != null || it.favorite }.map { LibraryEntity(it.id, it.statusId, it.favorite, now) },
-                    statuses = old.customStatuses.map { StatusEntity(it.id, it.name, it.color, it.id) },
+                    library = old.galleryStatuses.filter { it.statusId != null || it.favorite }
+                        .map { LibraryEntity(it.id, it.statusId, it.favorite, now) },
+                    statuses = old.customStatuses.map {
+                        StatusEntity(
+                            it.id,
+                            it.name,
+                            it.color,
+                            it.id
+                        )
+                    },
                     history = old.history.map { HistoryEntity(it.id, 1, it.timestamp) },
                 )
             }
+
             else -> throw IllegalArgumentException("Unsupported backup version: $version")
         }
     }
@@ -59,7 +96,10 @@ internal object BackupFormat {
 
 internal data class StatusMergePlan(val additions: List<StatusEntity>, val remapping: Map<Int, Int>)
 
-internal fun mergeStatusNames(incoming: List<StatusEntity>, existing: List<StatusEntity>): StatusMergePlan {
+internal fun mergeStatusNames(
+    incoming: List<StatusEntity>,
+    existing: List<StatusEntity>
+): StatusMergePlan {
     val names = existing.associate { it.name.lowercase(Locale.ROOT) to it.id }.toMutableMap()
     var nextId = (existing.maxOfOrNull { it.id } ?: 0) + 1
     var position = (existing.maxOfOrNull { it.position } ?: 0) + 1
@@ -78,4 +118,5 @@ internal fun mergeStatusNames(incoming: List<StatusEntity>, existing: List<Statu
 }
 
 internal fun remapLibrary(rows: List<LibraryEntity>, mapping: Map<Int, Int>): List<LibraryEntity> =
-    rows.map { it.copy(statusId = it.statusId?.let(mapping::get)) }.filter { it.statusId != null || it.favorite }
+    rows.map { it.copy(statusId = it.statusId?.let(mapping::get)) }
+        .filter { it.statusId != null || it.favorite }

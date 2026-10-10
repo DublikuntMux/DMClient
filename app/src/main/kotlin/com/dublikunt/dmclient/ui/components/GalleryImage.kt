@@ -46,7 +46,13 @@ fun GalleryImage(
         contentDescription = contentDescription,
         contentScale = contentScale,
         modifier = modifier,
-        loading = { Box(Modifier.matchParentSize().shimmer()) },
+        loading = {
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .shimmer()
+            )
+        },
         error = {
             Box(
                 modifier = Modifier

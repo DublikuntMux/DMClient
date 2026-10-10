@@ -10,10 +10,12 @@ import java.io.InputStream
 
 object SearchBundleImporter {
     private val json = Json { ignoreUnknownKeys = true }
-    fun parse(text: String): SearchDataBundle = parsing { json.decodeFromString<SearchDataBundle>(text) }
+    fun parse(text: String): SearchDataBundle =
+        parsing { json.decodeFromString<SearchDataBundle>(text) }
 
     @OptIn(ExperimentalSerializationApi::class)
-    fun parse(stream: InputStream): SearchDataBundle = parsing { json.decodeFromStream<SearchDataBundle>(stream) }
+    fun parse(stream: InputStream): SearchDataBundle =
+        parsing { json.decodeFromStream<SearchDataBundle>(stream) }
 
     private inline fun parsing(decode: () -> SearchDataBundle): SearchDataBundle = try {
         decode().also {
@@ -26,5 +28,7 @@ object SearchBundleImporter {
     fun entries(bundle: SearchDataBundle): List<SearchEntryEntity> = listOf(
         TagType.Tag to bundle.tags, TagType.Artist to bundle.artists,
         TagType.Character to bundle.characters, TagType.Parody to bundle.parodies,
-    ).flatMap { (type, names) -> names.filter(String::isNotBlank).distinct().map { SearchEntryEntity(type.key, it) } }
+    ).flatMap { (type, names) ->
+        names.filter(String::isNotBlank).distinct().map { SearchEntryEntity(type.key, it) }
+    }
 }

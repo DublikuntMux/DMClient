@@ -43,13 +43,20 @@ internal fun ReaderPages(
 
     LaunchedEffect(detail.id, state.page, state.downloaded) {
         val loader = SingletonImageLoader.get(context)
-        val requests = ((state.page - 2)..(state.page + 2)).filter { it in 1..detail.pageCount && it != state.page }.map { page ->
-            loader.enqueue(
-                ImageRequest.Builder(context).data(viewModel.pageImage(detail, page, state.downloaded))
-                    .memoryCacheKeyExtra("retry", "0").build()
-            )
+        val requests =
+            ((state.page - 2)..(state.page + 2)).filter { it in 1..detail.pageCount && it != state.page }
+                .map { page ->
+                    loader.enqueue(
+                        ImageRequest.Builder(context)
+                            .data(viewModel.pageImage(detail, page, state.downloaded))
+                            .memoryCacheKeyExtra("retry", "0").build()
+                    )
+                }
+        try {
+            kotlinx.coroutines.awaitCancellation()
+        } finally {
+            requests.forEach { it.dispose() }
         }
-        try { kotlinx.coroutines.awaitCancellation() } finally { requests.forEach { it.dispose() } }
     }
 
     key(state.settings.readerMode) {
@@ -57,29 +64,54 @@ internal fun ReaderPages(
         if (state.settings.readerMode == ReaderMode.Vertical) {
             val list = rememberLazyListState(initialFirstVisibleItemIndex = state.page - 1)
             LaunchedEffect(list) {
-                snapshotFlow { list.firstVisibleItemIndex + 1 }.distinctUntilChanged().collect(viewModel::pageChanged)
+                snapshotFlow { list.firstVisibleItemIndex + 1 }.distinctUntilChanged()
+                    .collect(viewModel::pageChanged)
             }
             DisposableEffect(list) {
-                onSeekReady { page -> scope.launch { list.scrollToItem(page.coerceIn(1, detail.pageCount) - 1) } }
+                onSeekReady { page ->
+                    scope.launch {
+                        list.scrollToItem(
+                            page.coerceIn(
+                                1,
+                                detail.pageCount
+                            ) - 1
+                        )
+                    }
+                }
                 onDispose { onSeekReady(null) }
             }
             LazyColumn(Modifier.fillMaxSize(), state = list) {
                 items(detail.pageCount, key = { it + 1 }) { index ->
                     ReaderImage(
-                        model = viewModel.pageImage(detail, index + 1, state.downloaded), page = index + 1, vertical = true,
-                        modifier = Modifier.fillMaxWidth().pointerInput(Unit) { detectTapGestures(onTap = { latestToggle() }) }
+                        model = viewModel.pageImage(detail, index + 1, state.downloaded),
+                        page = index + 1,
+                        vertical = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .pointerInput(Unit) { detectTapGestures(onTap = { latestToggle() }) }
                     )
                 }
             }
         } else {
-            val pager = rememberPagerState(initialPage = state.page - 1, pageCount = { detail.pageCount })
+            val pager =
+                rememberPagerState(initialPage = state.page - 1, pageCount = { detail.pageCount })
             var currentScale by remember { mutableFloatStateOf(1f) }
             val rtl = state.settings.readerMode == ReaderMode.PagedRtl
             LaunchedEffect(pager) {
-                snapshotFlow { pager.settledPage + 1 }.distinctUntilChanged().collect(viewModel::pageChanged)
+                snapshotFlow { pager.settledPage + 1 }.distinctUntilChanged()
+                    .collect(viewModel::pageChanged)
             }
             DisposableEffect(pager) {
-                onSeekReady { page -> scope.launch { pager.scrollToPage(page.coerceIn(1, detail.pageCount) - 1) } }
+                onSeekReady { page ->
+                    scope.launch {
+                        pager.scrollToPage(
+                            page.coerceIn(
+                                1,
+                                detail.pageCount
+                            ) - 1
+                        )
+                    }
+                }
                 onDispose { onSeekReady(null) }
             }
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
@@ -88,13 +120,28 @@ internal fun ReaderPages(
                     userScrollEnabled = currentScale <= 1f, modifier = Modifier.fillMaxSize()
                 ) { index ->
                     ZoomableImage(
-                        model = viewModel.pageImage(detail, index + 1, state.downloaded), page = index + 1,
-                        active = index == pager.currentPage, onScaleChanged = { currentScale = it },
+                        model = viewModel.pageImage(detail, index + 1, state.downloaded),
+                        page = index + 1,
+                        active = index == pager.currentPage,
+                        onScaleChanged = { currentScale = it },
                         onTap = { fraction ->
                             when (readerTap(fraction, rtl)) {
                                 ReaderTap.ToggleOverlay -> latestToggle()
-                                ReaderTap.Previous -> scope.launch { pager.animateScrollToPage((pager.currentPage - 1).coerceAtLeast(0)) }
-                                ReaderTap.Next -> scope.launch { pager.animateScrollToPage((pager.currentPage + 1).coerceAtMost(detail.pageCount - 1)) }
+                                ReaderTap.Previous -> scope.launch {
+                                    pager.animateScrollToPage(
+                                        (pager.currentPage - 1).coerceAtLeast(
+                                            0
+                                        )
+                                    )
+                                }
+
+                                ReaderTap.Next -> scope.launch {
+                                    pager.animateScrollToPage(
+                                        (pager.currentPage + 1).coerceAtMost(
+                                            detail.pageCount - 1
+                                        )
+                                    )
+                                }
                             }
                         }
                     )

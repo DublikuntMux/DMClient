@@ -90,7 +90,10 @@ fun SearchScreen(onOpenGallery: (Int) -> Unit) {
             leadingIcon = {
                 if (searchBarState.currentValue == SearchBarValue.Expanded) {
                     IconButton(onClick = { scope.launch { searchBarState.animateToCollapsed() } }) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Close search")
+                        Icon(
+                            Icons.AutoMirrored.Rounded.ArrowBack,
+                            contentDescription = "Close search"
+                        )
                     }
                 } else {
                     Icon(Icons.Rounded.Search, contentDescription = null)
@@ -120,7 +123,12 @@ fun SearchScreen(onOpenGallery: (Int) -> Unit) {
         },
         snackbarHost = { SnackbarHost(snackbar) }
     ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .consumeWindowInsets(padding)
+        ) {
             SearchFilters(
                 state = state,
                 onSort = viewModel::setSort,
@@ -178,7 +186,10 @@ fun SearchScreen(onOpenGallery: (Int) -> Unit) {
             gallery = gallery,
             onDismiss = { selectedGallery = null },
             actions = listOf(
-                GalleryAction("Download", Icons.Rounded.FileDownload) { viewModel.download(gallery) }
+                GalleryAction(
+                    "Download",
+                    Icons.Rounded.FileDownload
+                ) { viewModel.download(gallery) }
             )
         )
     }

@@ -9,6 +9,7 @@ import javax.inject.Singleton
 @Singleton
 class AppCookieJar @Inject constructor() : CookieJar {
     private data class Key(val name: String, val domain: String, val path: String)
+
     private val cookies = mutableMapOf<Key, Cookie>()
 
     @Synchronized

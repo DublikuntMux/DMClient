@@ -103,7 +103,10 @@ class SearchViewModel @Inject constructor(
     private val downloads: DownloadRepository
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(
-        SearchState.fromRoute(savedStateHandle.toRoute<SearchRoute>(), settingsRepository.settings.value.language)
+        SearchState.fromRoute(
+            savedStateHandle.toRoute<SearchRoute>(),
+            settingsRepository.settings.value.language
+        )
     )
     val state = mutableState.asStateFlow()
     val settings = settingsRepository.settings
@@ -150,20 +153,42 @@ class SearchViewModel @Inject constructor(
         }
     }
 
-    fun setQuery(query: String) { mutableState.update { it.copy(query = query) } }
-    fun submit(query: String) { mutableState.update { it.submit(query) } }
+    fun setQuery(query: String) {
+        mutableState.update { it.copy(query = query) }
+    }
+
+    fun submit(query: String) {
+        mutableState.update { it.submit(query) }
+    }
+
     fun addFilter(tag: Tag, excluded: Boolean = false) {
         mutableState.update { it.addFilter(tag, excluded) }
     }
-    fun toggleFilter(tag: Tag) { mutableState.update { it.toggleFilter(tag) } }
-    fun removeFilter(tag: Tag) { mutableState.update { it.removeFilter(tag) } }
-    fun removeText() { mutableState.update { it.removeText() } }
-    fun setSort(sort: SortOrder) { mutableState.update { it.copy(sort = sort) } }
+
+    fun toggleFilter(tag: Tag) {
+        mutableState.update { it.toggleFilter(tag) }
+    }
+
+    fun removeFilter(tag: Tag) {
+        mutableState.update { it.removeFilter(tag) }
+    }
+
+    fun removeText() {
+        mutableState.update { it.removeText() }
+    }
+
+    fun setSort(sort: SortOrder) {
+        mutableState.update { it.copy(sort = sort) }
+    }
+
     fun setLanguage(language: ContentLanguage) {
         languageSelected = true
         mutableState.update { it.copy(language = language) }
     }
-    fun refreshSearchData() { searchData.refresh() }
+
+    fun refreshSearchData() {
+        searchData.refresh()
+    }
 
     fun download(gallery: GallerySummary) {
         viewModelScope.launch {

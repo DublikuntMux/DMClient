@@ -43,10 +43,18 @@ class ArchiveWorker @AssistedInject internal constructor(
             var pendingUri: Uri? = null
             var pendingFile: File? = null
             try {
-                val row = db.downloads().get(id)?.takeIf { it.state == DownloadState.Completed } ?: throw IOException("Gallery is not downloaded")
+                val row = db.downloads().get(id)?.takeIf { it.state == DownloadState.Completed }
+                    ?: throw IOException("Gallery is not downloaded")
                 val detail = Json.decodeFromString<GalleryDetail>(row.detailJson)
-                setForeground(notifications.foreground(id + 100_000, "archives", "Archiving ${detail.title}"))
-                val name = "$id - ${detail.title.take(160)}.zip".replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                setForeground(
+                    notifications.foreground(
+                        id + 100_000,
+                        "archives",
+                        "Archiving ${detail.title}"
+                    )
+                )
+                val name =
+                    "$id - ${detail.title.take(160)}.zip".replace(Regex("[\\\\/:*?\"<>|]"), "_")
                 val uri: Uri
                 val output = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     val values = ContentValues().apply {
@@ -55,13 +63,18 @@ class ArchiveWorker @AssistedInject internal constructor(
                         put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
                         put(MediaStore.MediaColumns.IS_PENDING, 1)
                     }
-                    uri = applicationContext.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                    uri = applicationContext.contentResolver.insert(
+                        MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                        values
+                    )
                         ?: throw IOException("Cannot create archive")
                     pendingUri = uri
-                    applicationContext.contentResolver.openOutputStream(uri) ?: throw IOException("Cannot open archive")
+                    applicationContext.contentResolver.openOutputStream(uri)
+                        ?: throw IOException("Cannot open archive")
                 } else {
                     @Suppress("DEPRECATION")
-                    val directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                    val directory =
+                        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
                     if (!directory.exists() && !directory.mkdirs()) throw IOException("Cannot create Downloads directory")
                     val file = File(directory, name)
                     val temporary = File(directory, "$name.part")
@@ -72,7 +85,8 @@ class ArchiveWorker @AssistedInject internal constructor(
                 output.use { stream ->
                     ZipOutputStream(stream).use { zip ->
                         val directory = GalleryContentLocator.galleryDir(files.root, id)
-                        val content = directory.listFiles()?.filter { it.isFile && !it.name.endsWith(".part") }
+                        val content = directory.listFiles()
+                            ?.filter { it.isFile && !it.name.endsWith(".part") }
                             ?.sortedBy { it.nameWithoutExtension.toIntOrNull() ?: Int.MAX_VALUE }
                             ?: throw IOException("Gallery files are missing")
                         for (file in content) {
@@ -92,9 +106,20 @@ class ArchiveWorker @AssistedInject internal constructor(
                     }
                 }
                 currentCoroutineContext().ensureActive()
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) applicationContext.contentResolver.update(uri, ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) }, null, null)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) applicationContext.contentResolver.update(
+                    uri,
+                    ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) },
+                    null,
+                    null
+                )
                 else pendingFile?.let { temporary ->
-                    if (!temporary.renameTo(File(temporary.parentFile, name))) throw IOException("Cannot save archive")
+                    if (!temporary.renameTo(
+                            File(
+                                temporary.parentFile,
+                                name
+                            )
+                        )
+                    ) throw IOException("Cannot save archive")
                 }
                 pendingUri = null
                 pendingFile = null

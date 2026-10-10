@@ -17,11 +17,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.LabelOff
 import androidx.compose.material.icons.rounded.CleaningServices
 import androidx.compose.material.icons.rounded.DataUsage
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.History
-import androidx.compose.material.icons.automirrored.rounded.LabelOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -87,7 +87,10 @@ fun StorageScreen(onBack: () -> Unit) {
         },
     ) { padding ->
         LazyColumn(
-            Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding),
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .consumeWindowInsets(padding),
             contentPadding = PaddingValues(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
@@ -100,6 +103,7 @@ fun StorageScreen(onBack: () -> Unit) {
                             onRetry = viewModel::refresh,
                             modifier = Modifier.height(240.dp),
                         )
+
                     current == null -> LoadingState(Modifier.height(160.dp))
                     else -> UsageCard(current)
                 }
@@ -114,7 +118,12 @@ fun StorageScreen(onBack: () -> Unit) {
                         viewModel::setCacheSize,
                         icon = Icons.Rounded.DataUsage,
                         summary =
-                            "${Formatter.formatFileSize(context, settings.imageCacheSize)} · Applies after restart",
+                            "${
+                                Formatter.formatFileSize(
+                                    context,
+                                    settings.imageCacheSize
+                                )
+                            } · Applies after restart",
                     )
                     SettingsItem(
                         "Clear image cache",
@@ -187,7 +196,9 @@ private fun UsageCard(usage: StorageUsage) {
     val context = LocalContext.current
     val fractions = storageFractions(usage.downloadsBytes, usage.imageCacheBytes)
     Surface(
-        Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
+        Modifier
+            .padding(horizontal = 16.dp)
+            .fillMaxWidth(),
         shape = MaterialTheme.shapes.extraLarge,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
@@ -204,7 +215,8 @@ private fun UsageCard(usage: StorageUsage) {
                 )
             }
             Row(
-                Modifier.fillMaxWidth()
+                Modifier
+                    .fillMaxWidth()
                     .height(12.dp)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest),
@@ -212,14 +224,16 @@ private fun UsageCard(usage: StorageUsage) {
             ) {
                 if (fractions.downloads > 0f)
                     Box(
-                        Modifier.weight(fractions.downloads)
+                        Modifier
+                            .weight(fractions.downloads)
                             .fillMaxHeight()
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.primary)
                     )
                 if (fractions.imageCache > 0f)
                     Box(
-                        Modifier.weight(fractions.imageCache)
+                        Modifier
+                            .weight(fractions.imageCache)
                             .fillMaxHeight()
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.tertiary)

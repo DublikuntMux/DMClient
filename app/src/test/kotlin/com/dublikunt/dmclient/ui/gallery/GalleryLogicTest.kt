@@ -24,8 +24,14 @@ class GalleryLogicTest {
     fun olderUploadsUseMediumDateInRequestedTimeZone() {
         val date = Instant.parse("2026-10-01T23:30:00Z").epochSecond
         assertEquals("Oct 1, 2026", formatUploadDate(date, now, ZoneId.of("UTC"), Locale.US))
-        assertEquals("Oct 2, 2026", formatUploadDate(date, now, ZoneId.of("Europe/Kyiv"), Locale.US))
-        assertEquals("Oct 3, 2026", formatUploadDate(now - 7 * 86_400, now, ZoneId.of("UTC"), Locale.US))
+        assertEquals(
+            "Oct 2, 2026",
+            formatUploadDate(date, now, ZoneId.of("Europe/Kyiv"), Locale.US)
+        )
+        assertEquals(
+            "Oct 3, 2026",
+            formatUploadDate(now - 7 * 86_400, now, ZoneId.of("UTC"), Locale.US)
+        )
     }
 
     @Test

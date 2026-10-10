@@ -67,7 +67,9 @@ class GalleryViewModel @Inject constructor(
         state.copy(exporting = exporting)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), GalleryUiState())
 
-    init { retry() }
+    init {
+        retry()
+    }
 
     fun retry() {
         if (loadJob?.isActive == true) return
@@ -138,7 +140,9 @@ class GalleryViewModel @Inject constructor(
 
     private fun action(block: suspend () -> Unit) {
         viewModelScope.launch {
-            try { block() } catch (error: Exception) {
+            try {
+                block()
+            } catch (error: Exception) {
                 if (error is CancellationException) throw error
                 messages.send(error.userMessage())
             }

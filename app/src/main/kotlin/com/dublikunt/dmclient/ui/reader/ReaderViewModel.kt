@@ -62,9 +62,10 @@ class ReaderViewModel @Inject constructor(
     val events = messages.receiveAsFlow()
     private var loadJob: Job? = null
 
-    val uiState: StateFlow<ReaderUiState> = combine(loaded, currentPage, settings.settings) { state, page, settings ->
-        state.copy(page = page ?: state.page, settings = settings)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), loaded.value)
+    val uiState: StateFlow<ReaderUiState> =
+        combine(loaded, currentPage, settings.settings) { state, page, settings ->
+            state.copy(page = page ?: state.page, settings = settings)
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), loaded.value)
 
     init {
         retry()
@@ -81,9 +82,18 @@ class ReaderViewModel @Inject constructor(
                 val lastPage = history.lastPage(route.id).first()
                 val detail = galleries.detail(route.id)
                 require(detail.pageCount > 0) { "This gallery has no pages." }
-                val page = resolveStartPage(savedStateHandle["currentPage"] ?: route.page, lastPage, detail.pageCount)
+                val page = resolveStartPage(
+                    savedStateHandle["currentPage"] ?: route.page,
+                    lastPage,
+                    detail.pageCount
+                )
                 val downloaded = downloads.isDownloaded(route.id)
-                loaded.value = ReaderUiState(loading = false, detail = detail, downloaded = downloaded, page = page)
+                loaded.value = ReaderUiState(
+                    loading = false,
+                    detail = detail,
+                    downloaded = downloaded,
+                    page = page
+                )
                 currentPage.value = page
             } catch (error: Exception) {
                 if (error is CancellationException) throw error
@@ -104,8 +114,9 @@ class ReaderViewModel @Inject constructor(
 
     fun cycleMode() {
         viewModelScope.launch {
-            try { settings.setReaderMode(nextReaderMode(settings.settings.value.readerMode)) }
-            catch (error: Exception) {
+            try {
+                settings.setReaderMode(nextReaderMode(settings.settings.value.readerMode))
+            } catch (error: Exception) {
                 if (error is CancellationException) throw error
                 messages.send(error.userMessage())
             }
@@ -122,8 +133,9 @@ class ReaderViewModel @Inject constructor(
         if (loaded.value.detail == null) return
         progressMutex.withLock {
             val page = currentPage.value ?: return
-            try { history.saveProgress(route.id, page) }
-            catch (error: Exception) {
+            try {
+                history.saveProgress(route.id, page)
+            } catch (error: Exception) {
                 if (error is CancellationException) throw error
                 messages.trySend("Could not save progress: ${error.userMessage()}")
             }

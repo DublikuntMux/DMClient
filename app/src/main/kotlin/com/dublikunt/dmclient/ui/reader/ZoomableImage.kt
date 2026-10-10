@@ -82,66 +82,96 @@ internal fun ZoomableImage(
     LaunchedEffect(viewport, image) { offset = clamp(offset, scale) }
 
     Box(
-        modifier.fillMaxSize().clipToBounds().onSizeChanged {
-            viewport = Size(it.width.toFloat(), it.height.toFloat())
-        }.pointerInput(model) {
-            detectTapGestures(
-                onTap = { latestTap(it.x / size.width.coerceAtLeast(1)) },
-                onDoubleTap = { tap ->
-                    animation?.cancel()
-                    val startScale = scale
-                    val startOffset = offset
-                    val targetScale = if (scale > 1f) 1f else 2.5f
-                    val targetOffset = clamp(
-                        zoomAroundPoint(startOffset, startScale, targetScale, tap.x - viewport.width / 2, tap.y - viewport.height / 2), targetScale
-                    )
-                    animation = scope.launch {
-                        animate(0f, 1f, animationSpec = spatialSpec) { fraction, _ ->
-                            scale = (startScale + (targetScale - startScale) * fraction).coerceIn(1f, 5f)
-                            offset = clamp(
-                                ZoomOffset(startOffset.x + (targetOffset.x - startOffset.x) * fraction, startOffset.y + (targetOffset.y - startOffset.y) * fraction), scale
-                            )
+        modifier
+            .fillMaxSize()
+            .clipToBounds()
+            .onSizeChanged {
+                viewport = Size(it.width.toFloat(), it.height.toFloat())
+            }
+            .pointerInput(model) {
+                detectTapGestures(
+                    onTap = { latestTap(it.x / size.width.coerceAtLeast(1)) },
+                    onDoubleTap = { tap ->
+                        animation?.cancel()
+                        val startScale = scale
+                        val startOffset = offset
+                        val targetScale = if (scale > 1f) 1f else 2.5f
+                        val targetOffset = clamp(
+                            zoomAroundPoint(
+                                startOffset,
+                                startScale,
+                                targetScale,
+                                tap.x - viewport.width / 2,
+                                tap.y - viewport.height / 2
+                            ), targetScale
+                        )
+                        animation = scope.launch {
+                            animate(0f, 1f, animationSpec = spatialSpec) { fraction, _ ->
+                                scale =
+                                    (startScale + (targetScale - startScale) * fraction).coerceIn(
+                                        1f,
+                                        5f
+                                    )
+                                offset = clamp(
+                                    ZoomOffset(
+                                        startOffset.x + (targetOffset.x - startOffset.x) * fraction,
+                                        startOffset.y + (targetOffset.y - startOffset.y) * fraction
+                                    ), scale
+                                )
+                            }
+                            scale = targetScale
+                            offset = targetOffset
                         }
-                        scale = targetScale
-                        offset = targetOffset
                     }
-                }
-            )
-        }.pointerInput(model) {
-            awaitEachGesture {
-                awaitFirstDown(requireUnconsumed = false)
-                var transforming = false
-                do {
-                    val event = awaitPointerEvent()
-                    val multiplePointers = event.changes.count { it.pressed } > 1
-                    val zoom = event.calculateZoom()
-                    val pan = event.calculatePan()
-                    if (multiplePointers || scale > 1f || transforming) {
-                        if (!event.changes.any { it.isConsumed }) {
-                            if (zoom != 1f || pan != Offset.Zero) {
-                                transforming = true
-                                animation?.cancel()
-                                val nextScale = (scale * zoom).coerceIn(1f, 5f)
-                                val centroid = event.calculateCentroid(useCurrent = false)
-                                val anchored = zoomAroundPoint(offset, scale, nextScale, centroid.x - viewport.width / 2, centroid.y - viewport.height / 2)
-                                scale = nextScale
-                                offset = clamp(ZoomOffset(anchored.x + pan.x, anchored.y + pan.y), scale)
-                                event.changes.forEach { if (it.pressed) it.consume() }
+                )
+            }
+            .pointerInput(model) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                    var transforming = false
+                    do {
+                        val event = awaitPointerEvent()
+                        val multiplePointers = event.changes.count { it.pressed } > 1
+                        val zoom = event.calculateZoom()
+                        val pan = event.calculatePan()
+                        if (multiplePointers || scale > 1f || transforming) {
+                            if (!event.changes.any { it.isConsumed }) {
+                                if (zoom != 1f || pan != Offset.Zero) {
+                                    transforming = true
+                                    animation?.cancel()
+                                    val nextScale = (scale * zoom).coerceIn(1f, 5f)
+                                    val centroid = event.calculateCentroid(useCurrent = false)
+                                    val anchored = zoomAroundPoint(
+                                        offset,
+                                        scale,
+                                        nextScale,
+                                        centroid.x - viewport.width / 2,
+                                        centroid.y - viewport.height / 2
+                                    )
+                                    scale = nextScale
+                                    offset =
+                                        clamp(
+                                            ZoomOffset(anchored.x + pan.x, anchored.y + pan.y),
+                                            scale
+                                        )
+                                    event.changes.forEach { if (it.pressed) it.consume() }
+                                }
                             }
                         }
-                    }
-                } while (event.changes.any { it.pressed })
+                    } while (event.changes.any { it.pressed })
+                }
             }
-        }
     ) {
         ReaderImage(
             model = model, page = page, onImageSize = { image = it },
-            modifier = Modifier.fillMaxSize().graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-                translationX = offset.x
-                translationY = offset.y
-            }
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                    translationX = offset.x
+                    translationY = offset.y
+                }
         )
     }
 }
@@ -158,21 +188,33 @@ internal fun ReaderImage(
     var retry by remember(model) { mutableIntStateOf(0) }
     val context = LocalContext.current
     val request = remember(context, model, retry) {
-        ImageRequest.Builder(context).data(model).memoryCacheKeyExtra("retry", retry.toString()).build()
+        ImageRequest.Builder(context).data(model).memoryCacheKeyExtra("retry", retry.toString())
+            .build()
     }
     SubcomposeAsyncImage(
         model = request, contentDescription = "Page $page", modifier = modifier,
         contentScale = if (vertical) ContentScale.FillWidth else ContentScale.Fit,
-        onSuccess = { onImageSize(Size(it.result.image.width.toFloat(), it.result.image.height.toFloat())) },
+        onSuccess = {
+            onImageSize(
+                Size(
+                    it.result.image.width.toFloat(),
+                    it.result.image.height.toFloat()
+                )
+            )
+        },
         loading = {
             Box(
-                (if (vertical) Modifier.fillMaxWidth().height(260.dp) else Modifier.fillMaxSize()).background(Color.Black),
+                (if (vertical) Modifier
+                    .fillMaxWidth()
+                    .height(260.dp) else Modifier.fillMaxSize()).background(Color.Black),
                 contentAlignment = Alignment.Center
             ) { LoadingIndicator(color = Color.White, modifier = Modifier.size(64.dp)) }
         },
         error = {
             Box(
-                (if (vertical) Modifier.fillMaxWidth().height(260.dp) else Modifier.fillMaxSize()).background(Color.Black),
+                (if (vertical) Modifier
+                    .fillMaxWidth()
+                    .height(260.dp) else Modifier.fillMaxSize()).background(Color.Black),
                 contentAlignment = Alignment.Center
             ) {
                 FilledTonalIconButton(onClick = { retry++ }, shapes = IconButtonDefaults.shapes()) {

@@ -86,11 +86,11 @@ fun LockScreen(state: LockState.Locked) {
     val activity = LocalActivity.current as? FragmentActivity
     val authenticators =
         BiometricManager.Authenticators.BIOMETRIC_STRONG or
-            BiometricManager.Authenticators.BIOMETRIC_WEAK
+                BiometricManager.Authenticators.BIOMETRIC_WEAK
     val biometricsAvailable =
         remember(context) {
             BiometricManager.from(context).canAuthenticate(authenticators) ==
-                BiometricManager.BIOMETRIC_SUCCESS
+                    BiometricManager.BIOMETRIC_SUCCESS
         }
     var biometricMessage by remember { mutableStateOf<String?>(null) }
     var remainingSeconds by remember { mutableLongStateOf(0) }
@@ -114,8 +114,8 @@ fun LockScreen(state: LockState.Locked) {
                         ) {
                             if (
                                 errorCode != BiometricPrompt.ERROR_USER_CANCELED &&
-                                    errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON &&
-                                    errorCode != BiometricPrompt.ERROR_CANCELED
+                                errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON &&
+                                errorCode != BiometricPrompt.ERROR_CANCELED
                             )
                                 biometricMessage = errString.toString()
                         }
@@ -128,6 +128,7 @@ fun LockScreen(state: LockState.Locked) {
                 )
             }
         }
+
     fun authenticate() {
         biometricMessage = null
         prompt?.authenticate(
@@ -163,7 +164,7 @@ fun LockScreen(state: LockState.Locked) {
     }
     val enabled =
         !busy &&
-            (state.cooldownUntil == null || state.cooldownUntil <= SystemClock.elapsedRealtime())
+                (state.cooldownUntil == null || state.cooldownUntil <= SystemClock.elapsedRealtime())
     Dialog(
         onDismissRequest = { activity?.moveTaskToBack(true) },
         properties =
@@ -185,13 +186,16 @@ fun LockScreen(state: LockState.Locked) {
         }
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
             Box(
-                Modifier.fillMaxSize()
+                Modifier
+                    .fillMaxSize()
                     .safeDrawingPadding()
                     .padding(16.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Column(
-                    Modifier.widthIn(max = 360.dp).verticalScroll(rememberScrollState()),
+                    Modifier
+                        .widthIn(max = 360.dp)
+                        .verticalScroll(rememberScrollState()),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(24.dp),
                 ) {
@@ -210,20 +214,22 @@ fun LockScreen(state: LockState.Locked) {
                     }
                     Text("Enter PIN", style = MaterialTheme.typography.headlineSmall)
                     Row(
-                        Modifier.graphicsLayer { translationX = shake.value }
+                        Modifier
+                            .graphicsLayer { translationX = shake.value }
                             .semantics { contentDescription = "${input.length} digits entered" },
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         repeat(maxOf(4, input.length)) { index ->
                             val filled = index < input.length
                             val scale by
-                                animateFloatAsState(
-                                    if (filled) 1.2f else 1f,
-                                    animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
-                                    label = "PIN dot",
-                                )
+                            animateFloatAsState(
+                                if (filled) 1.2f else 1f,
+                                animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
+                                label = "PIN dot",
+                            )
                             Box(
-                                Modifier.size(12.dp)
+                                Modifier
+                                    .size(12.dp)
                                     .scale(scale)
                                     .then(
                                         if (filled)

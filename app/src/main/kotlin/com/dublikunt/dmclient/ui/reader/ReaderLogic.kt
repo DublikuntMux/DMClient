@@ -32,7 +32,10 @@ internal fun clampZoomOffset(
     imageWidth: Float,
     imageHeight: Float
 ): ZoomOffset {
-    if (viewportWidth <= 0 || viewportHeight <= 0 || imageWidth <= 0 || imageHeight <= 0) return ZoomOffset(0f, 0f)
+    if (viewportWidth <= 0 || viewportHeight <= 0 || imageWidth <= 0 || imageHeight <= 0) return ZoomOffset(
+        0f,
+        0f
+    )
     val fit = min(viewportWidth / imageWidth, viewportHeight / imageHeight)
     val maxX = max(0f, (imageWidth * fit * scale - viewportWidth) / 2)
     val maxY = max(0f, (imageHeight * fit * scale - viewportHeight) / 2)

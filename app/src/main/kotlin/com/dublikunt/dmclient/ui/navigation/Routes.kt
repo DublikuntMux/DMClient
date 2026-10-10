@@ -55,7 +55,13 @@ enum class TopLevelDestination(
     val icon: ImageVector,
     val selectedIcon: ImageVector
 ) {
-    Browse(BrowseRoute, BrowseRoute::class, "Browse", Icons.Outlined.Explore, Icons.Rounded.Explore),
+    Browse(
+        BrowseRoute,
+        BrowseRoute::class,
+        "Browse",
+        Icons.Outlined.Explore,
+        Icons.Rounded.Explore
+    ),
     Search(SearchRoute(), SearchRoute::class, "Search", Icons.Rounded.Search, Icons.Rounded.Search),
     Library(
         LibraryRoute, LibraryRoute::class, "Library",

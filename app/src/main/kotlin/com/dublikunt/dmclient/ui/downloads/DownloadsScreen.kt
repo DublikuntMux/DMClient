@@ -95,13 +95,14 @@ fun DownloadsScreen(onOpenGallery: (Int) -> Unit) {
             }
             pendingExport = null
         }
+
     fun export(id: Int) {
         if (
             Build.VERSION.SDK_INT == 28 &&
-                ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                ) != PackageManager.PERMISSION_GRANTED
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            ) != PackageManager.PERMISSION_GRANTED
         ) {
             pendingExport = id
             permission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
@@ -134,7 +135,10 @@ fun DownloadsScreen(onOpenGallery: (Int) -> Unit) {
             )
         },
     ) { padding ->
-        val modifier = Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)
+        val modifier = Modifier
+            .fillMaxSize()
+            .padding(padding)
+            .consumeWindowInsets(padding)
         val items = downloads
         when {
             items == null -> LoadingState(modifier)
@@ -145,6 +149,7 @@ fun DownloadsScreen(onOpenGallery: (Int) -> Unit) {
                     modifier,
                     "Downloaded galleries are available offline.",
                 )
+
             else -> {
                 val active = items.filter {
                     it.state == DownloadState.Queued || it.state == DownloadState.Downloading
@@ -273,14 +278,18 @@ private fun DownloadProgressCard(
         color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(12.dp),
+            Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             GalleryImage(
                 item.gallery.coverUrl,
                 null,
-                Modifier.size(48.dp, 68.dp).clip(MaterialTheme.shapes.medium),
+                Modifier
+                    .size(48.dp, 68.dp)
+                    .clip(MaterialTheme.shapes.medium),
                 sizePx = 240,
             )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {

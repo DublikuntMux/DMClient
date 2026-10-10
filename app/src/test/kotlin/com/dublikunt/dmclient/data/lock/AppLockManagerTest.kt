@@ -40,7 +40,8 @@ class AppLockManagerTest {
         }
     }
 
-    @Test fun `initial read cannot unlock and migrates legacy PIN in place`() = runBlocking {
+    @Test
+    fun `initial read cannot unlock and migrates legacy PIN in place`() = runBlocking {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         try {
             val legacy = stringPreferencesKey("pin_code")
@@ -63,10 +64,13 @@ class AppLockManagerTest {
             manager.removePin()
             assertFalse(manager.isPinSet.first())
             assertNull(store.values.value[stringPreferencesKey("pin_hash")])
-        } finally { scope.cancel() }
+        } finally {
+            scope.cancel()
+        }
     }
 
-    @Test fun `no PIN unlocks only after storage read`() = runBlocking {
+    @Test
+    fun `no PIN unlocks only after storage read`() = runBlocking {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         try {
             val store = Store(mutablePreferencesOf())
@@ -75,10 +79,13 @@ class AppLockManagerTest {
             store.ready.complete(Unit)
             withTimeout(10_000) { manager.state.first { it == LockState.Unlocked } }
             assertFalse(manager.isPinSet.first())
-        } finally { scope.cancel() }
+        } finally {
+            scope.cancel()
+        }
     }
 
-    @Test fun `failed attempts survive restart and successful PIN clears them`() = runBlocking {
+    @Test
+    fun `failed attempts survive restart and successful PIN clears them`() = runBlocking {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val restartedScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         try {
@@ -92,12 +99,18 @@ class AppLockManagerTest {
             scope.cancel()
 
             val restoredStore = Store(store.values.value)
-            val restored = AppLockManager(restoredStore, SettingsRepository(restoredStore, restartedScope), restartedScope)
+            val restored = AppLockManager(
+                restoredStore,
+                SettingsRepository(restoredStore, restartedScope),
+                restartedScope
+            )
             restoredStore.ready.complete(Unit)
             val state = withTimeout(10_000) { restored.state.first { it is LockState.Locked } }
             assertEquals(4, (state as LockState.Locked).failedAttempts)
             assertTrue(restored.verify("1234"))
             assertNull(restoredStore.values.value[failures])
-        } finally { scope.cancel(); restartedScope.cancel() }
+        } finally {
+            scope.cancel(); restartedScope.cancel()
+        }
     }
 }

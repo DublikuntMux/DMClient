@@ -3,9 +3,14 @@ package com.dublikunt.dmclient.data.settings
 import com.dublikunt.dmclient.network.ContentLanguage
 import kotlinx.serialization.Serializable
 
-@Serializable enum class ThemeMode { System, Light, Dark }
-@Serializable enum class GridDensity(val minCell: Int) { Compact(92), Comfortable(112), Large(160) }
-@Serializable enum class ReaderMode { PagedLtr, PagedRtl, Vertical }
+@Serializable
+enum class ThemeMode { System, Light, Dark }
+
+@Serializable
+enum class GridDensity(val minCell: Int) { Compact(92), Comfortable(112), Large(160) }
+
+@Serializable
+enum class ReaderMode { PagedLtr, PagedRtl, Vertical }
 enum class SecureDns { Off, Cloudflare, Google }
 
 enum class LockTimeout(val milliseconds: Long?) {

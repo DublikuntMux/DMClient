@@ -12,12 +12,21 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class StorageRepository @Inject constructor(private val db: AppDatabase, @ApplicationContext private val context: Context) {
+class StorageRepository @Inject constructor(
+    private val db: AppDatabase,
+    @ApplicationContext private val context: Context
+) {
     /** Calculates disk bytes and persisted download/history/search row counts. */
     suspend fun usage(): StorageUsage = withContext(Dispatchers.IO) {
-        StorageUsage(File(context.cacheDir, "image_cache").bytes(), File(context.filesDir, GalleryContentLocator.ROOT_DIR).bytes(),
-            db.downloads().count(), db.history().count(), db.searchEntries().count())
+        StorageUsage(
+            File(context.cacheDir, "image_cache").bytes(),
+            File(context.filesDir, GalleryContentLocator.ROOT_DIR).bytes(),
+            db.downloads().count(),
+            db.history().count(),
+            db.searchEntries().count()
+        )
     }
+
     /** Clears the shared Coil image loader's memory and disk caches. */
     suspend fun clearImageCache() = withContext(Dispatchers.IO) {
         val loader = SingletonImageLoader.get(context)
@@ -27,4 +36,5 @@ class StorageRepository @Inject constructor(private val db: AppDatabase, @Applic
     }
 }
 
-private fun File.bytes(): Long = if (!exists()) 0 else walkTopDown().filter(File::isFile).sumOf(File::length)
+private fun File.bytes(): Long =
+    if (!exists()) 0 else walkTopDown().filter(File::isFile).sumOf(File::length)

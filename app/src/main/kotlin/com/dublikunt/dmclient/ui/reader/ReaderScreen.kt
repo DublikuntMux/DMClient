@@ -1,6 +1,5 @@
 package com.dublikunt.dmclient.ui.reader
 
-import kotlin.math.roundToInt
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -30,12 +29,12 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
-import androidx.compose.material3.rememberSliderState
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberSliderState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -56,12 +55,13 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.Lifecycle
 import com.dublikunt.dmclient.data.settings.ReaderMode
 import com.dublikunt.dmclient.ui.components.ErrorState
 import com.dublikunt.dmclient.ui.components.userMessage
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -80,7 +80,8 @@ fun ReaderScreen(onBack: () -> Unit) {
         val previousLightStatus = controller?.isAppearanceLightStatusBars
         val previousLightNavigation = controller?.isAppearanceLightNavigationBars
         controller?.let {
-            it.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            it.systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             it.isAppearanceLightStatusBars = false
             it.isAppearanceLightNavigationBars = false
         }
@@ -88,8 +89,10 @@ fun ReaderScreen(onBack: () -> Unit) {
             controller?.let {
                 it.show(WindowInsetsCompat.Type.systemBars())
                 if (previousBehavior != null) it.systemBarsBehavior = previousBehavior
-                if (previousLightStatus != null) it.isAppearanceLightStatusBars = previousLightStatus
-                if (previousLightNavigation != null) it.isAppearanceLightNavigationBars = previousLightNavigation
+                if (previousLightStatus != null) it.isAppearanceLightStatusBars =
+                    previousLightStatus
+                if (previousLightNavigation != null) it.isAppearanceLightNavigationBars =
+                    previousLightNavigation
             }
         }
     }
@@ -109,11 +112,27 @@ fun ReaderScreen(onBack: () -> Unit) {
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { viewModel.flushProgress() }
     LaunchedEffect(viewModel) { viewModel.events.collect { snackbar.showSnackbar(it) } }
 
-    Scaffold(containerColor = Color.Black, contentColor = Color.White, contentWindowInsets = WindowInsets(0), snackbarHost = { SnackbarHost(snackbar) }) { innerPadding ->
-        Box(Modifier.fillMaxSize().padding(innerPadding)) {
+    Scaffold(
+        containerColor = Color.Black,
+        contentColor = Color.White,
+        contentWindowInsets = WindowInsets(0),
+        snackbarHost = { SnackbarHost(snackbar) }) { innerPadding ->
+        Box(
+            Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
             when {
-                state.loading -> LoadingIndicator(Modifier.align(Alignment.Center), color = Color.White)
-                state.error != null -> ErrorState(message = state.error!!.userMessage(), onRetry = viewModel::retry)
+                state.loading -> LoadingIndicator(
+                    Modifier.align(Alignment.Center),
+                    color = Color.White
+                )
+
+                state.error != null -> ErrorState(
+                    message = state.error!!.userMessage(),
+                    onRetry = viewModel::retry
+                )
+
                 state.detail != null -> ReaderPages(
                     state = state, viewModel = viewModel, onToggleOverlay = { overlay = !overlay },
                     onSeekReady = { seek = it }
@@ -121,8 +140,12 @@ fun ReaderScreen(onBack: () -> Unit) {
             }
             AnimatedVisibility(
                 visible = barsVisible, modifier = Modifier.align(Alignment.TopCenter),
-                enter = fadeIn(MaterialTheme.motionScheme.fastEffectsSpec()) + slideInVertically(MaterialTheme.motionScheme.defaultSpatialSpec()) { -it },
-                exit = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()) + slideOutVertically(MaterialTheme.motionScheme.defaultSpatialSpec()) { -it }
+                enter = fadeIn(MaterialTheme.motionScheme.fastEffectsSpec()) + slideInVertically(
+                    MaterialTheme.motionScheme.defaultSpatialSpec()
+                ) { -it },
+                exit = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()) + slideOutVertically(
+                    MaterialTheme.motionScheme.defaultSpatialSpec()
+                ) { -it }
             ) {
                 TopAppBar(
                     title = {
@@ -136,19 +159,41 @@ fun ReaderScreen(onBack: () -> Unit) {
                     navigationIcon = {
                         FilledTonalIconButton(
                             onClick = onBack, shapes = IconButtonDefaults.shapes(),
-                            colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = Color.White.copy(alpha = 0.15f), contentColor = Color.White)
+                            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = Color.White.copy(
+                                    alpha = 0.15f
+                                ), contentColor = Color.White
+                            )
                         ) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back") }
                     },
                     actions = {
-                        state.detail?.let { Text("${state.page} / ${it.pageCount}", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(horizontal = 16.dp)) }
+                        state.detail?.let {
+                            Text(
+                                "${state.page} / ${it.pageCount}",
+                                style = MaterialTheme.typography.labelLarge,
+                                modifier = Modifier.padding(horizontal = 16.dp)
+                            )
+                        }
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Black.copy(alpha = 0.75f), titleContentColor = Color.White, actionIconContentColor = Color.White)
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Black.copy(
+                            alpha = 0.75f
+                        ), titleContentColor = Color.White, actionIconContentColor = Color.White
+                    )
                 )
             }
             AnimatedVisibility(
-                visible = overlay && state.detail != null, modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(16.dp),
-                enter = fadeIn(MaterialTheme.motionScheme.fastEffectsSpec()) + slideInVertically(MaterialTheme.motionScheme.defaultSpatialSpec()) { it },
-                exit = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()) + slideOutVertically(MaterialTheme.motionScheme.defaultSpatialSpec()) { it }
+                visible = overlay && state.detail != null,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(16.dp),
+                enter = fadeIn(MaterialTheme.motionScheme.fastEffectsSpec()) + slideInVertically(
+                    MaterialTheme.motionScheme.defaultSpatialSpec()
+                ) { it },
+                exit = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()) + slideOutVertically(
+                    MaterialTheme.motionScheme.defaultSpatialSpec()
+                ) { it }
             ) {
                 val pages = state.detail?.pageCount ?: 1
                 val sliderState = rememberSliderState(
@@ -164,9 +209,14 @@ fun ReaderScreen(onBack: () -> Unit) {
                             seek?.invoke(value.roundToInt())
                         },
                         enabled = pages > 1,
-                        modifier = Modifier.weight(1f).semantics { contentDescription = "Seek page" }
+                        modifier = Modifier
+                            .weight(1f)
+                            .semantics { contentDescription = "Seek page" }
                     )
-                    FilledTonalIconButton(onClick = viewModel::cycleMode, shapes = IconButtonDefaults.shapes()) {
+                    FilledTonalIconButton(
+                        onClick = viewModel::cycleMode,
+                        shapes = IconButtonDefaults.shapes()
+                    ) {
                         Icon(
                             if (state.settings.readerMode == ReaderMode.Vertical) Icons.AutoMirrored.Rounded.ViewList else Icons.Rounded.SwapHoriz,
                             "Reading mode: ${state.settings.readerMode.label()}. Change reading mode"

@@ -1,7 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
-    <include domain="database" path="main_database" />
-    <include domain="database" path="main_database-shm" />
-    <include domain="database" path="main_database-wal" />
-    <include domain="file" path="datastore/" />
+    <include
+        domain="database"
+        path="main_database" />
+    <include
+        domain="database"
+        path="main_database-shm" />
+    <include
+        domain="database"
+        path="main_database-wal" />
+    <include
+        domain="file"
+        path="datastore/" />
 </full-backup-content>

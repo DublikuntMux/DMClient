@@ -101,16 +101,23 @@ internal fun GalleryContent(
         TagType.Category to "Categories"
     )
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(96.dp), state = grid, modifier = modifier,
+        columns = GridCells.Adaptive(96.dp),
+        state = grid,
+        modifier = modifier,
         contentPadding = PaddingValues(
             start = GalleryGridDefaults.ContentPadding.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
             end = GalleryGridDefaults.ContentPadding.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
             bottom = contentPadding.calculateBottomPadding()
         ),
-        horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         fullWidthItem("header") {
-            GalleryHeader(detail, state.download?.gallery?.coverUrl ?: detail.coverUrl, headerTopPadding)
+            GalleryHeader(
+                detail,
+                state.download?.gallery?.coverUrl ?: detail.coverUrl,
+                headerTopPadding
+            )
         }
         fullWidthItem("actions") {
             GalleryActionRow(state, viewModel, onRead, onExport)
@@ -119,11 +126,22 @@ internal fun GalleryContent(
             val tags = detail.tags.filter { it.type == type }
             if (tags.isNotEmpty()) fullWidthItem(type) {
                 Column(Modifier.padding(horizontal = 4.dp, vertical = 4.dp)) {
-                    Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        label,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     Spacer(Modifier.size(4.dp))
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
                         tags.forEach { tag ->
-                            TagChip(label = tag.name, count = tag.count, onClick = { onSearchTag(tag) }, onLongClick = { onCopyTag(tag) })
+                            TagChip(
+                                label = tag.name,
+                                count = tag.count,
+                                onClick = { onSearchTag(tag) },
+                                onLongClick = { onCopyTag(tag) })
                         }
                     }
                 }
@@ -131,26 +149,50 @@ internal fun GalleryContent(
         }
         fullWidthItem("pages") {
             SectionHeader("Pages", Modifier.padding(horizontal = 4.dp, vertical = 12.dp)) {
-                Text(detail.pageCount.toString(), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    detail.pageCount.toString(),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
         items(detail.pageCount, key = { "page_${it + 1}" }) { index ->
             val page = index + 1
             Box(
-                Modifier.fillMaxWidth().aspectRatio(GALLERY_COVER_ASPECT)
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(GALLERY_COVER_ASPECT)
                     .clip(MaterialTheme.shapes.medium)
-                    .then(if (page > 1 && state.lastPage == page) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, MaterialTheme.shapes.medium) else Modifier)
+                    .then(
+                        if (page > 1 && state.lastPage == page) Modifier.border(
+                            2.dp,
+                            MaterialTheme.colorScheme.primary,
+                            MaterialTheme.shapes.medium
+                        ) else Modifier
+                    )
                     .clickable { onRead(detail.id, page) }
             ) {
                 GalleryImage(
-                    model = viewModel.thumbnail(detail, page, downloaded), contentDescription = "Page $page",
-                    sizePx = 360, modifier = Modifier.fillMaxSize().padding(if (page > 1 && state.lastPage == page) 2.dp else 0.dp)
+                    model = viewModel.thumbnail(detail, page, downloaded),
+                    contentDescription = "Page $page",
+                    sizePx = 360,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(if (page > 1 && state.lastPage == page) 2.dp else 0.dp)
                 )
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.9f),
                     shape = MaterialTheme.shapes.small,
-                    modifier = Modifier.align(Alignment.BottomEnd).padding(4.dp)
-                ) { Text(page.toString(), style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) }
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(4.dp)
+                ) {
+                    Text(
+                        page.toString(),
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
             }
         }
     }
@@ -159,38 +201,84 @@ internal fun GalleryContent(
 @Composable
 private fun GalleryHeader(detail: GalleryDetail, cover: Any, topPadding: Dp) {
     val surface = MaterialTheme.colorScheme.surface
-    Box(Modifier.fillMaxWidth().heightIn(min = 260.dp + topPadding)) {
-        Box(Modifier.fillMaxWidth().height(260.dp)) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 260.dp + topPadding)
+    ) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(260.dp)
+        ) {
             GalleryImage(
-                model = cover, contentDescription = null, modifier = Modifier.matchParentSize()
+                model = cover, contentDescription = null, modifier = Modifier
+                    .matchParentSize()
                     .then(if (Build.VERSION.SDK_INT >= 31) Modifier.blur(24.dp) else Modifier)
             )
-            Box(Modifier.matchParentSize().background(surface.copy(alpha = 0.55f)))
-            Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(surface.copy(alpha = 0.1f), surface))))
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .background(surface.copy(alpha = 0.55f))
+            )
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .background(Brush.verticalGradient(listOf(surface.copy(alpha = 0.1f), surface)))
+            )
         }
         Row(
-            modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth()
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
                 .padding(start = 4.dp, end = 4.dp, top = topPadding + 16.dp, bottom = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.Bottom
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.Bottom
         ) {
             GalleryImage(
                 model = cover, contentDescription = "Cover", sizePx = 480,
-                modifier = Modifier.width(120.dp).aspectRatio(GALLERY_COVER_ASPECT)
-                    .shadow(4.dp, MaterialTheme.shapes.large).clip(MaterialTheme.shapes.large)
+                modifier = Modifier
+                    .width(120.dp)
+                    .aspectRatio(GALLERY_COVER_ASPECT)
+                    .shadow(4.dp, MaterialTheme.shapes.large)
+                    .clip(MaterialTheme.shapes.large)
             )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(detail.title, style = MaterialTheme.typography.titleMedium, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                Text(
+                    detail.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
                 detail.subtitle?.let {
-                    Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    GalleryMeta(Icons.Rounded.PhotoLibrary, "${detail.pageCount} pages", Modifier.weight(1f))
+                    GalleryMeta(
+                        Icons.Rounded.PhotoLibrary,
+                        "${detail.pageCount} pages",
+                        Modifier.weight(1f)
+                    )
                     GalleryMeta(Icons.Rounded.Numbers, "${detail.id}")
                 }
                 detail.uploadDate?.let {
-                    GalleryMeta(Icons.Rounded.CalendarToday, formatUploadDate(it, System.currentTimeMillis() / 1_000))
+                    GalleryMeta(
+                        Icons.Rounded.CalendarToday,
+                        formatUploadDate(it, System.currentTimeMillis() / 1_000)
+                    )
                 }
-                detail.favorites?.let { GalleryMeta(Icons.Rounded.FavoriteBorder, "%,d favorites".format(it)) }
+                detail.favorites?.let {
+                    GalleryMeta(
+                        Icons.Rounded.FavoriteBorder,
+                        "%,d favorites".format(it)
+                    )
+                }
             }
         }
     }
@@ -198,27 +286,45 @@ private fun GalleryHeader(detail: GalleryDetail, cover: Any, topPadding: Dp) {
 
 @Composable
 private fun GalleryMeta(icon: ImageVector, text: String, modifier: Modifier = Modifier) {
-    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    Row(
+        modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
         Icon(icon, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(text, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            text,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun GalleryActionRow(state: GalleryUiState, viewModel: GalleryViewModel, onRead: (Int, Int?) -> Unit, onExport: () -> Unit) {
+private fun GalleryActionRow(
+    state: GalleryUiState,
+    viewModel: GalleryViewModel,
+    onRead: (Int, Int?) -> Unit,
+    onExport: () -> Unit
+) {
     val detail = checkNotNull(state.detail)
     var statusMenu by remember { mutableStateOf(false) }
     var newStatus by remember { mutableStateOf(false) }
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         val continuing = (state.lastPage ?: 1) > 1
         Button(
             onClick = { onRead(detail.id, if (continuing) null else 1) },
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
-            modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+            modifier = Modifier
+                .weight(1f)
+                .heightIn(min = 48.dp)
         ) {
             Text(if (continuing) "Continue · p. ${state.lastPage}" else "Read", maxLines = 2)
         }
@@ -226,47 +332,80 @@ private fun GalleryActionRow(state: GalleryUiState, viewModel: GalleryViewModel,
             checked = state.mark?.favorite == true, onCheckedChange = viewModel::setFavorite,
             shapes = IconButtonDefaults.toggleableShapes(), modifier = Modifier.size(48.dp)
         ) {
-            Icon(if (state.mark?.favorite == true) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, "Favorite")
+            Icon(
+                if (state.mark?.favorite == true) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                "Favorite"
+            )
         }
         Box {
             FilledTonalButton(
-                onClick = { statusMenu = true }, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
-                modifier = Modifier.widthIn(max = 96.dp).heightIn(min = 48.dp)
+                onClick = { statusMenu = true },
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+                modifier = Modifier
+                    .widthIn(max = 96.dp)
+                    .heightIn(min = 48.dp)
             ) {
                 state.mark?.status?.let {
                     StatusDot(Color(it.color))
                     Spacer(Modifier.size(4.dp))
                 }
-                Text(state.mark?.status?.name ?: "Status", maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                Text(
+                    state.mark?.status?.name ?: "Status",
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
                 Icon(Icons.Rounded.ExpandMore, null, Modifier.size(16.dp))
             }
             DropdownMenu(expanded = statusMenu, onDismissRequest = { statusMenu = false }) {
                 DropdownMenuItem(
-                    text = { Text("None") }, trailingIcon = { if (state.mark?.status == null) Icon(Icons.Rounded.Check, null) },
+                    text = { Text("None") },
+                    trailingIcon = {
+                        if (state.mark?.status == null) Icon(
+                            Icons.Rounded.Check,
+                            null
+                        )
+                    },
                     onClick = { statusMenu = false; viewModel.setStatus(null) }
                 )
                 state.statuses.forEach { status ->
                     DropdownMenuItem(
-                        text = { Text(status.name) }, leadingIcon = { StatusDot(Color(status.color)) },
-                        trailingIcon = { if (state.mark?.status?.id == status.id) Icon(Icons.Rounded.Check, null) },
+                        text = { Text(status.name) },
+                        leadingIcon = { StatusDot(Color(status.color)) },
+                        trailingIcon = {
+                            if (state.mark?.status?.id == status.id) Icon(
+                                Icons.Rounded.Check,
+                                null
+                            )
+                        },
                         onClick = { statusMenu = false; viewModel.setStatus(status.id) }
                     )
                 }
-                DropdownMenuItem(text = { Text("New status…") }, onClick = { statusMenu = false; newStatus = true })
+                DropdownMenuItem(
+                    text = { Text("New status…") },
+                    onClick = { statusMenu = false; newStatus = true })
             }
         }
         GalleryDownloadControl(state, viewModel, onExport)
     }
-    if (newStatus) StatusEditorDialog(title = "New status", onSave = viewModel::createStatus, onDismiss = { newStatus = false })
+    if (newStatus) StatusEditorDialog(
+        title = "New status",
+        onSave = viewModel::createStatus,
+        onDismiss = { newStatus = false })
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun GalleryDownloadControl(state: GalleryUiState, viewModel: GalleryViewModel, onExport: () -> Unit) {
+private fun GalleryDownloadControl(
+    state: GalleryUiState,
+    viewModel: GalleryViewModel,
+    onExport: () -> Unit
+) {
     var menu by remember { mutableStateOf(false) }
     var cancel by remember { mutableStateOf(false) }
     var delete by remember { mutableStateOf(false) }
-    val downloading = state.download?.state in listOf(DownloadState.Queued, DownloadState.Downloading)
+    val downloading =
+        state.download?.state in listOf(DownloadState.Queued, DownloadState.Downloading)
     val failed = state.download?.state == DownloadState.Failed
     Box {
         FilledTonalIconButton(
@@ -285,7 +424,11 @@ private fun GalleryDownloadControl(state: GalleryUiState, viewModel: GalleryView
             if (downloading) {
                 Box(contentAlignment = Alignment.Center) {
                     CircularWavyProgressIndicator(
-                        progress = { ((state.download?.downloadedPages ?: 0).toFloat() / (state.download?.pageCount ?: 1).coerceAtLeast(1)).coerceIn(0f, 1f) },
+                        progress = {
+                            ((state.download?.downloadedPages
+                                ?: 0).toFloat() / (state.download?.pageCount
+                                ?: 1).coerceAtLeast(1)).coerceIn(0f, 1f)
+                        },
                         modifier = Modifier.size(36.dp)
                     )
                     Icon(Icons.Rounded.Stop, "Cancel download", Modifier.size(16.dp))
@@ -303,16 +446,32 @@ private fun GalleryDownloadControl(state: GalleryUiState, viewModel: GalleryView
             )
         }
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-            DropdownMenuItem(text = { Text(if (state.exporting) "Exporting ZIP…" else "Export as ZIP") }, enabled = !state.exporting, onClick = { menu = false; onExport() })
-            DropdownMenuItem(text = { Text("Delete download", color = MaterialTheme.colorScheme.error) }, onClick = { menu = false; delete = true })
+            DropdownMenuItem(
+                text = { Text(if (state.exporting) "Exporting ZIP…" else "Export as ZIP") },
+                enabled = !state.exporting,
+                onClick = { menu = false; onExport() })
+            DropdownMenuItem(text = {
+                Text(
+                    "Delete download",
+                    color = MaterialTheme.colorScheme.error
+                )
+            }, onClick = { menu = false; delete = true })
         }
     }
     if (cancel) ConfirmDialog(
-        title = "Cancel download?", message = "Downloaded pages will be removed.", confirmLabel = "Cancel download",
-        destructive = true, onConfirm = viewModel::cancelDownload, onDismiss = { cancel = false }
+        title = "Cancel download?",
+        message = "Downloaded pages will be removed.",
+        confirmLabel = "Cancel download",
+        destructive = true,
+        onConfirm = viewModel::cancelDownload,
+        onDismiss = { cancel = false }
     )
     if (delete) ConfirmDialog(
-        title = "Delete download?", message = "Remove this gallery's downloaded pages from your device.", confirmLabel = "Delete",
-        destructive = true, onConfirm = viewModel::deleteDownload, onDismiss = { delete = false }
+        title = "Delete download?",
+        message = "Remove this gallery's downloaded pages from your device.",
+        confirmLabel = "Delete",
+        destructive = true,
+        onConfirm = viewModel::deleteDownload,
+        onDismiss = { delete = false }
     )
 }

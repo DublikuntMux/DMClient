@@ -9,8 +9,10 @@ object NhentaiParser {
     private const val THUMB_CDN = "https://t.nhentai.net"
 
     fun parseGalleryList(body: String): PageResult<GallerySummary> = parsing {
-        val payload = payload(body) { it.startsWith("/api/v2/galleries") || it.startsWith("/api/v2/search") }
-        val array = if (payload is JSONObject) payload.getJSONArray("result") else payload as JSONArray
+        val payload =
+            payload(body) { it.startsWith("/api/v2/galleries") || it.startsWith("/api/v2/search") }
+        val array =
+            if (payload is JSONObject) payload.getJSONArray("result") else payload as JSONArray
         val items = (0 until array.length()).map { index ->
             val item = array.getJSONObject(index)
             GallerySummary(
@@ -25,17 +27,21 @@ object NhentaiParser {
     }
 
     fun parseGallery(body: String, id: Int): GalleryDetail = parsing {
-        val data = payload(body) { it.substringBefore('?').trimEnd('/') == "/api/v2/galleries/$id" } as JSONObject
+        val data = payload(body) {
+            it.substringBefore('?').trimEnd('/') == "/api/v2/galleries/$id"
+        } as JSONObject
         val titles = data.getJSONObject("title")
         val title = listOf("english", "japanese", "pretty").firstNotNullOfOrNull {
             titles.optString(it).takeIf(String::isNotBlank)
         } ?: "Unknown Title"
         val subtitle = listOf("japanese", "pretty").firstNotNullOfOrNull {
-            titles.optString(it).takeIf { alternative -> alternative.isNotBlank() && alternative != title }
+            titles.optString(it)
+                .takeIf { alternative -> alternative.isNotBlank() && alternative != title }
         }
         val pages = data.getJSONArray("pages")
         val pageTypes = (0 until pages.length()).map { index ->
-            when (pages.getJSONObject(index).getString("path").substringAfterLast('.').lowercase()) {
+            when (pages.getJSONObject(index).getString("path").substringAfterLast('.')
+                .lowercase()) {
                 "jpg", "jpeg" -> ImageType.Jpg
                 "webp" -> ImageType.Webp
                 "png" -> ImageType.Png
@@ -50,7 +56,11 @@ object NhentaiParser {
             data.getString("media_id").toInt().also { require(it > 0) }, pageCount, pageTypes,
             (0 until tags.length()).map { index ->
                 val tag = tags.getJSONObject(index)
-                Tag(TagType.entries.first { it.key == tag.getString("type") }, tag.getString("name"), tag.optInt("count"))
+                Tag(
+                    TagType.entries.first { it.key == tag.getString("type") },
+                    tag.getString("name"),
+                    tag.optInt("count")
+                )
             },
             if (data.has("upload_date") && !data.isNull("upload_date")) data.getLong("upload_date") else null,
             data.nullableInt("num_favorites"),
@@ -58,15 +68,16 @@ object NhentaiParser {
     }
 
     private fun payload(body: String, matches: (String) -> Boolean): Any {
-        val raw = if (body.trimStart().startsWith('{') || body.trimStart().startsWith('[')) body else {
-            val script = Jsoup.parse(body).select("script[data-sveltekit-fetched]")
-                .firstOrNull { matches(it.attr("data-url")) }
-            if (script == null) {
-                if (isChallenge(body)) throw ApiException.Blocked()
-                error("Missing gallery API data")
+        val raw =
+            if (body.trimStart().startsWith('{') || body.trimStart().startsWith('[')) body else {
+                val script = Jsoup.parse(body).select("script[data-sveltekit-fetched]")
+                    .firstOrNull { matches(it.attr("data-url")) }
+                if (script == null) {
+                    if (isChallenge(body)) throw ApiException.Blocked()
+                    error("Missing gallery API data")
+                }
+                script.data()
             }
-            script.data()
-        }
         val value = JSONTokener(raw).nextValue()
         if (value is JSONObject && value.has("body")) {
             when (val status = value.optInt("status", 200)) {

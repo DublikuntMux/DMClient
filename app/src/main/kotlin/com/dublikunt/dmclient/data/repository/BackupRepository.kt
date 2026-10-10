@@ -13,14 +13,22 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class BackupRepository @Inject constructor(private val db: AppDatabase, private val settings: SettingsRepository) {
+class BackupRepository @Inject constructor(
+    private val db: AppDatabase,
+    private val settings: SettingsRepository
+) {
     /** Writes a v2 backup with library/history and appearance/browsing/reader settings; caller closes output. */
     suspend fun export(out: OutputStream) = withContext(Dispatchers.IO) {
         val prefs = BackupSettings(settings.read())
-        val snapshot = db.withTransaction { BackupData(
-            galleries = db.galleries().all(), library = db.library().all(), statuses = db.library().allStatuses(),
-            history = db.history().all(), settings = prefs,
-        ) }
+        val snapshot = db.withTransaction {
+            BackupData(
+                galleries = db.galleries().all(),
+                library = db.library().all(),
+                statuses = db.library().allStatuses(),
+                history = db.history().all(),
+                settings = prefs,
+            )
+        }
         out.write(BackupFormat.json.encodeToString(snapshot).toByteArray(Charsets.UTF_8))
         out.flush()
     }
@@ -34,7 +42,8 @@ class BackupRepository @Inject constructor(private val db: AppDatabase, private 
             val marks = remapLibrary(backup.library, plan.remapping)
             val galleries = backup.galleries.associateBy { it.id }.toMutableMap()
             (marks.map { it.galleryId } + backup.history.map { it.galleryId }).forEach { id ->
-                if (id !in galleries && db.galleries().get(id) == null) galleries[id] = GalleryEntity(id, "Gallery #$id", "", 0, System.currentTimeMillis())
+                if (id !in galleries && db.galleries().get(id) == null) galleries[id] =
+                    GalleryEntity(id, "Gallery #$id", "", 0, System.currentTimeMillis())
             }
             db.galleries().upsert(galleries.values.toList())
             marks.forEach { db.library().upsert(it) }

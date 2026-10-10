@@ -58,7 +58,11 @@ fun <T : Any> PagingGalleryGrid(
             GalleryGridSkeleton(minCellSize, modifier, contentPadding)
 
         refresh is LoadState.Error && items.itemCount == 0 ->
-            ErrorState(message = errorMessage(refresh.error), onRetry = items::retry, modifier = modifier)
+            ErrorState(
+                message = errorMessage(refresh.error),
+                onRetry = items::retry,
+                modifier = modifier
+            )
 
         refresh is LoadState.NotLoading && items.itemCount == 0 && header == null ->
             Box(modifier.fillMaxSize()) { emptyContent() }

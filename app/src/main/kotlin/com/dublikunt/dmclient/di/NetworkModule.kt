@@ -21,14 +21,17 @@ annotation class ApplicationScope
 @Module
 @InstallIn(SingletonComponent::class)
 object CoroutinesModule {
-    @Provides @Singleton @ApplicationScope
+    @Provides
+    @Singleton
+    @ApplicationScope
     fun applicationScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 }
 
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
-    @Provides @Singleton
+    @Provides
+    @Singleton
     fun client(jar: AppCookieJar, dns: SecureDnsResolver): OkHttpClient = OkHttpClient.Builder()
         .cookieJar(jar)
         .dns(dns)

@@ -65,17 +65,25 @@ class NHentaiApi @Inject constructor(private val client: OkHttpClient) {
             header("Sec-CH-UA-Platform", "\"Android\"")
         }.build()
 
-    private fun throwFailure(response: Response, body: String): Nothing = when (val code = response.code) {
-        404 -> throw ApiException.NotFound()
-        429 -> throw ApiException.RateLimited(response.header("Retry-After")?.toLongOrNull() ?: 60)
-        403, 503 -> throw if (isChallenge(body)) ApiException.Blocked() else ApiException.Http(code)
-        else -> throw ApiException.Http(code)
-    }
+    private fun throwFailure(response: Response, body: String): Nothing =
+        when (val code = response.code) {
+            404 -> throw ApiException.NotFound()
+            429 -> throw ApiException.RateLimited(
+                response.header("Retry-After")?.toLongOrNull() ?: 60
+            )
+
+            403, 503 -> throw if (isChallenge(body)) ApiException.Blocked() else ApiException.Http(
+                code
+            )
+
+            else -> throw ApiException.Http(code)
+        }
 
     companion object {
         const val BASE_URL = "https://nhentai.net"
         private const val CLIENT_HINT_BRANDS =
             "\"Not;A=Brand\";v=\"8\", \"Chromium\";v=\"152\", \"Google Chrome\";v=\"152\""
-        const val USER_AGENT = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Mobile Safari/537.36"
+        const val USER_AGENT =
+            "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Mobile Safari/537.36"
     }
 }

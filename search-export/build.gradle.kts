@@ -16,6 +16,6 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.kotlin.serialization)
     implementation(libs.json.jvm)
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
+    implementation(libs.kotlinx.coroutines.core)
     testImplementation(libs.junit4)
 }

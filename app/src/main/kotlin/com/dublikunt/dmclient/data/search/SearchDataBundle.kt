@@ -13,6 +13,7 @@ data class SearchDataBundle(
 ) {
     companion object {
         const val CURRENT_VERSION = 1
-        const val REMOTE_URL = "https://raw.githubusercontent.com/DublikuntMux/DMClient/master/search-data/search-data.json"
+        const val REMOTE_URL =
+            "https://raw.githubusercontent.com/DublikuntMux/DMClient/master/search-data/search-data.json"
     }
 }

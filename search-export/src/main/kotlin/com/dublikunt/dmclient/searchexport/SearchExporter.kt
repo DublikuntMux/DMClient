@@ -1,7 +1,7 @@
 package com.dublikunt.dmclient.searchexport
 
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
@@ -77,7 +77,10 @@ class SearchExporter(
                 try {
                     entries.add(results.getJSONObject(i).getString("name"))
                 } catch (e: Exception) {
-                    throw IOException("Failed to parse item $i on $singularType page $currentPage", e)
+                    throw IOException(
+                        "Failed to parse item $i on $singularType page $currentPage",
+                        e
+                    )
                 }
             }
             currentPage++
@@ -111,6 +114,7 @@ class SearchExporter(
                         response.code == 429 -> throw RateLimitException(
                             SearchExportPolicy.retryAfterSeconds(response.header("Retry-After"))
                         )
+
                         response.code in 500..599 -> throw RetryableRequestException("HTTP ${response.code} for $url")
                         !response.isSuccessful -> throw NonRetryableRequestException("HTTP ${response.code} for $url")
                         else -> return response.body.string()
@@ -136,7 +140,10 @@ class SearchExporter(
                 delay(waitTime)
             } catch (e: Exception) {
                 attempt++
-                if (attempt >= retries) throw IOException("Request failed for $url after $retries attempts", e)
+                if (attempt >= retries) throw IOException(
+                    "Request failed for $url after $retries attempts",
+                    e
+                )
                 val waitTime = 1000L * attempt
                 log("Retrying $url in ${waitTime}ms... (attempt ${attempt + 1}/$retries)")
                 delay(waitTime)

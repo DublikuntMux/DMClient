@@ -1,6 +1,5 @@
 package com.dublikunt.dmclient.ui.settings
 
-import androidx.compose.material.icons.rounded.Wallpaper
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -18,20 +17,20 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Label
+import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material.icons.rounded.Bookmarks
 import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.DarkMode
+import androidx.compose.material.icons.rounded.Dns
 import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.FileOpen
 import androidx.compose.material.icons.rounded.GridView
-import androidx.compose.material.icons.rounded.Dns
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.automirrored.rounded.Label
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Lock
-import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Storage
@@ -39,6 +38,7 @@ import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.UploadFile
 import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material.icons.rounded.Wallpaper
 import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -83,10 +83,10 @@ import com.dublikunt.dmclient.ui.components.SettingsSegmentedItem
 import com.dublikunt.dmclient.ui.components.SettingsSwitchItem
 import com.dublikunt.dmclient.ui.library.relativeTime
 import com.dublikunt.dmclient.ui.update.ManualUpdatePrompt
-import java.text.NumberFormat
-import java.time.LocalDate
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.text.NumberFormat
+import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -132,9 +132,7 @@ fun SettingsScreen(onOpenStorage: () -> Unit, onOpenStatuses: () -> Unit) {
                 is SettingsEvent.CopyReport -> {
                     val clipboard =
                         context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(
-                        ClipData.newPlainText("DMClient crash report", event.report)
-                    )
+                    clipboard.primaryClip = ClipData.newPlainText("DMClient crash report", event.report)
                     snackbar.showSnackbar("Crash report copied")
                 }
             }
@@ -146,7 +144,10 @@ fun SettingsScreen(onOpenStorage: () -> Unit, onOpenStatuses: () -> Unit) {
         topBar = { LargeFlexibleTopAppBar(title = { Text("Settings") }, scrollBehavior = scroll) },
     ) { padding ->
         LazyColumn(
-            Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding),
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .consumeWindowInsets(padding),
             contentPadding = PaddingValues(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
@@ -298,7 +299,12 @@ fun SettingsScreen(onOpenStorage: () -> Unit, onOpenStatuses: () -> Unit) {
                         onOpenStorage,
                         summary =
                             usage?.let {
-                                "${Formatter.formatFileSize(context, it.downloadsBytes + it.imageCacheBytes)} used"
+                                "${
+                                    Formatter.formatFileSize(
+                                        context,
+                                        it.downloadsBytes + it.imageCacheBytes
+                                    )
+                                } used"
                             } ?: "Calculating…",
                         icon = Icons.Rounded.Storage,
                     )
@@ -324,9 +330,14 @@ fun SettingsScreen(onOpenStorage: () -> Unit, onOpenStatuses: () -> Unit) {
                                     NumberFormat.getIntegerInstance()
                                         .format(status.counts.values.sum())
                                 "$count entries" +
-                                    (status.lastUpdated?.let {
-                                        " · updated ${relativeTime(it, now).replaceFirstChar { ch -> ch.lowercaseChar() }}"
-                                    } ?: "")
+                                        (status.lastUpdated?.let {
+                                            " · updated ${
+                                                relativeTime(
+                                                    it,
+                                                    now
+                                                ).replaceFirstChar { ch -> ch.lowercaseChar() }
+                                            }"
+                                        } ?: "")
                             }
                         }
                     SettingsItem(

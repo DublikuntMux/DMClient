@@ -37,7 +37,7 @@ import kotlinx.coroutines.withContext
 
 private fun copyReportToClipboard(context: Context, report: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-    clipboard.setPrimaryClip(ClipData.newPlainText("DMClient crash report", report))
+    clipboard.primaryClip = ClipData.newPlainText("DMClient crash report", report)
     Toast.makeText(context, "Crash report copied to clipboard", Toast.LENGTH_SHORT).show()
 }
 
@@ -54,7 +54,8 @@ private fun shareReport(context: Context, report: String) {
 private fun openIssuesPage(context: Context) {
     try {
         context.startActivity(Intent(Intent.ACTION_VIEW, CRASH_ISSUES_URL.toUri()))
-    } catch (_: Exception) {}
+    } catch (_: Exception) {
+    }
 }
 
 @Composable
@@ -115,7 +116,8 @@ fun CrashReportPrompt() {
                                     fontFamily = FontFamily.Monospace
                                 ),
                             modifier =
-                                Modifier.fillMaxWidth()
+                                Modifier
+                                    .fillMaxWidth()
                                     .heightIn(max = 300.dp)
                                     .verticalScroll(rememberScrollState())
                                     .padding(12.dp),

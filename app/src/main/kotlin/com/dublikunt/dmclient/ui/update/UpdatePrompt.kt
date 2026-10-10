@@ -12,7 +12,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -43,7 +42,6 @@ fun ManualUpdatePrompt() {
     UpdateDialog(viewModel)
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun UpdateDialog(viewModel: UpdateViewModel) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -75,7 +73,11 @@ private fun UpdateDialog(viewModel: UpdateViewModel) {
                     release.name.ifBlank { release.tagName },
                     style = MaterialTheme.typography.titleMedium,
                 )
-                Box(Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState())) {
+                Box(
+                    Modifier
+                        .heightIn(max = 320.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
                     MarkdownText(
                         release.body.orEmpty().ifBlank { "A new version of DMClient is available." }
                     )
