@@ -230,17 +230,20 @@ fun <T> SettingsChoiceItem(
     label: (T) -> String,
     onSelect: (T) -> Unit,
     modifier: Modifier = Modifier,
-    icon: ImageVector? = null
+    icon: ImageVector? = null,
+    enabled: Boolean = true,
+    summary: String? = null
 ) {
     var open by remember { mutableStateOf(false) }
     SettingsItem(
         title = title,
-        summary = label(selected),
+        summary = summary ?: label(selected),
         icon = icon,
+        enabled = enabled,
         onClick = { open = true },
         modifier = modifier
     )
-    if (open) {
+    if (open && enabled) {
         AlertDialog(
             onDismissRequest = { open = false },
             title = { Text(title) },
