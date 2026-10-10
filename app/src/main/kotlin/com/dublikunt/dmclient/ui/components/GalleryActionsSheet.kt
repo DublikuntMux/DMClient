@@ -50,7 +50,11 @@ import com.dublikunt.dmclient.data.repository.GalleryMark
 import com.dublikunt.dmclient.data.repository.LibraryRepository
 import com.dublikunt.dmclient.network.GallerySummary
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -70,17 +74,46 @@ class GalleryActionsViewModel @Inject constructor(
     val marks = library.marks
     val statuses = library.statuses
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    private val mutableError = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = mutableError.asStateFlow()
 
     fun setFavorite(gallery: GallerySummary, favorite: Boolean) {
-        viewModelScope.launch { library.setFavorite(gallery, favorite) }
+        viewModelScope.launch {
+            try {
+                library.setFavorite(gallery, favorite)
+                mutableError.value = null
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                mutableError.value = error.userMessage()
+            }
+        }
     }
 
     fun setStatus(gallery: GallerySummary, statusId: Int?) {
-        viewModelScope.launch { library.setStatus(gallery, statusId) }
+        viewModelScope.launch {
+            try {
+                library.setStatus(gallery, statusId)
+                mutableError.value = null
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                mutableError.value = error.userMessage()
+            }
+        }
     }
 
     fun createStatus(gallery: GallerySummary, name: String, color: Int) {
-        viewModelScope.launch { library.setStatus(gallery, library.createStatus(name, color)) }
+        viewModelScope.launch {
+            try {
+                library.setStatus(gallery, library.createStatus(name, color))
+                mutableError.value = null
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                mutableError.value = error.userMessage()
+            }
+        }
     }
 }
 
@@ -102,6 +135,7 @@ fun GalleryActionsSheet(
 ) {
     val marks by viewModel.marks.collectAsStateWithLifecycle()
     val statuses by viewModel.statuses.collectAsStateWithLifecycle()
+    val error by viewModel.error.collectAsStateWithLifecycle()
     val mark = marks[gallery.id]
     var creatingStatus by remember { mutableStateOf(false) }
 
@@ -176,6 +210,15 @@ fun GalleryActionsSheet(
                             modifier = Modifier.size(FilterChipDefaults.IconSize)
                         )
                     }
+                )
+            }
+            error?.let {
+                Text(
+                    it,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
             if (actions.isNotEmpty()) {

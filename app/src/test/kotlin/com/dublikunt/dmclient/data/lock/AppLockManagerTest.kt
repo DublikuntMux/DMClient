@@ -2,6 +2,7 @@ package com.dublikunt.dmclient.data.lock
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.mutablePreferencesOf
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.dublikunt.dmclient.data.settings.SettingsRepository
@@ -75,5 +76,28 @@ class AppLockManagerTest {
             withTimeout(10_000) { manager.state.first { it == LockState.Unlocked } }
             assertFalse(manager.isPinSet.first())
         } finally { scope.cancel() }
+    }
+
+    @Test fun `failed attempts survive restart and successful PIN clears them`() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val restartedScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        try {
+            val failures = intPreferencesKey("pin_failed_attempts")
+            val store = Store(mutablePreferencesOf(stringPreferencesKey("pin_code") to "1234"))
+            val manager = AppLockManager(store, SettingsRepository(store, scope), scope)
+            store.ready.complete(Unit)
+            withTimeout(10_000) { manager.state.first { it is LockState.Locked } }
+            repeat(4) { assertFalse(manager.verify("4321")) }
+            assertEquals(4, store.values.value[failures])
+            scope.cancel()
+
+            val restoredStore = Store(store.values.value)
+            val restored = AppLockManager(restoredStore, SettingsRepository(restoredStore, restartedScope), restartedScope)
+            restoredStore.ready.complete(Unit)
+            val state = withTimeout(10_000) { restored.state.first { it is LockState.Locked } }
+            assertEquals(4, (state as LockState.Locked).failedAttempts)
+            assertTrue(restored.verify("1234"))
+            assertNull(restoredStore.values.value[failures])
+        } finally { scope.cancel(); restartedScope.cancel() }
     }
 }

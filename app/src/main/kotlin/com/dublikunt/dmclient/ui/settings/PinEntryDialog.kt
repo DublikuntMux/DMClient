@@ -57,7 +57,7 @@ internal fun PinEntryDialog(
                     PinField("New PIN", pin, { pin = it }, state)
                     PinField("Confirm PIN", confirmation, { confirmation = it }, state)
                     Text(
-                        "Use 4–12 digits.",
+                        "Use 4–15 digits.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -91,7 +91,7 @@ private fun PinField(
 ) {
     OutlinedTextField(
         value = value,
-        onValueChange = { if (it.length <= 12 && it.all { ch -> ch in '0'..'9' }) onChange(it) },
+        onValueChange = { if (it.length <= 15 && it.all { ch -> ch in '0'..'9' }) onChange(it) },
         modifier = Modifier.fillMaxWidth(),
         label = { Text(label) },
         singleLine = true,

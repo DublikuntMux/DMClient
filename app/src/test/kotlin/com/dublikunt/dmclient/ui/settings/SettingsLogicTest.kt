@@ -8,12 +8,16 @@ import org.junit.Test
 
 class SettingsLogicTest {
     @Test
-    fun pinRequiresFourToTwelveAsciiDigitsAndMatchingConfirmation() {
-        listOf("", "123", "1234567890123", "123a", "１２３４", " 1234").forEach {
+    fun pinRequiresFourToFifteenAsciiDigitsAndMatchingConfirmation() {
+        listOf("", "123", "1234567890123456", "123a", "１２３４", " 1234").forEach {
             assertNotNull(validatePinForm(it))
         }
         assertNull(validatePinForm("0000", "0000"))
         assertNull(validatePinForm("123456789012", "123456789012"))
+        for (length in 13..15) {
+            val pin = "123456789012345".take(length)
+            assertNull(validatePinForm(pin, pin))
+        }
         assertNotNull(validatePinForm("1234", "4321"))
         assertNull(validatePinForm("1234"))
     }
