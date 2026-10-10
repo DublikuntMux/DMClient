@@ -96,6 +96,6 @@ fun GalleryGridSkeleton(
         verticalArrangement = GalleryGridDefaults.VerticalSpacing,
         userScrollEnabled = false
     ) {
-        items(count = 18) { GalleryCardSkeleton() }
+        items(count = 36) { GalleryCardSkeleton() }
     }
 }
