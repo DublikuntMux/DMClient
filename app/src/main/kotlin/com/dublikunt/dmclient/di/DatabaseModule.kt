@@ -1,45 +1,29 @@
 package com.dublikunt.dmclient.di
 
 import android.content.Context
-import com.dublikunt.dmclient.database.AppDatabase
-import com.dublikunt.dmclient.database.download.DownloadedGalleryDao
-import com.dublikunt.dmclient.database.history.GalleryHistoryDao
-import com.dublikunt.dmclient.database.search.SearchCacheDao
-import com.dublikunt.dmclient.database.status.GalleryStatusDao
-import com.dublikunt.dmclient.status.GalleryStatusBook
+import androidx.room.Room
+import androidx.room.RoomDatabase
+import androidx.sqlite.db.SupportSQLiteDatabase
+import com.dublikunt.dmclient.data.db.AppDatabase
+import com.dublikunt.dmclient.data.db.MIGRATION_8_9
+import com.dublikunt.dmclient.data.db.historicalMigrations
+import com.dublikunt.dmclient.data.db.seedDefaultStatuses
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import kotlinx.coroutines.CoroutineScope
 import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
-
     @Provides
     @Singleton
-    fun provideDatabase(@ApplicationContext context: Context): AppDatabase =
-        AppDatabase.getDatabase(context)
-
-    @Provides
-    fun provideGalleryHistoryDao(db: AppDatabase): GalleryHistoryDao = db.galleryHistoryDao()
-
-    @Provides
-    fun provideGalleryStatusDao(db: AppDatabase): GalleryStatusDao = db.galleryStatusDao()
-
-    @Provides
-    fun provideDownloadedGalleryDao(db: AppDatabase): DownloadedGalleryDao =
-        db.downloadedGalleryDao()
-
-    @Provides
-    fun provideSearchCacheDao(db: AppDatabase): SearchCacheDao = db.searchCacheDao()
-
-    @Provides
-    fun provideGalleryStatusBook(
-        statusDao: GalleryStatusDao,
-        @ApplicationScope scope: CoroutineScope
-    ): GalleryStatusBook = GalleryStatusBook(statusDao, scope)
+    fun database(@ApplicationContext context: Context): AppDatabase = Room.databaseBuilder(context, AppDatabase::class.java, "main_database")
+        .addMigrations(*historicalMigrations, MIGRATION_8_9)
+        .addCallback(object : RoomDatabase.Callback() {
+            override fun onCreate(db: SupportSQLiteDatabase) { seedDefaultStatuses(db) }
+        })
+        .fallbackToDestructiveMigration(false).build()
 }
