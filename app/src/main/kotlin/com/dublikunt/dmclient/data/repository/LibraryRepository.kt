@@ -62,7 +62,10 @@ class LibraryRepository @Inject constructor(private val db: AppDatabase, @Applic
     private suspend fun mutate(gallery: GallerySummary, change: (LibraryEntity) -> LibraryEntity) = db.withTransaction {
         val now = System.currentTimeMillis()
         val metadata = db.galleries().get(gallery.id)
-        db.galleries().upsert(GalleryEntity(gallery.id, gallery.title, gallery.coverUrl, metadata?.pageCount ?: 0, now))
+        // Stored metadata comes from the gallery page; a summary may carry a local cover path.
+        if (metadata == null || metadata.coverUrl.isBlank()) {
+            db.galleries().upsert(GalleryEntity(gallery.id, gallery.title, gallery.coverUrl, metadata?.pageCount ?: 0, now))
+        }
         val mark = change(dao.get(gallery.id) ?: LibraryEntity(gallery.id, null, false, now)).copy(updatedAt = now)
         if (mark.statusId == null && !mark.favorite) dao.delete(gallery.id) else dao.upsert(mark)
     }

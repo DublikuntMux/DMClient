@@ -31,7 +31,7 @@ class NHentaiApi @Inject constructor(private val client: OkHttpClient) {
         do {
             val url = "$BASE_URL/api/v2/tags/${type.key}".toHttpUrl().newBuilder()
                 .addQueryParameter("sort", "popular").addQueryParameter("page", page.toString()).build()
-            val body = fetch(url, "$BASE_URL/${type.key}s?sort=popular")
+            val body = fetch(url, apiReferer = "$BASE_URL/${type.key}s?sort=popular")
             try {
                 val data = JSONObject(body)
                 totalPages = data.optInt("num_pages", 1)
@@ -55,9 +55,9 @@ class NHentaiApi @Inject constructor(private val client: OkHttpClient) {
         }
     }
 
-    private suspend fun fetch(url: HttpUrl, referer: String = BASE_URL): String = withContext(Dispatchers.IO) {
+    private suspend fun fetch(url: HttpUrl, apiReferer: String? = null): String = withContext(Dispatchers.IO) {
         withRetries {
-            client.newCall(request(url, referer)).execute().use { response ->
+            client.newCall(request(url, apiReferer)).execute().use { response ->
                 val body = response.body.string()
                 if (!response.isSuccessful) throwFailure(response.code, body)
                 if (isChallenge(body) && !body.contains("data-sveltekit-fetched")) throw ApiException.Blocked()
@@ -66,9 +66,35 @@ class NHentaiApi @Inject constructor(private val client: OkHttpClient) {
         }
     }
 
-    private fun request(url: HttpUrl, referer: String = BASE_URL): Request = Request.Builder()
-        .url(url).header("User-Agent", USER_AGENT).header("Referer", referer)
-        .header("Accept-Language", "en;q=0.9").build()
+    /** Browser-like headers; nhentai's anti-scraper rejects bare requests with 403. */
+    private fun request(url: HttpUrl, apiReferer: String? = null): Request =
+        Request.Builder().url(url).apply {
+            header("User-Agent", USER_AGENT)
+            if (apiReferer != null) {
+                header("Accept", "*/*")
+                header("Accept-Language", "en-US,en;q=0.9")
+                header("Referer", apiReferer)
+                header("Priority", "u=1, i")
+                header("Sec-Fetch-Dest", "empty")
+                header("Sec-Fetch-Mode", "cors")
+                header("Sec-Fetch-Site", "same-origin")
+            } else {
+                header(
+                    "Accept",
+                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"
+                )
+                header("Accept-Language", "en;q=0.9")
+                header("Upgrade-Insecure-Requests", "1")
+                header("Priority", "u=0, i")
+                header("Sec-Fetch-Dest", "document")
+                header("Sec-Fetch-Mode", "navigate")
+                header("Sec-Fetch-Site", "same-origin")
+                header("Sec-Fetch-User", "?1")
+            }
+            header("Sec-CH-UA", CLIENT_HINT_BRANDS)
+            header("Sec-CH-UA-Mobile", "?1")
+            header("Sec-CH-UA-Platform", "\"Android\"")
+        }.build()
 
     private fun throwFailure(code: Int, body: String): Nothing = when {
         code == 404 -> throw ApiException.NotFound()
@@ -78,6 +104,8 @@ class NHentaiApi @Inject constructor(private val client: OkHttpClient) {
 
     companion object {
         const val BASE_URL = "https://nhentai.net"
+        private const val CLIENT_HINT_BRANDS =
+            "\"Not;A=Brand\";v=\"8\", \"Chromium\";v=\"152\", \"Google Chrome\";v=\"152\""
         const val USER_AGENT = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Mobile Safari/537.36"
     }
 }
