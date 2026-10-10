@@ -64,9 +64,10 @@ class ArchiveWorker @AssistedInject internal constructor(
                     val directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
                     if (!directory.exists() && !directory.mkdirs()) throw IOException("Cannot create Downloads directory")
                     val file = File(directory, name)
-                    pendingFile = file
+                    val temporary = File(directory, "$name.part")
+                    pendingFile = temporary
                     uri = Uri.fromFile(file)
-                    file.outputStream()
+                    temporary.outputStream()
                 }
                 output.use { stream ->
                     ZipOutputStream(stream).use { zip ->
@@ -92,6 +93,9 @@ class ArchiveWorker @AssistedInject internal constructor(
                 }
                 currentCoroutineContext().ensureActive()
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) applicationContext.contentResolver.update(uri, ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) }, null, null)
+                else pendingFile?.let { temporary ->
+                    if (!temporary.renameTo(File(temporary.parentFile, name))) throw IOException("Cannot save archive")
+                }
                 pendingUri = null
                 pendingFile = null
                 Result.success(workDataOf(KEY_URI to uri.toString()))
