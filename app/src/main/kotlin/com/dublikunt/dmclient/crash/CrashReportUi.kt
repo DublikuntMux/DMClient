@@ -37,7 +37,7 @@ import kotlinx.coroutines.withContext
 
 private fun copyReportToClipboard(context: Context, report: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-    clipboard.primaryClip = ClipData.newPlainText("DMClient crash report", report)
+    clipboard.setPrimaryClip(ClipData.newPlainText("DMClient crash report", report))
     Toast.makeText(context, "Crash report copied to clipboard", Toast.LENGTH_SHORT).show()
 }
 

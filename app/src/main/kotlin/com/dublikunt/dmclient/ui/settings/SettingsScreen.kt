@@ -132,7 +132,7 @@ fun SettingsScreen(onOpenStorage: () -> Unit, onOpenStatuses: () -> Unit) {
                 is SettingsEvent.CopyReport -> {
                     val clipboard =
                         context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.primaryClip = ClipData.newPlainText("DMClient crash report", event.report)
+                    clipboard.setPrimaryClip(ClipData.newPlainText("DMClient crash report", event.report))
                     snackbar.showSnackbar("Crash report copied")
                 }
             }

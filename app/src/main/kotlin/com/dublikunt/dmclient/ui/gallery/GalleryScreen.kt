@@ -77,7 +77,7 @@ fun GalleryScreen(
 
     fun copy(text: String) {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        clipboard.primaryClip = ClipData.newPlainText("Gallery", text)
+        clipboard.setPrimaryClip(ClipData.newPlainText("Gallery", text))
         scope.launch { snackbar.showSnackbar("Copied") }
     }
 
