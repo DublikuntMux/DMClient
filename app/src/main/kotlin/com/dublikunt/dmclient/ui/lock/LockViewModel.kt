@@ -18,7 +18,7 @@ class LockViewModel @Inject constructor(private val manager: AppLockManager) : V
     val busy = mutableBusy.asStateFlow()
 
     fun digit(value: Int) {
-        if (!mutableBusy.value && mutableInput.value.length < 15)
+        if (!mutableBusy.value && mutableInput.value.length < MAX_PIN_LENGTH)
             mutableInput.value += value.toString()
     }
 
@@ -47,5 +47,9 @@ class LockViewModel @Inject constructor(private val manager: AppLockManager) : V
     fun biometricSucceeded() {
         mutableInput.value = ""
         viewModelScope.launch(Dispatchers.IO) { manager.unlockWithBiometric() }
+    }
+
+    companion object {
+        const val MAX_PIN_LENGTH = 15
     }
 }
