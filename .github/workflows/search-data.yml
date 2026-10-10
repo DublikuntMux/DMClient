@@ -1,0 +1,40 @@
+name: Update search data
+
+on:
+  schedule:
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: search-data-update
+  cancel-in-progress: false
+
+jobs:
+  update-search-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Install Android SDK platform
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37" "build-tools;37.0.0"
+      - name: Run search data export
+        run: |
+          chmod +x gradlew
+          ./gradlew :search-export:run --args="--out $GITHUB_WORKSPACE/search-data/search-data.json --minify" --no-daemon
+      - name: Commit updated search data
+        run: |
+          if [ -n "$(git status --porcelain search-data/)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -- search-data/search-data.json
+            git commit -m "Update search data"
+            git push
+          fi
