@@ -123,9 +123,9 @@ class AppLockManager @Inject constructor(
         backgroundAt = null
     }
 
-    /** Persists a salted PBKDF2 hash for a 4–12 digit PIN; the current session stays unlocked. */
+    /** Persists a salted PBKDF2 hash for a 4–15 digit PIN; the current session stays unlocked. */
     suspend fun setPin(pin: String) = withContext(Dispatchers.IO) {
-        require(pin.length in 4..12 && pin.all { it in '0'..'9' }) { "PIN must contain 4–12 digits" }
+        require(pin.length in 4..15 && pin.all { it in '0'..'9' }) { "PIN must contain 4–15 digits" }
         val hashed = PinHasher.hash(pin)
         store.edit { it[pinHash] = hashed.hash; it[pinSalt] = hashed.salt; it.remove(legacyPin) }
         synchronized(monitor) {

@@ -4,7 +4,7 @@ import java.time.LocalDate
 
 fun validatePinForm(pin: String, confirmation: String? = null): String? =
     when {
-        pin.length !in 4..12 || pin.any { it !in '0'..'9' } -> "Enter 4–12 digits."
+        pin.length !in 4..15 || pin.any { it !in '0'..'9' } -> "Enter 4–15 digits."
         confirmation != null && confirmation != pin -> "PINs don't match."
         else -> null
     }
