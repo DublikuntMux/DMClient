@@ -13,6 +13,6 @@ data class SearchDataBundle(
 ) {
     companion object {
         const val CURRENT_VERSION = 1
-        const val DOWNLOADED_FILE_NAME = "search-data.json"
+        const val REMOTE_URL = "https://raw.githubusercontent.com/DublikuntMux/DMClient/master/search-data/search-data.json"
     }
 }

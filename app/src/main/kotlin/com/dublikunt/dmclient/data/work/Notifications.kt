@@ -19,7 +19,6 @@ class Notifications @Inject constructor(@ApplicationContext private val context:
         manager.createNotificationChannels(listOf(
             NotificationChannel("downloads", "Downloads", NotificationManager.IMPORTANCE_LOW),
             NotificationChannel("archives", "Archiving", NotificationManager.IMPORTANCE_LOW),
-            NotificationChannel("search_data", "Search data", NotificationManager.IMPORTANCE_LOW),
         ).onEach { it.setShowBadge(false) })
     }
 

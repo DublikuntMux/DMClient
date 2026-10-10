@@ -264,13 +264,13 @@ private fun SearchDataCard(status: SearchDataStatus, onRefresh: () -> Unit) {
                     Text("Downloading tag list…", style = MaterialTheme.typography.bodyMedium)
                 }
                 status.failed -> {
-                    Text("Tag list download failed. Try again.",
+                    Text("Couldn't download the tag list.",
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyMedium)
                     FilledTonalButton(onClick = onRefresh) { Text("Retry") }
                 }
                 else -> {
-                    Text("Tag suggestions need the tag list. It downloads in the background and takes about 30 minutes because nhentai limits request rate.",
+                    Text("Tag suggestions need the tag list.",
                         style = MaterialTheme.typography.bodyMedium)
                     FilledTonalButton(onClick = onRefresh) { Text("Download tag list") }
                 }

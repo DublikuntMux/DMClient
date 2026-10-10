@@ -1,5 +1,7 @@
 package com.dublikunt.dmclient.data.search
 
+import com.dublikunt.dmclient.data.db.entity.SearchEntryEntity
+import com.dublikunt.dmclient.network.ApiException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
@@ -16,6 +18,36 @@ class SearchBundleImporterTest {
 
     @Test fun `unknown fields are ignored and unknown versions are rejected`() {
         assertEquals(1, SearchBundleImporter.parse("""{"version":1,"tags":[],"extra":{}}""").version)
-        assertThrows(IllegalArgumentException::class.java) { SearchBundleImporter.parse("""{"version":99}""") }
+        assertThrows(ApiException.Parse::class.java) { SearchBundleImporter.parse("""{"version":99}""") }
+    }
+
+    @Test fun `stream parses unicode names and bundle timestamp`() {
+        val bundle = """{"version":1,"generatedAt":1720000000000,"tags":["日本語","café"]}"""
+            .byteInputStream().use { SearchBundleImporter.parse(it) }
+        assertEquals(1720000000000L, bundle.generatedAt)
+        assertEquals(listOf("日本語", "café"), bundle.tags)
+    }
+
+    @Test fun `malformed streams and unsupported versions are parse errors`() {
+        listOf("{", """{"tags":[42]}""", """{"version":99}""").forEach { text ->
+            assertThrows(ApiException.Parse::class.java) {
+                text.byteInputStream().use { SearchBundleImporter.parse(it) }
+            }
+        }
+    }
+
+    @Test fun `entries preserve popularity order within every type while removing blanks and duplicates`() {
+        val bundle = SearchDataBundle(
+            tags = listOf("z tag", "", "a tag", "z tag", "  ", "m tag"),
+            artists = listOf("z artist", "a artist", "z artist"),
+            characters = listOf("z character", "a character"),
+            parodies = listOf("z parody", "a parody"),
+        )
+        assertEquals(listOf(
+            SearchEntryEntity("tag", "z tag"), SearchEntryEntity("tag", "a tag"), SearchEntryEntity("tag", "m tag"),
+            SearchEntryEntity("artist", "z artist"), SearchEntryEntity("artist", "a artist"),
+            SearchEntryEntity("character", "z character"), SearchEntryEntity("character", "a character"),
+            SearchEntryEntity("parody", "z parody"), SearchEntryEntity("parody", "a parody"),
+        ), SearchBundleImporter.entries(bundle))
     }
 }
