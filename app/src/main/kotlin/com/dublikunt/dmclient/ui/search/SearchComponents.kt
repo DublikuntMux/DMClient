@@ -26,7 +26,7 @@ import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material.icons.rounded.RemoveCircleOutline
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Sell
-import androidx.compose.material.icons.rounded.Sort
+import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.rounded.TheaterComedy
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.CardDefaults
@@ -85,7 +85,7 @@ internal fun SearchFilters(
                 selected = state.sort,
                 options = SortOrder.entries,
                 label = { it.label() },
-                icon = Icons.Rounded.Sort,
+                icon = Icons.AutoMirrored.Rounded.Sort,
                 active = state.sort != SortOrder.Recent,
                 onSelect = onSort
             )
@@ -217,7 +217,6 @@ internal fun SearchSuggestions(
         }
         items(suggestions, key = { "${it.type.key}:${it.name}" }) { tag ->
             ListItem(
-                headlineContent = { Text(tag.name) },
                 supportingContent = {
                     Text(if (tag.count > 0) "${tag.type.key} · ${numberFormat.format(tag.count)}" else tag.type.key)
                 },
@@ -228,7 +227,7 @@ internal fun SearchSuggestions(
                     }
                 },
                 modifier = Modifier.clickable { onInclude(tag) }
-            )
+            ) { Text(tag.name) }
         }
     }
 }

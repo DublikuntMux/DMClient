@@ -30,6 +30,7 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.rememberSliderState
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -78,14 +79,18 @@ fun ReaderScreen(onBack: () -> Unit) {
         val previousBehavior = controller?.systemBarsBehavior
         val previousLightStatus = controller?.isAppearanceLightStatusBars
         val previousLightNavigation = controller?.isAppearanceLightNavigationBars
-        controller?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        controller?.isAppearanceLightStatusBars = false
-        controller?.isAppearanceLightNavigationBars = false
+        controller?.let {
+            it.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            it.isAppearanceLightStatusBars = false
+            it.isAppearanceLightNavigationBars = false
+        }
         onDispose {
-            controller?.show(WindowInsetsCompat.Type.systemBars())
-            if (previousBehavior != null) controller?.systemBarsBehavior = previousBehavior
-            if (previousLightStatus != null) controller?.isAppearanceLightStatusBars = previousLightStatus
-            if (previousLightNavigation != null) controller?.isAppearanceLightNavigationBars = previousLightNavigation
+            controller?.let {
+                it.show(WindowInsetsCompat.Type.systemBars())
+                if (previousBehavior != null) it.systemBarsBehavior = previousBehavior
+                if (previousLightStatus != null) it.isAppearanceLightStatusBars = previousLightStatus
+                if (previousLightNavigation != null) it.isAppearanceLightNavigationBars = previousLightNavigation
+            }
         }
     }
     LaunchedEffect(window, barsVisible) {
@@ -104,8 +109,8 @@ fun ReaderScreen(onBack: () -> Unit) {
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { viewModel.flushProgress() }
     LaunchedEffect(viewModel) { viewModel.events.collect { snackbar.showSnackbar(it) } }
 
-    Scaffold(containerColor = Color.Black, contentColor = Color.White, contentWindowInsets = WindowInsets(0), snackbarHost = { SnackbarHost(snackbar) }) { _ ->
-        Box(Modifier.fillMaxSize()) {
+    Scaffold(containerColor = Color.Black, contentColor = Color.White, contentWindowInsets = WindowInsets(0), snackbarHost = { SnackbarHost(snackbar) }) { innerPadding ->
+        Box(Modifier.fillMaxSize().padding(innerPadding)) {
             when {
                 state.loading -> LoadingIndicator(Modifier.align(Alignment.Center), color = Color.White)
                 state.error != null -> ErrorState(message = state.error!!.userMessage(), onRetry = viewModel::retry)
@@ -146,10 +151,18 @@ fun ReaderScreen(onBack: () -> Unit) {
                 exit = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()) + slideOutVertically(MaterialTheme.motionScheme.defaultSpatialSpec()) { it }
             ) {
                 val pages = state.detail?.pageCount ?: 1
+                val sliderState = rememberSliderState(
+                    value = state.page.toFloat(),
+                    trackRange = 1f..pages.coerceAtLeast(2).toFloat()
+                )
+                LaunchedEffect(state.page) { sliderState.value = state.page.toFloat() }
                 HorizontalFloatingToolbar(expanded = true, modifier = Modifier.fillMaxWidth()) {
                     Slider(
-                        value = state.page.toFloat(), onValueChange = { seek?.invoke(it.roundToInt()) },
-                        valueRange = 1f..pages.coerceAtLeast(2).toFloat(),
+                        state = sliderState,
+                        onValueChange = { value ->
+                            sliderState.value = value
+                            seek?.invoke(value.roundToInt())
+                        },
                         enabled = pages > 1,
                         modifier = Modifier.weight(1f).semantics { contentDescription = "Seek page" }
                     )

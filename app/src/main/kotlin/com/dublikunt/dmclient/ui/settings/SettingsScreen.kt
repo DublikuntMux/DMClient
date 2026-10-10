@@ -28,10 +28,10 @@ import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.Dns
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.Label
+import androidx.compose.material.icons.automirrored.rounded.Label
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Lock
-import androidx.compose.material.icons.rounded.MenuBook
+import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Storage
@@ -231,7 +231,7 @@ fun SettingsScreen(onOpenStorage: () -> Unit, onOpenStatuses: () -> Unit) {
                             }
                         },
                         { value -> viewModel.changeSetting { setReaderMode(value) } },
-                        icon = Icons.Rounded.MenuBook,
+                        icon = Icons.AutoMirrored.Rounded.MenuBook,
                     )
                     SettingsSwitchItem(
                         "Keep screen on",
@@ -332,7 +332,7 @@ fun SettingsScreen(onOpenStorage: () -> Unit, onOpenStatuses: () -> Unit) {
                     SettingsItem(
                         "Tag list",
                         summary = summary,
-                        icon = Icons.Rounded.Label,
+                        icon = Icons.AutoMirrored.Rounded.Label,
                         enabled = status?.refreshing == false,
                         onClick = viewModel::refreshTags,
                     )
