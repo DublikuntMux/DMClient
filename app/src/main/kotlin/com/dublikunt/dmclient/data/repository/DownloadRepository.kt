@@ -62,7 +62,7 @@ class DownloadRepository @Inject internal constructor(
             db.downloads().all().filter { it.state == DownloadState.Queued || it.state == DownloadState.Downloading }.forEach { row ->
                 files.withGallery(row.galleryId) {
                     if (db.downloads().get(row.galleryId) != null && work.getWorkInfosForUniqueWork(downloadWorkName(row.galleryId)).get().none { !it.state.isFinished }) {
-                        schedule(row.galleryId)
+                        schedule(row.galleryId, ExistingWorkPolicy.KEEP)
                     }
                 }
             }
@@ -72,7 +72,7 @@ class DownloadRepository @Inject internal constructor(
     /** Observes one gallery's download, or null after deletion. */
     fun observe(id: Int): Flow<DownloadItem?> = db.downloads().observe(id).map { it?.let(::item) }
 
-    /** Persists a queued gallery then enqueues unique connected-network work; completed/active rows are retained. */
+    /** Persists a queued gallery then enqueues unique connected-network work; completed rows are retained. */
     suspend fun enqueue(detail: GalleryDetail) = withContext(Dispatchers.IO) {
         require(detail.pageCount > 0 && detail.pageTypes.size == detail.pageCount)
         files.withGallery(detail.id) {
@@ -85,7 +85,7 @@ class DownloadRepository @Inject internal constructor(
                     DownloadState.Queued, 0, null, System.currentTimeMillis(), null,
                 )) else db.downloads().queue(detail.id)
             }
-            schedule(detail.id)
+            schedule(detail.id, if (existing == null) ExistingWorkPolicy.KEEP else ExistingWorkPolicy.REPLACE)
         }
     }
 
@@ -95,7 +95,7 @@ class DownloadRepository @Inject internal constructor(
             val row = db.downloads().get(id) ?: return@withGallery
             if (row.state == DownloadState.Completed) return@withGallery
             db.downloads().queue(id)
-            schedule(id)
+            schedule(id, ExistingWorkPolicy.REPLACE)
         }
     }
 
@@ -139,11 +139,11 @@ class DownloadRepository @Inject internal constructor(
     /** Returns true only for a completed persisted download. */
     suspend fun isDownloaded(id: Int): Boolean = db.downloads().get(id)?.state == DownloadState.Completed
 
-    private fun schedule(id: Int) {
+    private fun schedule(id: Int, policy: ExistingWorkPolicy) {
         val request = OneTimeWorkRequestBuilder<DownloadWorker>()
             .setInputData(workDataOf(DownloadWorker.KEY_ID to id))
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()).build()
-        work.enqueueUniqueWork(downloadWorkName(id), ExistingWorkPolicy.KEEP, request).result.get()
+        work.enqueueUniqueWork(downloadWorkName(id), policy, request).result.get()
     }
 
     private fun item(row: DownloadEntity): DownloadItem {
