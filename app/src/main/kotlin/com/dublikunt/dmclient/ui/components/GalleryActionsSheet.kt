@@ -185,7 +185,6 @@ fun GalleryActionsSheet(
                         if (action.destructive) MaterialTheme.colorScheme.error
                         else MaterialTheme.colorScheme.onSurface
                     ListItem(
-                        headlineContent = { Text(action.label, color = tint) },
                         leadingContent = { Icon(action.icon, contentDescription = null, tint = tint) },
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                         modifier = Modifier
@@ -194,7 +193,7 @@ fun GalleryActionsSheet(
                                 action.onClick()
                                 onDismiss()
                             }
-                    )
+                    ) { Text(action.label, color = tint) }
                 }
             }
             Spacer(Modifier.size(16.dp))

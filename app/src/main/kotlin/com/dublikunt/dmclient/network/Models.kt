@@ -1,5 +1,6 @@
 package com.dublikunt.dmclient.network
 
+import androidx.annotation.Keep
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -13,6 +14,7 @@ enum class SortOrder(val key: String?) {
 }
 
 @Serializable
+@Keep
 enum class TagType(val key: String) {
     Tag("tag"), Artist("artist"), Character("character"), Parody("parody"),
     Group("group"), Language("language"), Category("category")

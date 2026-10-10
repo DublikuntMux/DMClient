@@ -35,6 +35,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -65,7 +66,9 @@ fun GalleryScreen(onBack: () -> Unit, onRead: (id: Int, page: Int?) -> Unit, onS
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var overflow by remember { mutableStateOf(false) }
-    val collapsed = state.detail == null || grid.firstVisibleItemIndex > 0
+    val collapsed by remember {
+        derivedStateOf { state.detail == null || grid.firstVisibleItemIndex > 0 }
+    }
     val barColor by animateColorAsState(
         if (collapsed) MaterialTheme.colorScheme.surfaceContainer else Color.Transparent,
         animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(), label = "gallery_bar"
