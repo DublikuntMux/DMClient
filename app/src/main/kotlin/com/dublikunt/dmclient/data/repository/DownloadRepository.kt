@@ -50,6 +50,15 @@ class DownloadRepository @Inject internal constructor(
 
     init {
         scope.launch(Dispatchers.IO) {
+            work.cancelAllWorkByTag("dmclient_download").result.get()
+            work.cancelAllWorkByTag("dmclient_archive").result.get()
+            File(files.root, "work_payloads").deleteRecursively()
+            File(files.root, "galleries").listFiles()?.filter { it.isDirectory }?.forEach { directory ->
+                val id = directory.name.toIntOrNull() ?: return@forEach
+                files.withGallery(id) {
+                    if (db.downloads().get(id) == null) directory.deleteRecursively()
+                }
+            }
             db.downloads().all().filter { it.state == DownloadState.Queued || it.state == DownloadState.Downloading }.forEach { row ->
                 files.withGallery(row.galleryId) {
                     if (db.downloads().get(row.galleryId) != null && work.getWorkInfosForUniqueWork(downloadWorkName(row.galleryId)).get().none { !it.state.isFinished }) {
