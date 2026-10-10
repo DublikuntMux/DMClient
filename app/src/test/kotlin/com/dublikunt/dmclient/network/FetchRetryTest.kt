@@ -13,14 +13,30 @@ class FetchRetryTest {
         assertEquals("body", withRetries(sleep = { fail("Unexpected sleep") }) { "body" })
     }
 
-    @Test fun `IO and rate limiting retry with backoff`() = runTest {
+    @Test fun `IO and server errors retry with backoff`() = runTest {
         val sleeps = mutableListOf<Long>()
         var calls = 0
         val result = withRetries(sleep = { sleeps.add(it) }) {
-            when (++calls) { 1 -> throw IOException("offline"); 2 -> throw ApiException.Http(429); else -> 42 }
+            when (++calls) { 1 -> throw IOException("offline"); 2 -> throw ApiException.Http(502); else -> 42 }
         }
         assertEquals(42, result)
         assertEquals(listOf(1000L, 2000L), sleeps)
+    }
+
+    @Test fun `rate limiting fails fast unless waiting is requested`() = runTest {
+        val limited = ApiException.RateLimited(retryAfterSeconds = 60)
+        try {
+            withRetries(sleep = { fail("Unexpected sleep") }) { throw limited }
+            fail("Expected failure")
+        } catch (error: IOException) { assertSame(limited, error) }
+
+        val sleeps = mutableListOf<Long>()
+        var calls = 0
+        val result = withRetries(waitForRateLimit = true, sleep = { sleeps.add(it) }) {
+            if (++calls == 1) throw limited else "page"
+        }
+        assertEquals("page", result)
+        assertEquals(listOf(60_000L), sleeps)
     }
 
     @Test fun `exhaustion rethrows the final failure without trailing sleep`() = runTest {

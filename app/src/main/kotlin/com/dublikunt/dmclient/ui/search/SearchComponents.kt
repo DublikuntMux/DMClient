@@ -271,7 +271,7 @@ private fun SearchDataCard(status: SearchDataStatus, onRefresh: () -> Unit) {
                     FilledTonalButton(onClick = onRefresh) { Text("Retry") }
                 }
                 else -> {
-                    Text("Tag suggestions need the tag list (about 1 minute download)",
+                    Text("Tag suggestions need the tag list. It downloads in the background and takes about 30 minutes because nhentai limits request rate.",
                         style = MaterialTheme.typography.bodyMedium)
                     FilledTonalButton(onClick = onRefresh) { Text("Download tag list") }
                 }

@@ -7,6 +7,7 @@ sealed class ApiException(message: String, cause: Throwable? = null) : IOExcepti
     class Blocked : ApiException("The site requires a Cloudflare challenge")
     class Parse(cause: Throwable) : ApiException("Invalid API response", cause)
     class NotFound : ApiException("Gallery not found")
+    class RateLimited(val retryAfterSeconds: Long) : ApiException("Too many requests")
 }
 
 internal fun isChallenge(body: String): Boolean =

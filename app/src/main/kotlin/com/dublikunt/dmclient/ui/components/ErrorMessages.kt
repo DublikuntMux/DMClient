@@ -7,6 +7,7 @@ import java.io.IOException
 fun Throwable.userMessage(): String = when (this) {
     is ApiException.Blocked -> "nhentai is asking for a browser check. Try again in a moment."
     is ApiException.NotFound -> "This gallery no longer exists."
+    is ApiException.RateLimited -> "Too many requests. Wait a minute and try again."
     is ApiException.Http -> "The server answered with error $code."
     is ApiException.Parse -> "The site returned something unexpected."
     is IOException -> "Check your internet connection and try again."

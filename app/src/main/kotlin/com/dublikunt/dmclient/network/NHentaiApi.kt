@@ -6,6 +6,7 @@ import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
 import okhttp3.ResponseBody
 import org.json.JSONObject
 import javax.inject.Inject
@@ -24,14 +25,21 @@ class NHentaiApi @Inject constructor(private val client: OkHttpClient) {
         return NhentaiParser.parseGallery(fetch("$BASE_URL/g/$id/".toHttpUrl()), id)
     }
 
-    suspend fun tagNames(type: TagType): List<String> = withContext(Dispatchers.IO) {
+    /**
+     * Crawls every page of tag names of [type]. The endpoint allows ~15 requests per minute, so
+     * this waits out rate limits and can take many minutes; [onPage] reports progress.
+     */
+    suspend fun tagNames(
+        type: TagType,
+        onPage: suspend (page: Int, totalPages: Int) -> Unit = { _, _ -> }
+    ): List<String> = withContext(Dispatchers.IO) {
         val names = mutableSetOf<String>()
         var page = 1
         var totalPages: Int
         do {
             val url = "$BASE_URL/api/v2/tags/${type.key}".toHttpUrl().newBuilder()
                 .addQueryParameter("sort", "popular").addQueryParameter("page", page.toString()).build()
-            val body = fetch(url, apiReferer = "$BASE_URL/${type.key}s?sort=popular")
+            val body = fetch(url, apiReferer = "$BASE_URL/${type.key}s?sort=popular", waitForRateLimit = true)
             try {
                 val data = JSONObject(body)
                 totalPages = data.optInt("num_pages", 1)
@@ -40,6 +48,7 @@ class NHentaiApi @Inject constructor(private val client: OkHttpClient) {
             } catch (error: Exception) {
                 throw ApiException.Parse(error)
             }
+            onPage(page, totalPages)
             page++
         } while (page <= totalPages)
         names.toList()
@@ -49,17 +58,21 @@ class NHentaiApi @Inject constructor(private val client: OkHttpClient) {
         withRetries {
             val response = client.newCall(request(url.toHttpUrl())).execute()
             if (!response.isSuccessful) {
-                response.use { throwFailure(it.code, it.body.string()) }
+                response.use { throwFailure(it, it.body.string()) }
             }
             response.body
         }
     }
 
-    private suspend fun fetch(url: HttpUrl, apiReferer: String? = null): String = withContext(Dispatchers.IO) {
-        withRetries {
+    private suspend fun fetch(
+        url: HttpUrl,
+        apiReferer: String? = null,
+        waitForRateLimit: Boolean = false
+    ): String = withContext(Dispatchers.IO) {
+        withRetries(waitForRateLimit = waitForRateLimit) {
             client.newCall(request(url, apiReferer)).execute().use { response ->
                 val body = response.body.string()
-                if (!response.isSuccessful) throwFailure(response.code, body)
+                if (!response.isSuccessful) throwFailure(response, body)
                 if (isChallenge(body) && !body.contains("data-sveltekit-fetched")) throw ApiException.Blocked()
                 body
             }
@@ -96,9 +109,10 @@ class NHentaiApi @Inject constructor(private val client: OkHttpClient) {
             header("Sec-CH-UA-Platform", "\"Android\"")
         }.build()
 
-    private fun throwFailure(code: Int, body: String): Nothing = when {
-        code == 404 -> throw ApiException.NotFound()
-        (code == 403 || code == 503) && isChallenge(body) -> throw ApiException.Blocked()
+    private fun throwFailure(response: Response, body: String): Nothing = when (val code = response.code) {
+        404 -> throw ApiException.NotFound()
+        429 -> throw ApiException.RateLimited(response.header("Retry-After")?.toLongOrNull() ?: 60)
+        403, 503 -> throw if (isChallenge(body)) ApiException.Blocked() else ApiException.Http(code)
         else -> throw ApiException.Http(code)
     }
 

@@ -1,6 +1,7 @@
 package com.dublikunt.dmclient.data.work
 
 import android.content.Context
+import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
@@ -26,8 +27,11 @@ class SearchDataWorker @AssistedInject internal constructor(
         val types = listOf(TagType.Tag, TagType.Artist, TagType.Character, TagType.Parody)
         val entries = mutableListOf<SearchEntryEntity>()
         types.forEachIndexed { index, type ->
-            setForeground(notifications.foreground(1_000_001, "search_data", "Fetching ${type.key}s", index, types.size))
-            val names = api.tagNames(type)
+            val title = "Downloading tag list (${index + 1}/${types.size}: ${type.key}s)"
+            setForeground(notifications.foreground(NOTIFICATION_ID, "search_data", title))
+            val names = api.tagNames(type) { page, totalPages ->
+                setForeground(notifications.foreground(NOTIFICATION_ID, "search_data", title, page, totalPages))
+            }
             currentCoroutineContext().ensureActive()
             entries.addAll(names.map { SearchEntryEntity(type.key, it) })
         }
@@ -35,9 +39,14 @@ class SearchDataWorker @AssistedInject internal constructor(
         Result.success()
     } catch (error: CancellationException) {
         throw error
-    } catch (_: Exception) {
+    } catch (error: Exception) {
+        Log.w(TAG, "Tag list download failed", error)
         Result.failure()
     }
 
-    companion object { const val UNIQUE_WORK_NAME = "search_data_refresh" }
+    companion object {
+        const val UNIQUE_WORK_NAME = "search_data_refresh"
+        private const val NOTIFICATION_ID = 1_000_001
+        private const val TAG = "SearchDataWorker"
+    }
 }
