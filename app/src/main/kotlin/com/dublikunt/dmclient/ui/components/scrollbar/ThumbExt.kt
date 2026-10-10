@@ -1,4 +1,4 @@
-package com.dublikunt.dmclient.component.scrollbar
+package com.dublikunt.dmclient.ui.components.scrollbar
 
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.LazyGridState

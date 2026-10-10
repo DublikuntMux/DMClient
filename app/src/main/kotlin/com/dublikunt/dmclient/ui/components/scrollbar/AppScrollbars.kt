@@ -1,4 +1,4 @@
-package com.dublikunt.dmclient.component.scrollbar
+package com.dublikunt.dmclient.ui.components.scrollbar
 
 import android.annotation.SuppressLint
 import androidx.compose.animation.animateColorAsState
@@ -39,9 +39,9 @@ import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.node.invalidateDraw
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import com.dublikunt.dmclient.component.scrollbar.ThumbState.Active
-import com.dublikunt.dmclient.component.scrollbar.ThumbState.Dormant
-import com.dublikunt.dmclient.component.scrollbar.ThumbState.Inactive
+import com.dublikunt.dmclient.ui.components.scrollbar.ThumbState.Active
+import com.dublikunt.dmclient.ui.components.scrollbar.ThumbState.Dormant
+import com.dublikunt.dmclient.ui.components.scrollbar.ThumbState.Inactive
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 

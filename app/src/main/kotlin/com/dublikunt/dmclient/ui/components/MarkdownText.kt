@@ -1,4 +1,4 @@
-package com.dublikunt.dmclient.component
+package com.dublikunt.dmclient.ui.components
 
 import android.content.Intent
 import androidx.compose.foundation.gestures.detectTapGestures

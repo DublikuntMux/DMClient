@@ -1,4 +1,4 @@
-package com.dublikunt.dmclient.component.scrollbar
+package com.dublikunt.dmclient.ui.components.scrollbar
 
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.Orientation.Horizontal
