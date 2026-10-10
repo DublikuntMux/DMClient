@@ -3,6 +3,10 @@ package com.dublikunt.dmclient.searchexport
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.nio.file.AtomicMoveNotSupportedException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption.ATOMIC_MOVE
+import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import kotlin.system.exitProcess
 
 private val PRETTY_JSON = Json { prettyPrint = true; encodeDefaults = true }
@@ -30,9 +34,19 @@ fun main(args: Array<String>) = runBlocking {
 
     val json =
         if (opts.minify) MIN_JSON.encodeToString(bundle) else PRETTY_JSON.encodeToString(bundle)
-    val outFile = File(opts.out)
+    val outFile = File(opts.out).absoluteFile
     outFile.parentFile?.mkdirs()
-    outFile.writeText(json)
+    val temporaryFile = File(outFile.parentFile, "${outFile.name}.tmp")
+    try {
+        temporaryFile.writeText(json)
+        try {
+            Files.move(temporaryFile.toPath(), outFile.toPath(), ATOMIC_MOVE, REPLACE_EXISTING)
+        } catch (_: AtomicMoveNotSupportedException) {
+            Files.move(temporaryFile.toPath(), outFile.toPath(), REPLACE_EXISTING)
+        }
+    } finally {
+        temporaryFile.delete()
+    }
 
     println("Wrote ${outFile.absolutePath}")
     println(
@@ -46,7 +60,7 @@ private data class Options(
     val out: String = "search-data.json",
     val maxPages: Int = 1000,
     val retries: Int = 4,
-    val pageDelayMs: Long = 500L,
+    val pageDelayMs: Long = 0L,
     val types: Set<String> = SearchExporter.TYPES.keys,
     val minify: Boolean = false,
     val help: Boolean = false
@@ -56,7 +70,7 @@ private fun parseArgs(args: Array<String>): Options {
     var out = "search-data.json"
     var maxPages = 1000
     var retries = 4
-    var pageDelayMs = 500L
+    var pageDelayMs = 0L
     var types: Set<String> = SearchExporter.TYPES.keys
     var minify = false
     var help = false
@@ -118,13 +132,13 @@ private fun printUsage() {
         Options:
           --out <path>         Output file (default: search-data.json)
           --types <csv>        Subset of tags,artists,characters,parodies (default: all)
-          --max-pages <n>      Page cap per type, mirrors the app (default: 1000)
-          --retries <n>        Retries per request on 429/5xx (default: 4)
-          --page-delay-ms <n>  Delay between pages to avoid rate limiting (default: 500)
+          --max-pages <n>      Page cap per type; export fails if data is incomplete (default: 1000)
+          --retries <n>        Retries per request on 5xx/network errors (default: 4)
+          --page-delay-ms <n>  Delay between pages (default: 0)
           --minify / --pretty  JSON formatting (default: --pretty)
           -h, --help           Show this help
 
-        Output format (also understood by the app's SearchBundleImporter):
+        Output format downloaded by the app as its search data bundle:
           {"version":1,"generatedAt":...,"tags":[...],"artists":[...],
            "characters":[...],"parodies":[...]}
 

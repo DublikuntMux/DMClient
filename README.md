@@ -28,7 +28,7 @@ Requirements: JDK 21 or newer toolchain and Android SDK 37.
 
 The app is organized into `network/`, `data/{db,repository,settings,lock,work,download,search}`, and `ui/{components,navigation,feature screens}`. It uses Hilt for dependency injection, Room v9 for persistence, Paging 3 for gallery lists, WorkManager for background jobs, and Coil 3 with the app's shared OkHttp client for images.
 
-The `search-export` CLI fetches nhentai tag, artist, character, and parody suggestions into a JSON bundle that the app can import.
+The `search-export` CLI fetches nhentai tag, artist, character, and parody suggestions into a JSON bundle that the app can import. The app downloads `search-data/search-data.json` from this repository, and a weekly GitHub Actions workflow regenerates it. You can regenerate the file manually with `./gradlew :search-export:run --args="--out search-data/search-data.json --minify"`; a full run takes about 35 minutes due to API rate limits.
 
 ## Contributing
 
