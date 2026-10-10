@@ -45,5 +45,13 @@ internal class PinAttempts(private val clock: () -> Long) {
         if (failedAttempts >= 5) cooldownUntil = clock() + 30_000
     }
 
+    fun restore(failures: Int, deadline: Long?, wallClockNow: Long) {
+        reset()
+        val remaining = deadline?.let { (it - wallClockNow).coerceIn(0, 30_000) }
+        if (remaining == 0L) return
+        failedAttempts = failures.coerceAtLeast(0)
+        cooldownUntil = remaining?.let { clock() + it }
+    }
+
     fun reset() { failedAttempts = 0; cooldownUntil = null }
 }

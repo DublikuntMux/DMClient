@@ -46,4 +46,25 @@ class PinSecurityTest {
         assertTrue(attempts.canAttempt())
         assertEquals(1, attempts.failedAttempts)
     }
+
+    @Test fun `restored attempts convert wall clock cooldown and clamp clock changes`() {
+        var now = 100L
+        val attempts = PinAttempts { now }
+        attempts.restore(4, null, 1_000_000)
+        assertEquals(4, attempts.failedAttempts)
+        assertTrue(attempts.canAttempt())
+
+        attempts.restore(5, 1_020_000, 1_000_000)
+        assertEquals(20_100L, attempts.cooldownUntil)
+        assertFalse(attempts.canAttempt())
+        now = 20_100
+        assertTrue(attempts.canAttempt())
+
+        attempts.restore(5, 2_000_000, 1_000_000)
+        assertEquals(now + 30_000, attempts.cooldownUntil)
+        attempts.restore(5, 999_999, 1_000_000)
+        assertEquals(0, attempts.failedAttempts)
+        assertEquals(null, attempts.cooldownUntil)
+        assertTrue(attempts.canAttempt())
+    }
 }

@@ -46,6 +46,6 @@ class LockViewModel @Inject constructor(private val manager: AppLockManager) : V
 
     fun biometricSucceeded() {
         mutableInput.value = ""
-        manager.unlockWithBiometric()
+        viewModelScope.launch(Dispatchers.IO) { manager.unlockWithBiometric() }
     }
 }
