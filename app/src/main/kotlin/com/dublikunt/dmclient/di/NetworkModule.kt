@@ -2,6 +2,7 @@ package com.dublikunt.dmclient.di
 
 import com.dublikunt.dmclient.network.AppCookieJar
 import com.dublikunt.dmclient.network.NHentaiApi
+import com.dublikunt.dmclient.network.SecureDnsResolver
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -28,8 +29,9 @@ object CoroutinesModule {
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
     @Provides @Singleton
-    fun client(jar: AppCookieJar): OkHttpClient = OkHttpClient.Builder()
+    fun client(jar: AppCookieJar, dns: SecureDnsResolver): OkHttpClient = OkHttpClient.Builder()
         .cookieJar(jar)
+        .dns(dns)
         .addInterceptor { chain ->
             val request = chain.request()
             chain.proceed(

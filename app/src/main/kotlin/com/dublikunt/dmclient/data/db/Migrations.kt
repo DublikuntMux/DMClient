@@ -76,6 +76,6 @@ val MIGRATION_8_9 = object : Migration(8, 9) {
 }
 
 internal fun seedDefaultStatuses(db: SupportSQLiteDatabase) {
-    db.execSQL("INSERT OR IGNORE INTO statuses VALUES (1, 'Reading', -16711936, 1)")
-    db.execSQL("INSERT OR IGNORE INTO statuses VALUES (2, 'Read', -16776961, 2)")
+    db.execSQL("INSERT OR IGNORE INTO statuses VALUES (1, 'Reading', ${0xFF1E88E5.toInt()}, 1)")
+    db.execSQL("INSERT OR IGNORE INTO statuses VALUES (2, 'Read', ${0xFF43A047.toInt()}, 2)")
 }

@@ -4,8 +4,10 @@ import com.dublikunt.dmclient.network.ContentLanguage
 import kotlinx.serialization.Serializable
 
 @Serializable enum class ThemeMode { System, Light, Dark }
-@Serializable enum class GridDensity(val minCell: Int) { Compact(104), Comfortable(136), Large(176) }
+@Serializable enum class GridDensity(val minCell: Int) { Compact(92), Comfortable(112), Large(160) }
 @Serializable enum class ReaderMode { PagedLtr, PagedRtl, Vertical }
+enum class SecureDns { Off, Cloudflare, Google }
+
 enum class LockTimeout(val milliseconds: Long?) {
     Immediate(0), OneMinute(60_000), FiveMinutes(300_000), OnRestart(null)
 }
@@ -22,6 +24,7 @@ data class AppSettings(
     val secureScreen: Boolean = false,
     val lockTimeout: LockTimeout = LockTimeout.OneMinute,
     val checkUpdates: Boolean = true,
+    val secureDns: SecureDns = SecureDns.Cloudflare,
     val imageCacheSize: Long = 1024L * 1024 * 1024,
     val searchDataUpdatedAt: Long? = null,
 )

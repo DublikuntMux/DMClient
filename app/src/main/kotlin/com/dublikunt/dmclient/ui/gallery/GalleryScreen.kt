@@ -93,7 +93,12 @@ fun GalleryScreen(onBack: () -> Unit, onRead: (id: Int, page: Int?) -> Unit, onS
         topBar = {
             TopAppBar(
                 title = {
-                    if (collapsed) Text(state.detail?.title ?: "Gallery", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (collapsed) Text(
+                        state.detail?.title ?: "Gallery",
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = barColor),
                 navigationIcon = {

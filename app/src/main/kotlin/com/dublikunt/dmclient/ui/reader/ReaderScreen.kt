@@ -1,5 +1,6 @@
 package com.dublikunt.dmclient.ui.reader
 
+import kotlin.math.roundToInt
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -119,7 +120,14 @@ fun ReaderScreen(onBack: () -> Unit) {
                 exit = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()) + slideOutVertically(MaterialTheme.motionScheme.defaultSpatialSpec()) { -it }
             ) {
                 TopAppBar(
-                    title = { Text(state.detail?.title ?: "Reader", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    title = {
+                        Text(
+                            state.detail?.title ?: "Reader",
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    },
                     navigationIcon = {
                         FilledTonalIconButton(
                             onClick = onBack, shapes = IconButtonDefaults.shapes(),
@@ -140,8 +148,8 @@ fun ReaderScreen(onBack: () -> Unit) {
                 val pages = state.detail?.pageCount ?: 1
                 HorizontalFloatingToolbar(expanded = true, modifier = Modifier.fillMaxWidth()) {
                     Slider(
-                        value = state.page.toFloat(), onValueChange = { seek?.invoke(it.toInt()) },
-                        valueRange = 1f..pages.coerceAtLeast(2).toFloat(), steps = (pages - 2).coerceAtLeast(0),
+                        value = state.page.toFloat(), onValueChange = { seek?.invoke(it.roundToInt()) },
+                        valueRange = 1f..pages.coerceAtLeast(2).toFloat(),
                         enabled = pages > 1,
                         modifier = Modifier.weight(1f).semantics { contentDescription = "Seek page" }
                     )

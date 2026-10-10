@@ -39,8 +39,8 @@ fun Modifier.shimmer(): Modifier {
         ),
         label = "shimmer_progress"
     )
-    val base = MaterialTheme.colorScheme.surfaceContainerHigh
-    val highlight = MaterialTheme.colorScheme.surfaceContainerHighest
+    val base = MaterialTheme.colorScheme.surfaceContainerHighest
+    val highlight = MaterialTheme.colorScheme.surfaceContainerLow
     return drawBehind {
         val x = size.width * progress
         drawRect(

@@ -135,6 +135,9 @@ fun GalleryActionsSheet(
             ToggleButton(
                 checked = favorite,
                 onCheckedChange = { viewModel.setFavorite(gallery, it) },
+                colors = ToggleButtonDefaults.colors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                ),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(

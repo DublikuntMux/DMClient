@@ -1,5 +1,6 @@
 package com.dublikunt.dmclient.ui.library
 
+import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -211,7 +212,12 @@ fun LibraryScreen(
                         selected = selection == "favorites",
                         onClick = { viewModel.select("favorites") },
                         label = { Text("Favorites") },
-                        leadingIcon = { Icon(Icons.Rounded.Favorite, null) },
+                        leadingIcon = {
+                            Icon(
+                                if (selection == "favorites") Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                                null
+                            )
+                        },
                     )
                 }
                 item {

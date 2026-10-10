@@ -108,6 +108,7 @@ dependencies {
 
     implementation(libs.jsoup)
     implementation(libs.okhttp)
+    implementation(libs.okhttp.doh)
     implementation(libs.coil.compose)
     implementation(libs.coil.okhttp)
 

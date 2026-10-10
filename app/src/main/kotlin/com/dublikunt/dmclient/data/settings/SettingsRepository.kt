@@ -48,6 +48,8 @@ class SettingsRepository @Inject constructor(
     suspend fun setSecureScreen(value: Boolean) = set(secureScreen, value)
     /** Selects when returning from the background requires unlocking. */
     suspend fun setLockTimeout(value: LockTimeout) = set(lockTimeout, value.name)
+    /** Selects the DNS-over-HTTPS resolver used for all app traffic; applies to new connections. */
+    suspend fun setSecureDns(value: SecureDns) = set(secureDns, value.name)
     /** Controls automatic release checks. */
     suspend fun setCheckUpdates(value: Boolean) = set(checkUpdates, value)
     /** Selects the image disk cache limit, applied after restarting the app. */
@@ -88,6 +90,7 @@ class SettingsRepository @Inject constructor(
         secureScreen = prefs[secureScreen] ?: false,
         lockTimeout = enum(prefs[lockTimeout], LockTimeout.OneMinute),
         checkUpdates = prefs[checkUpdates] ?: true,
+        secureDns = enum(prefs[secureDns], SecureDns.Cloudflare),
         imageCacheSize = prefs[cacheSize]?.toLongOrNull()?.let { size ->
             IMAGE_CACHE_SIZE_OPTIONS.minBy { kotlin.math.abs(it - size) }
         } ?: DEFAULT_IMAGE_CACHE_SIZE,
@@ -113,6 +116,7 @@ class SettingsRepository @Inject constructor(
         private val secureScreen = booleanPreferencesKey("secure_screen")
         private val lockTimeout = stringPreferencesKey("lock_timeout")
         private val checkUpdates = booleanPreferencesKey("check_updates")
+        private val secureDns = stringPreferencesKey("secure_dns")
         private val cacheSize = stringPreferencesKey("max_image_cache_size")
         private val searchUpdatedAt = longPreferencesKey("search_data_updated_at")
     }

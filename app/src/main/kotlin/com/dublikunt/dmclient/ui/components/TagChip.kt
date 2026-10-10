@@ -36,13 +36,13 @@ fun TagChip(
     ) {
         Row(
             modifier = Modifier
-                .heightIn(min = 32.dp)
-                .padding(horizontal = 12.dp),
+                .heightIn(min = 30.dp)
+                .padding(horizontal = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(label, style = MaterialTheme.typography.labelLarge)
+            Text(label, style = MaterialTheme.typography.labelMedium)
             if (count != null && count > 0) {
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(4.dp))
                 Text(
                     text = formatCount(count),
                     style = MaterialTheme.typography.labelSmall,

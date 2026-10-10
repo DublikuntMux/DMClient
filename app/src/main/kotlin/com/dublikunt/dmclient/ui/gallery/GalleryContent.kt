@@ -139,12 +139,12 @@ internal fun GalleryContent(
             Box(
                 Modifier.fillMaxWidth().aspectRatio(GALLERY_COVER_ASPECT)
                     .clip(MaterialTheme.shapes.medium)
-                    .then(if (state.lastPage == page) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, MaterialTheme.shapes.medium) else Modifier)
+                    .then(if (page > 1 && state.lastPage == page) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, MaterialTheme.shapes.medium) else Modifier)
                     .clickable { onRead(detail.id, page) }
             ) {
                 GalleryImage(
                     model = viewModel.thumbnail(detail, page, downloaded), contentDescription = "Page $page",
-                    sizePx = 360, modifier = Modifier.fillMaxSize().padding(if (state.lastPage == page) 2.dp else 0.dp)
+                    sizePx = 360, modifier = Modifier.fillMaxSize().padding(if (page > 1 && state.lastPage == page) 2.dp else 0.dp)
                 )
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.9f),
@@ -179,7 +179,7 @@ private fun GalleryHeader(detail: GalleryDetail, cover: Any, topPadding: Dp) {
                     .shadow(4.dp, MaterialTheme.shapes.large).clip(MaterialTheme.shapes.large)
             )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(detail.title, style = MaterialTheme.typography.titleLarge, maxLines = 4, overflow = TextOverflow.Ellipsis)
+                Text(detail.title, style = MaterialTheme.typography.titleMedium, maxLines = 3, overflow = TextOverflow.Ellipsis)
                 detail.subtitle?.let {
                     Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
@@ -190,7 +190,7 @@ private fun GalleryHeader(detail: GalleryDetail, cover: Any, topPadding: Dp) {
                 detail.uploadDate?.let {
                     GalleryMeta(Icons.Rounded.CalendarToday, formatUploadDate(it, System.currentTimeMillis() / 1_000))
                 }
-                detail.favorites?.let { GalleryMeta(Icons.Rounded.FavoriteBorder, "$it favorites") }
+                detail.favorites?.let { GalleryMeta(Icons.Rounded.FavoriteBorder, "%,d favorites".format(it)) }
             }
         }
     }

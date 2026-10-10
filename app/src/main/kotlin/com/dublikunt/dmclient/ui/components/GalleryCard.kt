@@ -93,6 +93,7 @@ fun GalleryCard(
                 .fillMaxWidth()
                 .aspectRatio(GALLERY_COVER_ASPECT)
                 .clip(MaterialTheme.shapes.large)
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
         ) {
             GalleryImage(
                 model = cover,

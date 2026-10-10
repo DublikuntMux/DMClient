@@ -1,5 +1,6 @@
 package com.dublikunt.dmclient.ui.settings
 
+import androidx.compose.material.icons.rounded.Wallpaper
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -20,11 +21,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bookmarks
 import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.Code
-import androidx.compose.material.icons.rounded.ColorLens
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.FileOpen
 import androidx.compose.material.icons.rounded.GridView
+import androidx.compose.material.icons.rounded.Dns
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Label
@@ -71,6 +72,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dublikunt.dmclient.data.settings.GridDensity
 import com.dublikunt.dmclient.data.settings.LockTimeout
 import com.dublikunt.dmclient.data.settings.ReaderMode
+import com.dublikunt.dmclient.data.settings.SecureDns
 import com.dublikunt.dmclient.data.settings.ThemeMode
 import com.dublikunt.dmclient.network.ContentLanguage
 import com.dublikunt.dmclient.ui.components.SettingsChoiceItem
@@ -163,7 +165,7 @@ fun SettingsScreen(onOpenStorage: () -> Unit, onOpenStatuses: () -> Unit) {
                             "Dynamic color",
                             settings.dynamicColor,
                             { value -> viewModel.changeSetting { setDynamicColor(value) } },
-                            icon = Icons.Rounded.ColorLens,
+                            icon = Icons.Rounded.Wallpaper,
                         )
                     SettingsSwitchItem(
                         "Pure black",
@@ -198,6 +200,20 @@ fun SettingsScreen(onOpenStorage: () -> Unit, onOpenStatuses: () -> Unit) {
                         { value -> viewModel.changeSetting { setRecordHistory(value) } },
                         summary = "Save galleries you open to History",
                         icon = Icons.Rounded.History,
+                    )
+                    SettingsChoiceItem(
+                        "Secure DNS",
+                        SecureDns.entries,
+                        settings.secureDns,
+                        {
+                            when (it) {
+                                SecureDns.Off -> "Off (system DNS)"
+                                SecureDns.Cloudflare -> "Cloudflare"
+                                SecureDns.Google -> "Google"
+                            }
+                        },
+                        { value -> viewModel.changeSetting { setSecureDns(value) } },
+                        icon = Icons.Rounded.Dns,
                     )
                 }
             }

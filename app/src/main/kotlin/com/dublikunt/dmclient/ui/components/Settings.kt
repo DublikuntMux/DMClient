@@ -1,5 +1,6 @@
 package com.dublikunt.dmclient.ui.components
 
+import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -317,6 +318,9 @@ fun <T> SettingsSegmentedItem(
                             options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
                             else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                         },
+                        colors = ToggleButtonDefaults.colors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                        ),
                         modifier = Modifier
                             .weight(1f)
                             .semantics { role = Role.RadioButton }

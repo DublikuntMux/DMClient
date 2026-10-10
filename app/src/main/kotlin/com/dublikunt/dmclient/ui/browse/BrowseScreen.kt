@@ -70,7 +70,7 @@ fun BrowseScreen(onOpenGallery: (Int) -> Unit) {
     val gridState = rememberLazyGridState()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val refreshState = rememberPullToRefreshState()
-    val refreshing = galleries.loadState.refresh is LoadState.Loading
+    val refreshing = galleries.loadState.refresh is LoadState.Loading && galleries.itemCount > 0
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var languageMenu by remember { mutableStateOf(false) }
