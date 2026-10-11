@@ -14,6 +14,7 @@ application {
 
 dependencies {
     implementation(libs.okhttp)
+    implementation(libs.okhttp.doh)
     implementation(libs.kotlin.serialization)
     implementation(libs.json.jvm)
     implementation(libs.kotlinx.coroutines.core)

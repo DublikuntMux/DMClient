@@ -2,6 +2,7 @@ package com.dublikunt.dmclient.searchexport
 
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import okhttp3.OkHttpClient
 import java.io.File
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
@@ -26,6 +27,7 @@ fun main(args: Array<String>) = runBlocking {
     }
 
     val exporter = SearchExporter(
+        client = OkHttpClient.Builder().dns(opts.secureDns.resolver()).build(),
         maxPages = opts.maxPages,
         retries = opts.retries,
         pageDelayMs = opts.pageDelayMs
@@ -56,17 +58,18 @@ fun main(args: Array<String>) = runBlocking {
     println("generatedAt=${bundle.generatedAt} version=${bundle.version}")
 }
 
-private data class Options(
+internal data class Options(
     val out: String = "search-data.json",
     val maxPages: Int = 1000,
     val retries: Int = 4,
     val pageDelayMs: Long = 0L,
     val types: Set<String> = SearchExporter.TYPES.keys,
     val minify: Boolean = false,
-    val help: Boolean = false
+    val help: Boolean = false,
+    val secureDns: SecureDns = SecureDns.Cloudflare
 )
 
-private fun parseArgs(args: Array<String>): Options {
+internal fun parseArgs(args: Array<String>): Options {
     var out = "search-data.json"
     var maxPages = 1000
     var retries = 4
@@ -74,6 +77,7 @@ private fun parseArgs(args: Array<String>): Options {
     var types: Set<String> = SearchExporter.TYPES.keys
     var minify = false
     var help = false
+    var secureDns = SecureDns.Cloudflare
 
     var i = 0
     while (i < args.size) {
@@ -112,6 +116,13 @@ private fun parseArgs(args: Array<String>): Options {
                 }
             }
 
+            "--secure-dns" -> {
+                val raw = args.getOrNull(++i)
+                    ?: throw IllegalArgumentException("--secure-dns needs a value")
+                secureDns = SecureDns.entries.firstOrNull { it.name.equals(raw, ignoreCase = true) }
+                    ?: throw IllegalArgumentException("--secure-dns must be cloudflare, google, or off")
+            }
+
             "--minify" -> minify = true
             "--pretty" -> minify = false
             "-h", "--help" -> help = true
@@ -119,7 +130,7 @@ private fun parseArgs(args: Array<String>): Options {
         }
         i++
     }
-    return Options(out, maxPages, retries, pageDelayMs, types, minify, help)
+    return Options(out, maxPages, retries, pageDelayMs, types, minify, help, secureDns)
 }
 
 private fun printUsage() {
@@ -135,6 +146,7 @@ private fun printUsage() {
           --max-pages <n>      Page cap per type; export fails if data is incomplete (default: 1000)
           --retries <n>        Retries per request on 5xx/network errors (default: 4)
           --page-delay-ms <n>  Delay between pages (default: 0)
+          --secure-dns <name>  DNS resolver: cloudflare, google, off (default: cloudflare)
           --minify / --pretty  JSON formatting (default: --pretty)
           -h, --help           Show this help
 

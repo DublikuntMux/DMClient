@@ -8,7 +8,8 @@ import org.json.JSONObject
 import java.io.IOException
 
 class SearchExporter(
-    private val client: OkHttpClient = OkHttpClient.Builder().build(),
+    private val client: OkHttpClient = OkHttpClient.Builder()
+        .dns(SecureDns.Cloudflare.resolver()).build(),
     private val maxPages: Int = 1000,
     private val retries: Int = 4,
     private val pageDelayMs: Long = 0L,

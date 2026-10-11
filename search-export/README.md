@@ -7,6 +7,10 @@ and saves it to a single JSON file.
 The app can then seed its Room `search_cache` table from that file (see `SearchBundleImporter` in
 `:app`) instead of refetching on each device.
 
+DNS over HTTPS uses Cloudflare by default, matching the Android client. Use
+`--secure-dns google` to select Google or `--secure-dns off` to use system DNS. Both HTTPS resolvers
+use the same bootstrap IPs as the app, so resolving the DNS provider does not depend on system DNS.
+
 ## Build
 
 ```bash
@@ -21,15 +25,16 @@ The app can then seed its Room `search_cache` table from that file (see `SearchB
 
 Options:
 
-| Flag                    | Default            | Description                                  |
-|-------------------------|--------------------|----------------------------------------------|
-| `--out <path>`          | `search-data.json` | Output file                                  |
-| `--types <csv>`         | all                | Subset of `tags,artists,characters,parodies` |
-| `--max-pages <n>`       | `1000`             | Page cap per type (mirrors the app)          |
-| `--retries <n>`         | `4`                | Retries per request on 429/5xx               |
-| `--page-delay-ms <n>`   | `500`              | Delay between pages to avoid rate limiting   |
-| `--minify` / `--pretty` | `--pretty`         | JSON formatting                              |
-| `-h`, `--help`          |                    | Show help                                    |
+| Flag                    | Default            | Description                                    |
+|-------------------------|--------------------|------------------------------------------------|
+| `--out <path>`          | `search-data.json` | Output file                                    |
+| `--types <csv>`         | all                | Subset of `tags,artists,characters,parodies`   |
+| `--max-pages <n>`       | `1000`             | Page cap per type (mirrors the app)            |
+| `--retries <n>`         | `4`                | Retries per request on 429/5xx                 |
+| `--page-delay-ms <n>`   | `500`              | Delay between pages to avoid rate limiting     |
+| `--secure-dns <name>`   | `cloudflare`       | DNS resolver: `cloudflare`, `google`, or `off` |
+| `--minify` / `--pretty` | `--pretty`         | JSON formatting                                |
+| `-h`, `--help`          |                    | Show help                                      |
 
 Quick smoke test without network crawl:
 
