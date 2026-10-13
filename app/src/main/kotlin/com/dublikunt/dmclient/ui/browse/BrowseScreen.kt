@@ -19,7 +19,6 @@ import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -60,7 +59,7 @@ import com.dublikunt.dmclient.ui.components.PagingGalleryGrid
 import com.dublikunt.dmclient.ui.components.userMessage
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun BrowseScreen(onOpenGallery: (Int) -> Unit) {
     val viewModel: BrowseViewModel = hiltViewModel()

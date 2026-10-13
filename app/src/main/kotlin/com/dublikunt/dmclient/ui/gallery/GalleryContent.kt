@@ -7,7 +7,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -40,7 +39,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilledTonalIconToggleButton
@@ -79,7 +77,6 @@ import com.dublikunt.dmclient.ui.components.StatusEditorDialog
 import com.dublikunt.dmclient.ui.components.TagChip
 import com.dublikunt.dmclient.ui.components.fullWidthItem
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun GalleryContent(
     state: GalleryUiState,
@@ -300,7 +297,6 @@ private fun GalleryMeta(icon: ImageVector, text: String, modifier: Modifier = Mo
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun GalleryActionRow(
     state: GalleryUiState,
@@ -394,7 +390,6 @@ private fun GalleryActionRow(
         onDismiss = { newStatus = false })
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun GalleryDownloadControl(
     state: GalleryUiState,

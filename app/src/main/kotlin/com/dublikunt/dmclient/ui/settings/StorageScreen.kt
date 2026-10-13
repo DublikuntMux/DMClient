@@ -1,5 +1,9 @@
 package com.dublikunt.dmclient.ui.settings
 
+import android.content.Context
+import android.icu.text.MeasureFormat
+import android.icu.util.Measure
+import android.icu.util.MeasureUnit
 import android.text.format.Formatter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -22,8 +26,6 @@ import androidx.compose.material.icons.rounded.CleaningServices
 import androidx.compose.material.icons.rounded.DataUsage
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.History
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
@@ -59,7 +61,6 @@ import com.dublikunt.dmclient.ui.components.SettingsGroup
 import com.dublikunt.dmclient.ui.components.SettingsItem
 import com.dublikunt.dmclient.ui.components.StatusDot
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun StorageScreen(onBack: () -> Unit) {
     val viewModel: StorageViewModel = hiltViewModel()
@@ -114,12 +115,12 @@ fun StorageScreen(onBack: () -> Unit) {
                         "Maximum cache size",
                         SettingsRepository.IMAGE_CACHE_SIZE_OPTIONS,
                         settings.imageCacheSize,
-                        { Formatter.formatFileSize(context, it) },
+                        { formatCacheSize(context, it) },
                         viewModel::setCacheSize,
                         icon = Icons.Rounded.DataUsage,
                         summary =
                             "${
-                                Formatter.formatFileSize(
+                                formatCacheSize(
                                     context,
                                     settings.imageCacheSize
                                 )
@@ -256,6 +257,20 @@ private fun UsageCard(usage: StorageUsage) {
             )
         }
     }
+}
+
+private fun formatCacheSize(context: Context, bytes: Long): String {
+    // Cache limits are configured in powers of 1024; keep their labels in MB/GB.
+    val megabytes = bytes / (1024L * 1024)
+    val measure = if (megabytes >= 1024) {
+        Measure(megabytes / 1024, MeasureUnit.GIGABYTE)
+    } else {
+        Measure(megabytes, MeasureUnit.MEGABYTE)
+    }
+    return MeasureFormat.getInstance(
+        context.resources.configuration.locales[0],
+        MeasureFormat.FormatWidth.SHORT,
+    ).format(measure)
 }
 
 @Composable

@@ -18,7 +18,6 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonGroupDefaults
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -280,7 +279,6 @@ fun <T> SettingsChoiceItem(
 }
 
 /** Row with a connected button group for 2–4 mutually exclusive options. */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun <T> SettingsSegmentedItem(
     title: String,

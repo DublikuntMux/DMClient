@@ -118,10 +118,7 @@ class SettingsRepository @Inject constructor(
         enumValues<T>().firstOrNull { it.name == name } ?: default
 
     companion object {
-        /** Default disk cache capacity in bytes. */
         const val DEFAULT_IMAGE_CACHE_SIZE = 1024L * 1024 * 1024
-
-        /** Supported image cache limits in bytes, applied after restarting. */
         val IMAGE_CACHE_SIZE_OPTIONS =
             listOf(128L, 256L, 512L, 1024L, 2048L, 4096L).map { it * 1024 * 1024 }
         private val language = stringPreferencesKey("preferred_language")

@@ -19,7 +19,6 @@ import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkHorizontally
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -128,7 +127,6 @@ private val DotEntryShapes =
         MaterialShapes.Sunny,
     )
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun LockScreen(state: LockState.Locked) {
     val viewModel: LockViewModel = hiltViewModel()
@@ -497,7 +495,6 @@ private fun DigitKey(digit: Int, size: Dp, enabled: Boolean, onClick: () -> Unit
 }
 
 /** Keypad key that morphs from a circle into a tinted rounded square while pressed. */
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun PinKey(
     size: Dp,

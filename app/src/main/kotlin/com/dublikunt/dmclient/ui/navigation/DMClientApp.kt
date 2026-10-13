@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -112,7 +111,6 @@ private fun AppContent(navController: NavHostController, checkUpdates: Boolean) 
     CrashReportPrompt()
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun AppNavigationBar(navController: NavHostController, destination: NavDestination?) {
     ShortNavigationBar {
@@ -128,7 +126,6 @@ private fun AppNavigationBar(navController: NavHostController, destination: NavD
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun AppNavigationRail(navController: NavHostController, destination: NavDestination?) {
     WideNavigationRail(

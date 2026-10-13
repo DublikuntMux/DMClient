@@ -1,6 +1,5 @@
 package com.dublikunt.dmclient.ui.components
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,7 +16,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 
 /** Compact tonal chip for a tag name with an optional usage count. */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TagChip(
     label: String,

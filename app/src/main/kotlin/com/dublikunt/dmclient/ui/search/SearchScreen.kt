@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
@@ -14,7 +15,6 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.AppBarWithSearch
 import androidx.compose.material3.ExpandedFullScreenSearchBar
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
@@ -48,7 +48,7 @@ import com.dublikunt.dmclient.ui.components.PagingGalleryGrid
 import com.dublikunt.dmclient.ui.components.userMessage
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(onOpenGallery: (Int) -> Unit) {
     val viewModel: SearchViewModel = hiltViewModel()
@@ -128,6 +128,7 @@ fun SearchScreen(onOpenGallery: (Int) -> Unit) {
                 .fillMaxSize()
                 .padding(padding)
                 .consumeWindowInsets(padding)
+                .statusBarsPadding()
         ) {
             SearchFilters(
                 state = state,

@@ -48,7 +48,6 @@ import coil3.request.ImageRequest
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun ZoomableImage(
     model: Any,

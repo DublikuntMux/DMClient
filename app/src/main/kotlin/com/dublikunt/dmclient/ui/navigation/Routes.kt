@@ -6,7 +6,6 @@ import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material.icons.rounded.Explore
-import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.VideoLibrary
@@ -69,7 +68,7 @@ enum class TopLevelDestination(
     ),
     Downloads(
         DownloadsRoute, DownloadsRoute::class, "Downloads",
-        Icons.Outlined.FileDownload, Icons.Rounded.FileDownload
+        Icons.Outlined.FileDownload, Icons.Outlined.FileDownload
     ),
     Settings(
         SettingsRoute, SettingsRoute::class, "Settings",
